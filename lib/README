@@ -1,0 +1,12 @@
+STM32 Library
+
+Version: STM32_USB-Host-Device_Lib_V2.1.0
+
+
+Changes / Bugfixes:
+
+* stm32f4xx.h
+	- 6998: add assert_param to avoid make errors
+	
+* STM32_USB_OTG_Driver/src/usb_dcd_int.c
+	- 680: add a workaround for "empty buffer interrupt"-bug

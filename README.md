@@ -1,4 +1,8 @@
 Flow
 ====
 
-Firmware for PX4FLOW board
+PX4FLOW Board Firmware
+
+Project:
+https://pixhawk.ethz.ch/px4/
+
