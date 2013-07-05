@@ -30,17 +30,16 @@
  ****************************************************************************/
 #ifndef I2C_H_
 #define I2C_H_
+#include <inttypes.h>
 
-
-#define I2C1_OWNADDRESS_1 0x3d
+#define I2C1_OWNADDRESS_1_BASE 0x42
 /**
-  * @brief  Configures I2C1 for communication as a slave (default behaviour for STM32F)
-  */
+ * @brief  Configures I2C1 for communication as a slave (default behaviour for STM32F)
+ */
 
 void i2c_init();
+void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow_comp_m_x, float flow_comp_m_y, uint16_t qual,
+        float ground_distance);
 char i2c_get_ownaddress1();
-void loop();
 #endif /* I2C_H_ */
-
-
 

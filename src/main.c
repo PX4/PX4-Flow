@@ -438,6 +438,9 @@ int main(void)
 						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_ms() * 1000, global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 							flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
+
+					update_TX_buffer(pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
+                            flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 				}
 				else
 				{
@@ -450,6 +453,9 @@ int main(void)
 						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_ms() * 1000, global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 							0.0f, 0.0f, 0, ground_distance);
+
+                    update_TX_buffer(pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
+                            flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 				}
 
 				if(global_data.param[PARAM_USB_SEND_GYRO])

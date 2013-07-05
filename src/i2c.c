@@ -37,6 +37,16 @@
 
 #include "led.h"
 
+static char offset = 0;
+
+char readI2CAddressOffset()
+{
+    offset = 0x00;
+    offset = GPIO_ReadInputData(GPIOC ) >> 13;
+    offset = (~offset) & 0x07;
+    return offset;
+}
+
 void i2c_init()
 {
 
@@ -48,6 +58,7 @@ void i2c_init()
 
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
 
     gpio_init.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9;
     gpio_init.GPIO_Mode = GPIO_Mode_AF;
@@ -57,6 +68,14 @@ void i2c_init()
     //Open Drain
     gpio_init.GPIO_OType = GPIO_OType_OD;
     GPIO_Init(GPIOB, &gpio_init);
+
+    GPIO_InitTypeDef gpio_init2;
+
+    gpio_init2.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+    gpio_init2.GPIO_Mode = GPIO_Mode_IN;
+    gpio_init2.GPIO_Speed = GPIO_Speed_50MHz;
+    gpio_init2.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_Init(GPIOC, &gpio_init2);
 
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource8, GPIO_AF_I2C1 ); // SCL
     GPIO_PinAFConfig(GPIOB, GPIO_PinSource9, GPIO_AF_I2C1 ); // SDA
@@ -88,16 +107,8 @@ void i2c_init()
     i2c_init.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
     I2C_Init(I2C1, &i2c_init);
 
-    // enable I2C1
-    I2C_StretchClockCmd(I2C1, DISABLE);
-
     I2C_StretchClockCmd(I2C1, ENABLE);
-    // I2C_StretchClockCmd(I2C1, DISABLE);
     I2C_Cmd(I2C1, ENABLE);
-//    while (1)
-    //  {
-
-    //}
 }
 
 uint8_t data[6];
@@ -125,6 +136,8 @@ void I2C1_EV_IRQHandler(void)
         temp = I2C1 ->SR1;
         temp = I2C1 ->SR2;
         txData = 0;
+        //data[txData] = offset;
+        //readI2CAddressOffset();
         break;
     }
     case I2C_EVENT_SLAVE_BYTE_RECEIVED :
@@ -171,7 +184,23 @@ void I2C1_ER_IRQHandler(void)
     }
 }
 
+void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow_comp_m_x, float flow_comp_m_y, uint16_t qual,
+        float ground_distance)
+{
+    union
+    {
+        float f;
+        char c[4];
+    } u;
+
+    u.f = ground_distance;
+    data[0] = u.c[0];
+    data[1] = u.c[1];
+    data[2] = u.c[2];
+    data[3] = u.c[3];
+
+}
 char i2c_get_ownaddress1()
 {
-    return I2C1_OWNADDRESS_1;
+    return (I2C1_OWNADDRESS_1_BASE + readI2CAddressOffset()) << 1;
 }
