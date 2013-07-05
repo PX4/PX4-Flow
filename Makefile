@@ -32,7 +32,8 @@ SRCS = 		src/main.c \
 			src/usb_bsp.c \
 			src/usbd_cdc_vcp.c \
 			src/usbd_desc.c \
-			src/usbd_usr.c
+			src/usbd_usr.c \
+			src/i2c.c
 SRCS += 	src/system_stm32f4xx.c src/stm32f4xx_it.c lib/startup_stm32f4xx.s
 SRCS += 	lib/STM32F4xx_StdPeriph_Driver/src/misc.c \
 			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c \

@@ -52,6 +52,7 @@
 #include "dcmi.h"
 #include "mt9v034.h"
 #include "gyro.h"
+#include "i2c.h"
 #include "usart.h"
 #include "sonar.h"
 #include "communication.h"
@@ -222,6 +223,9 @@ int main(void)
 
 	/* usart config*/
 	usart_init();
+
+	/* i2c config*/
+	i2c_init();
 
 	/* sonar config*/
 	float sonar_distance_filtered = 0.0f; // distance in meter
