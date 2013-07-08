@@ -32,15 +32,19 @@
 #define I2C_FRAME_H_
 #include <inttypes.h>
 
+#define I2C_FRAME_SIZE (2*10)
 typedef struct i2c_frame
 {
     uint16_t frame_count;
-    uint16_t pixel_flow_x_sum;
-    uint16_t pixel_flow_y_sum;
-    uint16_t flow_comp_m_x;
-    uint16_t flow_comp_m_y;
-    uint16_t qual;
-    uint16_t ground_distance;
+    int16_t pixel_flow_x_sum;
+    int16_t pixel_flow_y_sum;
+    int16_t flow_comp_m_x;
+    int16_t flow_comp_m_y;
+    int16_t qual;
+    int16_t ground_distance;
+    int16_t gyro_x_rate;
+    int16_t gyro_y_rate;
+    int16_t gyro_z_rate;
 
 } i2c_frame;
 #endif /* I2C_FRAME_H_ */

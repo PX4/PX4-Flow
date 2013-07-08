@@ -39,14 +39,6 @@
 #include "i2c_frame.h"
 static char offset = 0;
 
-char readI2CAddressOffset()
-{
-    offset = 0x00;
-    offset = GPIO_ReadInputData(GPIOC ) >> 13;
-    offset = (~offset) & 0x07;
-    return offset;
-}
-
 void i2c_init()
 {
 
@@ -111,7 +103,7 @@ void i2c_init()
     I2C_Cmd(I2C1, ENABLE);
 }
 
-uint8_t rxData[2][14];
+uint8_t rxData[2][I2C_FRAME_SIZE];
 uint8_t rxBufferIndex = 0;
 
 void I2C1_EV_IRQHandler(void)
@@ -178,33 +170,45 @@ void I2C1_ER_IRQHandler(void)
 }
 
 void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow_comp_m_x, float flow_comp_m_y, uint16_t qual,
-        float ground_distance)
+        float ground_distance, float gyro_x_rate, float gyro_y_rate, float gyro_z_rate)
 {
     static uint16_t frame_count = 0;
     int i;
     union
     {
         i2c_frame f;
-        char c[14];
+        char c[I2C_FRAME_SIZE];
     } u[2];
 
     int nrxBufferIndex = 1 - rxBufferIndex;
 
     u[nrxBufferIndex].f.frame_count = frame_count;
-    u[nrxBufferIndex].f.pixel_flow_x_sum = pixel_flow_x_sum * 1000;
-    u[nrxBufferIndex].f.pixel_flow_y_sum = pixel_flow_y_sum * 1000;
+    u[nrxBufferIndex].f.pixel_flow_x_sum = pixel_flow_x_sum;
+    u[nrxBufferIndex].f.pixel_flow_y_sum = pixel_flow_y_sum;
     u[nrxBufferIndex].f.flow_comp_m_x = flow_comp_m_x * 1000;
     u[nrxBufferIndex].f.flow_comp_m_y = flow_comp_m_y * 1000;
     u[nrxBufferIndex].f.qual = qual;
     u[nrxBufferIndex].f.ground_distance = ground_distance * 1000;
+    u[nrxBufferIndex].f.gyro_x_rate = gyro_x_rate * 1000;
+    u[nrxBufferIndex].f.gyro_y_rate = gyro_y_rate * 1000;
+    u[nrxBufferIndex].f.gyro_z_rate = gyro_z_rate * 1000;
 
-    for (i = 0; i < 14; i++)
+    for (i = 0; i < I2C_FRAME_SIZE; i++)
         rxData[rxBufferIndex][i] = u[nrxBufferIndex].c[i];
 
     rxBufferIndex = 1 - rxBufferIndex;
     frame_count++;
 
 }
+
+char readI2CAddressOffset()
+{
+    offset = 0x00;
+    offset = GPIO_ReadInputData(GPIOC) >> 13;
+    offset = (~offset) & 0x07;
+    return offset;
+}
+
 char i2c_get_ownaddress1()
 {
     return (I2C1_OWNADDRESS_1_BASE + readI2CAddressOffset()) << 1;
