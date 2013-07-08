@@ -36,7 +36,7 @@
 #include "stm32f4xx_gpio.h"
 
 #include "led.h"
-
+#include "i2c_frame.h"
 static char offset = 0;
 
 char readI2CAddressOffset()
@@ -111,62 +111,55 @@ void i2c_init()
     I2C_Cmd(I2C1, ENABLE);
 }
 
-uint8_t data[6];
+uint8_t rxData[2][14];
+uint8_t rxBufferIndex = 0;
 
 void I2C1_EV_IRQHandler(void)
 {
 
-    uint8_t data2;
-    static uint8_t txData = 0x00;
+    uint8_t dataRX;
+    static uint8_t txDataIndex = 0x00;
+    static uint8_t rxDataIndex = 0x00;
     switch (I2C_GetLastEvent(I2C1 ))
     {
 
     case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED :
     {
-        volatile uint32_t temp;
-        temp = I2C1 ->SR1;
-        temp = I2C1 ->SR2;
-        txData = 0;
+        I2C1 ->SR1;
+        I2C1 ->SR2;
+        rxDataIndex = 0;
         break;
     }
     case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED :
     {
-
-        volatile uint32_t temp;
-        temp = I2C1 ->SR1;
-        temp = I2C1 ->SR2;
-        txData = 0;
-        //data[txData] = offset;
-        //readI2CAddressOffset();
+        I2C1 ->SR1;
+        I2C1 ->SR2;
+        txDataIndex = 0;
         break;
     }
     case I2C_EVENT_SLAVE_BYTE_RECEIVED :
     {
-        data2 = I2C_ReceiveData(I2C1 );
-        data[txData] = data2;
-        txData++;
+        dataRX = I2C_ReceiveData(I2C1 );
+        rxDataIndex++;
         break;
     }
     case I2C_EVENT_SLAVE_BYTE_TRANSMITTING :
     case I2C_EVENT_SLAVE_BYTE_TRANSMITTED :
     {
-        I2C_SendData(I2C1, data[txData]);
-        txData++;
+        I2C_SendData(I2C1, rxData[rxBufferIndex][txDataIndex]);
+        txDataIndex++;
         break;
     }
 
     case I2C_EVENT_SLAVE_ACK_FAILURE :
     {
-        volatile uint32_t temp;
         I2C1 ->SR1 &= 0x00FF;
         break;
     }
 
     case I2C_EVENT_SLAVE_STOP_DETECTED :
     {
-
-        volatile uint32_t temp;
-        temp = I2C1 ->SR1;
+        I2C1 ->SR1;
         I2C1 ->CR1 |= 0x1;
         break;
     }
@@ -187,17 +180,29 @@ void I2C1_ER_IRQHandler(void)
 void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow_comp_m_x, float flow_comp_m_y, uint16_t qual,
         float ground_distance)
 {
+    static uint16_t frame_count = 0;
+    int i;
     union
     {
-        float f;
-        char c[4];
-    } u;
+        i2c_frame f;
+        char c[14];
+    } u[2];
 
-    u.f = ground_distance;
-    data[0] = u.c[0];
-    data[1] = u.c[1];
-    data[2] = u.c[2];
-    data[3] = u.c[3];
+    int nrxBufferIndex = 1 - rxBufferIndex;
+
+    u[nrxBufferIndex].f.frame_count = frame_count;
+    u[nrxBufferIndex].f.pixel_flow_x_sum = pixel_flow_x_sum * 1000;
+    u[nrxBufferIndex].f.pixel_flow_y_sum = pixel_flow_y_sum * 1000;
+    u[nrxBufferIndex].f.flow_comp_m_x = flow_comp_m_x * 1000;
+    u[nrxBufferIndex].f.flow_comp_m_y = flow_comp_m_y * 1000;
+    u[nrxBufferIndex].f.qual = qual;
+    u[nrxBufferIndex].f.ground_distance = ground_distance * 1000;
+
+    for (i = 0; i < 14; i++)
+        rxData[rxBufferIndex][i] = u[nrxBufferIndex].c[i];
+
+    rxBufferIndex = 1 - rxBufferIndex;
+    frame_count++;
 
 }
 char i2c_get_ownaddress1()
