@@ -238,7 +238,7 @@ int main(void)
 
 	/* variables */
 	uint32_t counter = 0;
-	uint16_t qual = 0;
+	uint8_t qual = 0;
 
 	/* bottom flow variables */
 	float pixel_flow_x = 0.0f;
