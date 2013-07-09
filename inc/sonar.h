@@ -57,5 +57,14 @@ void sonar_trigger(void);
   */
 void sonar_read(float* sonar_value_filtered, float* sonar_value_raw);
 
+/**
+  * @brief Get the timestamp of the new sonar value when available to the main code
+  */
+uint32_t get_sonar_measure_time();
+
+/**
+  * @brief Get the timestamp of the new sonar value when the interrupt is triggered
+  */
+uint32_t get_sonar_measure_time_interrupt();
 
 #endif /* SONAR_H_ */

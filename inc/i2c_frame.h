@@ -32,7 +32,7 @@
 #define I2C_FRAME_H_
 #include <inttypes.h>
 
-#define I2C_FRAME_SIZE (2*10)
+#define I2C_FRAME_SIZE (sizeof(i2c_frame))
 typedef struct i2c_frame
 {
     uint16_t frame_count;
@@ -45,6 +45,7 @@ typedef struct i2c_frame
     int16_t gyro_x_rate;
     int16_t gyro_y_rate;
     int16_t gyro_z_rate;
+    uint8_t sonar_timestamp;
 
 } i2c_frame;
 #endif /* I2C_FRAME_H_ */

@@ -193,6 +193,22 @@ void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow
     u[nrxBufferIndex].f.gyro_y_rate = gyro_y_rate * 1000;
     u[nrxBufferIndex].f.gyro_z_rate = gyro_z_rate * 1000;
 
+    uint32_t sonar_time_interrupt = get_sonar_measure_time_interrupt();
+    uint32_t sonar_time = get_sonar_measure_time();
+    uint32_t time;
+
+    if (sonar_time < sonar_time_interrupt)
+        time = sonar_time;
+    else
+        time = sonar_time_interrupt;
+
+    time = get_boot_time_ms() - time;
+
+    if (time > 255)
+        time = 255;
+
+    u[nrxBufferIndex].f.sonar_timestamp = time;
+
     for (i = 0; i < I2C_FRAME_SIZE; i++)
         rxData[rxBufferIndex][i] = u[nrxBufferIndex].c[i];
 
@@ -204,7 +220,7 @@ void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow
 char readI2CAddressOffset()
 {
     offset = 0x00;
-    offset = GPIO_ReadInputData(GPIOC) >> 13;
+    offset = GPIO_ReadInputData(GPIOC ) >> 13;
     offset = (~offset) & 0x07;
     return offset;
 }
