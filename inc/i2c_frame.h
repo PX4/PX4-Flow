@@ -41,11 +41,18 @@ typedef struct i2c_frame
     int16_t flow_comp_m_x;
     int16_t flow_comp_m_y;
     int16_t qual;
-    int16_t ground_distance;
     int16_t gyro_x_rate;
     int16_t gyro_y_rate;
     int16_t gyro_z_rate;
+    uint8_t gyro_range;
     uint8_t sonar_timestamp;
-
+    int16_t ground_distance;
 } i2c_frame;
+
+enum
+{
+    DPS50 = 0, DPS100, DPS150, DPS200, DPS250, DPS500, DPS1000, DPS2000
+} sensor_range;
+
+int scaling_factors[] = { 37548, 18774, 12516, 9387, 7510, 3755, 1877, 939 };
 #endif /* I2C_FRAME_H_ */
