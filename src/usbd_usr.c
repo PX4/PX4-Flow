@@ -16,20 +16,19 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 #include "usbd_usr.h"
 #include "usbd_ioreq.h"
 
-USBD_Usr_cb_TypeDef USR_cb =
-{
+USBD_Usr_cb_TypeDef USR_cb = {
 	USBD_USR_Init,
 	USBD_USR_DeviceReset,
 	USBD_USR_DeviceConfigured,
@@ -41,22 +40,22 @@ USBD_Usr_cb_TypeDef USR_cb =
 };
 
 /**
-* @brief  USBD_USR_Init 
+* @brief  USBD_USR_Init
 * 		  (not in use now)
 * @param  None
 * @retval None
 */
 void USBD_USR_Init(void)
-{  
+{
 }
 
 /**
-* @brief  USBD_USR_DeviceReset 
+* @brief  USBD_USR_DeviceReset
 *         (not in use now)
 * @param  speed : device speed
 * @retval None
 */
-void USBD_USR_DeviceReset(uint8_t speed )
+void USBD_USR_DeviceReset(uint8_t speed)
 {
 }
 
@@ -66,12 +65,12 @@ void USBD_USR_DeviceReset(uint8_t speed )
 * @param  None
 * @retval Staus
 */
-void USBD_USR_DeviceConfigured (void)
+void USBD_USR_DeviceConfigured(void)
 {
 }
 
 /**
-* @brief  USBD_USR_DeviceSuspended 
+* @brief  USBD_USR_DeviceSuspended
 *         (not in use now)
 * @param  None
 * @retval None
@@ -82,7 +81,7 @@ void USBD_USR_DeviceSuspended(void)
 }
 
 /**
-* @brief  USBD_USR_DeviceResumed 
+* @brief  USBD_USR_DeviceResumed
 *         (not in use now)
 * @param  None
 * @retval None
@@ -98,7 +97,7 @@ void USBD_USR_DeviceResumed(void)
 * @param  None
 * @retval Staus
 */
-void USBD_USR_DeviceConnected (void)
+void USBD_USR_DeviceConnected(void)
 {
 }
 
@@ -108,7 +107,7 @@ void USBD_USR_DeviceConnected (void)
 * @param  None
 * @retval Staus
 */
-void USBD_USR_DeviceDisconnected (void)
+void USBD_USR_DeviceDisconnected(void)
 {
 }
 

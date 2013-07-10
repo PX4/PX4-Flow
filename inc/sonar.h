@@ -55,7 +55,7 @@ void sonar_trigger(void);
 /**
   * @brief  Read out newest sonar data
   */
-void sonar_read(float* sonar_value_filtered, float* sonar_value_raw);
+void sonar_read(float *sonar_value_filtered, float *sonar_value_raw);
 
 
 #endif /* SONAR_H_ */

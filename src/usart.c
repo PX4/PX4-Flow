@@ -62,16 +62,15 @@ int usart3_rx_counter_write = 0;
 /**
   * @brief  Push one byte to ringbuffer of USART2
   */
-uint8_t usart2_tx_ringbuffer_push(uint8_t* ch, uint8_t len)
+uint8_t usart2_tx_ringbuffer_push(uint8_t *ch, uint8_t len)
 {
 	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
 
 	/* if there is free space in buffer */
-	if ((((usart2_tx_counter_read - usart2_tx_counter_write) - 1) + TXBUFFERSIZE) % TXBUFFERSIZE > len)
-	{
+	if ((((usart2_tx_counter_read - usart2_tx_counter_write) - 1) + TXBUFFERSIZE) % TXBUFFERSIZE > len) {
 		uint8_t i;
-		for (i = 0; i < len; i++)
-		{
+
+		for (i = 0; i < len; i++) {
 			usart2_tx_buffer[usart2_tx_counter_write] = ch[i];
 			usart2_tx_counter_write = (usart2_tx_counter_write + 1) % TXBUFFERSIZE;
 		}
@@ -87,16 +86,15 @@ uint8_t usart2_tx_ringbuffer_push(uint8_t* ch, uint8_t len)
 /**
   * @brief  Push one byte to ringbuffer of USART3
   */
-uint8_t usart3_tx_ringbuffer_push(uint8_t* ch, uint8_t len)
+uint8_t usart3_tx_ringbuffer_push(uint8_t *ch, uint8_t len)
 {
 	USART_ITConfig(USART3, USART_IT_TXE, DISABLE);
 
 	/* if there is free space in buffer */
-	if ((((usart3_tx_counter_read - usart3_tx_counter_write) - 1) + TXBUFFERSIZE) % TXBUFFERSIZE > len)
-	{
+	if ((((usart3_tx_counter_read - usart3_tx_counter_write) - 1) + TXBUFFERSIZE) % TXBUFFERSIZE > len) {
 		uint8_t i;
-		for (i = 0; i < len; i++)
-		{
+
+		for (i = 0; i < len; i++) {
 			usart3_tx_buffer[usart3_tx_counter_write] = ch[i];
 			usart3_tx_counter_write = (usart3_tx_counter_write + 1) % TXBUFFERSIZE;
 		}
@@ -161,8 +159,7 @@ uint8_t usart2_rx_ringbuffer_push_from_usart()
 	usart2_rx_buffer[usart2_rx_counter_write] = USART_ReceiveData(USART2);
 	int temp = (usart2_rx_counter_write + 1) % TXBUFFERSIZE;
 
-	if(temp == usart2_rx_counter_read)
-	{
+	if (temp == usart2_rx_counter_read) {
 		return 0;
 	}
 
@@ -179,8 +176,7 @@ uint8_t usart3_rx_ringbuffer_push_from_usart()
 	usart3_rx_buffer[usart3_rx_counter_write] = USART_ReceiveData(USART3);
 	int temp = (usart3_rx_counter_write + 1) % TXBUFFERSIZE;
 
-	if(temp == usart3_rx_counter_read)
-	{
+	if (temp == usart3_rx_counter_read) {
 		return 0;
 	}
 
@@ -193,12 +189,12 @@ uint8_t usart3_rx_ringbuffer_push_from_usart()
   */
 uint8_t usart2_tx_ringbuffer_pop_to_usart()
 {
-	if (usart2_tx_counter_read != usart2_tx_counter_write)
-	{
+	if (usart2_tx_counter_read != usart2_tx_counter_write) {
 		USART_SendData(USART2, usart2_tx_buffer[usart2_tx_counter_read]);
-		usart2_tx_counter_read= (usart2_tx_counter_read+1) % TXBUFFERSIZE;
+		usart2_tx_counter_read = (usart2_tx_counter_read + 1) % TXBUFFERSIZE;
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -207,12 +203,12 @@ uint8_t usart2_tx_ringbuffer_pop_to_usart()
   */
 uint8_t usart3_tx_ringbuffer_pop_to_usart()
 {
-	if (usart3_tx_counter_read != usart3_tx_counter_write)
-	{
+	if (usart3_tx_counter_read != usart3_tx_counter_write) {
 		USART_SendData(USART3, usart3_tx_buffer[usart3_tx_counter_read]);
-		usart3_tx_counter_read= (usart3_tx_counter_read+1) % TXBUFFERSIZE;
+		usart3_tx_counter_read = (usart3_tx_counter_read + 1) % TXBUFFERSIZE;
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -221,20 +217,17 @@ uint8_t usart3_tx_ringbuffer_pop_to_usart()
   */
 void USART2_IRQHandler(void)
 {
-	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET)
-	{
-		if(usart2_rx_ringbuffer_push_from_usart() == 0)
-		{
+	if (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {
+		if (usart2_rx_ringbuffer_push_from_usart() == 0) {
 			/* Disable the Receive interrupt if buffer is full */
 			USART_ITConfig(USART2, USART_IT_RXNE, DISABLE);
 		}
+
 		return;
 	}
 
-	if(USART_GetITStatus(USART2, USART_IT_TXE) != RESET)
-	{
-		if(usart2_tx_ringbuffer_pop_to_usart() == 0)
-		{
+	if (USART_GetITStatus(USART2, USART_IT_TXE) != RESET) {
+		if (usart2_tx_ringbuffer_pop_to_usart() == 0) {
 			/* Disable the Transmit interrupt if buffer is empty */
 			USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
 		}
@@ -248,20 +241,17 @@ void USART2_IRQHandler(void)
   */
 void USART3_IRQHandler(void)
 {
-	if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET)
-	{
-		if(usart3_rx_ringbuffer_push_from_usart() == 0)
-		{
+	if (USART_GetITStatus(USART3, USART_IT_RXNE) != RESET) {
+		if (usart3_rx_ringbuffer_push_from_usart() == 0) {
 			/* Disable the Receive interrupt if buffer is full */
 			USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
 		}
+
 		return;
 	}
 
-	if(USART_GetITStatus(USART3, USART_IT_TXE) != RESET)
-	{
-		if(usart3_tx_ringbuffer_pop_to_usart() == 0)
-		{
+	if (USART_GetITStatus(USART3, USART_IT_TXE) != RESET) {
+		if (usart3_tx_ringbuffer_pop_to_usart() == 0) {
 			/* Disable the Transmit interrupt if buffer is empty */
 			USART_ITConfig(USART3, USART_IT_TXE, DISABLE);
 		}

@@ -36,7 +36,7 @@
 #include "usbd_core.h"
 #include "usbd_cdc_core.h"
 
-extern uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+extern uint32_t USBD_OTG_ISR_Handler(USB_OTG_CORE_HANDLE *pdev);
 extern USB_OTG_CORE_HANDLE USB_OTG_dev;
 
 /**
@@ -55,10 +55,9 @@ void NMI_Handler(void)
   */
 void HardFault_Handler(void)
 {
-  /* Go to infinite loop when Hard Fault exception occurs */
-  while (1)
-  {
-  }
+	/* Go to infinite loop when Hard Fault exception occurs */
+	while (1) {
+	}
 }
 
 /**
@@ -68,10 +67,9 @@ void HardFault_Handler(void)
   */
 void MemManage_Handler(void)
 {
-  /* Go to infinite loop when Memory Manage exception occurs */
-  while (1)
-  {
-  }
+	/* Go to infinite loop when Memory Manage exception occurs */
+	while (1) {
+	}
 }
 
 /**
@@ -81,10 +79,9 @@ void MemManage_Handler(void)
   */
 void BusFault_Handler(void)
 {
-  /* Go to infinite loop when Bus Fault exception occurs */
-  while (1)
-  {
-  }
+	/* Go to infinite loop when Bus Fault exception occurs */
+	while (1) {
+	}
 }
 
 /**
@@ -94,10 +91,9 @@ void BusFault_Handler(void)
   */
 void UsageFault_Handler(void)
 {
-  /* Go to infinite loop when Usage Fault exception occurs */
-  while (1)
-  {
-  }
+	/* Go to infinite loop when Usage Fault exception occurs */
+	while (1) {
+	}
 }
 
 /**
@@ -151,7 +147,7 @@ void SysTick_Handler(void)
   */
 void OTG_FS_IRQHandler(void)
 {
-	USBD_OTG_ISR_Handler (&USB_OTG_dev);
+	USBD_OTG_ISR_Handler(&USB_OTG_dev);
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -4,7 +4,7 @@
   * @author  MCD Application Team
   * @version V1.1.0
   * @date    19-March-2012
-  * @brief   This file is responsible to offer board support package and is 
+  * @brief   This file is responsible to offer board support package and is
   *          configurable by user.
   ******************************************************************************
   * @attention
@@ -17,14 +17,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 #include "usb_bsp.h"
 #include "usbd_conf.h"
@@ -44,13 +44,13 @@ void USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	RCC_AHB1PeriphClockCmd( RCC_AHB1Periph_GPIOA , ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA , ENABLE);
 
 	/* Configure SOF VBUS ID DM DP Pins */
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8  |
-	GPIO_Pin_9  |
-	  GPIO_Pin_11 |
-		GPIO_Pin_12;
+				      GPIO_Pin_9  |
+				      GPIO_Pin_11 |
+				      GPIO_Pin_12;
 
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
@@ -58,10 +58,10 @@ void USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	GPIO_PinAFConfig(GPIOA,GPIO_PinSource8,GPIO_AF_OTG1_FS) ;
-	GPIO_PinAFConfig(GPIOA,GPIO_PinSource9,GPIO_AF_OTG1_FS) ;
-	GPIO_PinAFConfig(GPIOA,GPIO_PinSource11,GPIO_AF_OTG1_FS) ;
-	GPIO_PinAFConfig(GPIOA,GPIO_PinSource12,GPIO_AF_OTG1_FS) ;
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource8, GPIO_AF_OTG1_FS) ;
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_OTG1_FS) ;
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource11, GPIO_AF_OTG1_FS) ;
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource12, GPIO_AF_OTG1_FS) ;
 
 	/* this for ID line debug */
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
@@ -69,7 +69,7 @@ void USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP ;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
-	GPIO_PinAFConfig(GPIOA,GPIO_PinSource10,GPIO_AF_OTG1_FS) ;
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_OTG1_FS) ;
 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
 	RCC_AHB2PeriphClockCmd(RCC_AHB2Periph_OTG_FS, ENABLE) ;
@@ -99,18 +99,16 @@ void USB_OTG_BSP_EnableInterrupt(USB_OTG_CORE_HANDLE *pdev)
 * @param  usec : Value of delay required in micro sec
 * @retval None
 */
-void USB_OTG_BSP_uDelay (const uint32_t usec)
+void USB_OTG_BSP_uDelay(const uint32_t usec)
 {
 	uint32_t count = 0;
 	const uint32_t utime = (120 * usec / 7);
-	do
-	{
-		if ( ++count > utime )
-		{
+
+	do {
+		if (++count > utime) {
 			return ;
 		}
-	}
-	while (1);
+	} while (1);
 }
 
 
@@ -120,7 +118,7 @@ void USB_OTG_BSP_uDelay (const uint32_t usec)
 * @param  msec : Value of delay required in milli sec
 * @retval None
 */
-void USB_OTG_BSP_mDelay (const uint32_t msec)
+void USB_OTG_BSP_mDelay(const uint32_t msec)
 {
 	USB_OTG_BSP_uDelay(msec * 1000);
 }

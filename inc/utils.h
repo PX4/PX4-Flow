@@ -40,7 +40,7 @@
 /**
 * @brief  Float to Ascii string
 */
-char* ftoa(float f);
+char *ftoa(float f);
 void ltoa(char *buf, unsigned long i, int base);
 void itoa(char *buf, unsigned int i, int base);
 
