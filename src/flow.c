@@ -317,7 +317,7 @@ static inline uint32_t compute_sad_8x8(uint8_t *image1, uint8_t *image2, uint16_
  *
  * @return quality of flow calculation
  */
-uint32_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate, float *pixel_flow_x, float *pixel_flow_y) {
+uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate, float *pixel_flow_x, float *pixel_flow_y) {
 
 	/* constants */
 	const int16_t winmin = -4;
@@ -686,5 +686,8 @@ uint32_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 		return 0;
 	}
 
-	return meancount;
+	/* calc quality */
+	uint8_t qual = meancount * 255 / 64;
+
+	return qual;
 }
