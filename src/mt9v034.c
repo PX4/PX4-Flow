@@ -118,7 +118,8 @@ void mt9v034_context_configuration(void)
 	uint16_t shutter_width_ctrl = 0x0164; // default from context A
 	uint16_t total_shutter_width = 0x01E0; // default from context A
 
-	if (global_data.param[PARAM_IMAGE_LOW_LIGHT]) {
+	if(global_data.param[PARAM_IMAGE_LOW_LIGHT])
+	{
 		min_exposure = 0x0001;
 		max_exposure = 0x0060;
 		desired_brightness = 30; // VALID RANGE: 1-64
@@ -129,8 +130,9 @@ void mt9v034_context_configuration(void)
 		coarse_sw2 = 0x01D9; // default from context A
 		shutter_width_ctrl = 0x0164; // default from context A
 		total_shutter_width = 0x01E0; // default from context A
-
-	} else {
+	}
+	else
+	{
 		min_exposure = 0x0001;
 		max_exposure = 0x0080;
 		desired_brightness = 50; // VALID RANGE: 1-64
@@ -145,14 +147,15 @@ void mt9v034_context_configuration(void)
 
 	uint16_t row_noise_correction = 0x0000; // default
 
-	if (global_data.param[PARAM_IMAGE_ROW_NOISE_CORR])
+	if(global_data.param[PARAM_IMAGE_ROW_NOISE_CORR])
 		row_noise_correction = 0x0101;
 	else
 		row_noise_correction = 0x0000;
 
 	uint16_t version = mt9v034_ReadReg16(MTV_CHIP_VERSION_REG);
 
-	if (version == 0x1324) {
+	if (version == 0x1324)
+	{
 		mt9v034_WriteReg16(MTV_CHIP_CONTROL_REG, new_control);
 
 		/* Context A */
@@ -204,7 +207,6 @@ void mt9v034_context_configuration(void)
 void mt9v034_set_context()
 {
 	uint16_t new_control;
-
 	if (global_data.param[PARAM_CALIBRATION_ON])
 		new_control = 0x8188; // Context B
 	else
@@ -222,57 +224,57 @@ void mt9v034_set_context()
   */
 uint8_t mt9v034_WriteReg(uint16_t Addr, uint8_t Data)
 {
-	uint32_t timeout = TIMEOUT_MAX;
+  uint32_t timeout = TIMEOUT_MAX;
 
-	/* Generate the Start Condition */
-	I2C_GenerateSTART(I2C2, ENABLE);
+  /* Generate the Start Condition */
+  I2C_GenerateSTART(I2C2, ENABLE);
 
-	/* Test on I2C2 EV5 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  /* Test on I2C2 EV5 and clear it */
+  timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT))
+  {
+    /* If the timeout delay is exeeded, exit with error code */
+    if ((timeout--) == 0) return 0xFF;
+  }
 
-	while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT)) {
-		/* If the timeout delay is exeeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+  /* Send DCMI selcted device slave Address for write */
+  I2C_Send7bitAddress(I2C2, mt9v034_DEVICE_WRITE_ADDRESS, I2C_Direction_Transmitter);
 
-	/* Send DCMI selcted device slave Address for write */
-	I2C_Send7bitAddress(I2C2, mt9v034_DEVICE_WRITE_ADDRESS, I2C_Direction_Transmitter);
+  /* Test on I2C2 EV6 and clear it */
+  timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
+  {
+    /* If the timeout delay is exeeded, exit with error code */
+    if ((timeout--) == 0) return 0xFF;
+  }
 
-	/* Test on I2C2 EV6 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  /* Send I2C2 location address LSB */
+  I2C_SendData(I2C2, (uint8_t)(Addr));
 
-	while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED)) {
-		/* If the timeout delay is exeeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+  /* Test on I2C2 EV8 and clear it */
+  timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+  {
+    /* If the timeout delay is exeeded, exit with error code */
+    if ((timeout--) == 0) return 0xFF;
+  }
 
-	/* Send I2C2 location address LSB */
-	I2C_SendData(I2C2, (uint8_t)(Addr));
+  /* Send Data */
+  I2C_SendData(I2C2, Data);
 
-	/* Test on I2C2 EV8 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  /* Test on I2C2 EV8 and clear it */
+  timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+  {
+    /* If the timeout delay is exeeded, exit with error code */
+    if ((timeout--) == 0) return 0xFF;
+  }
 
-	while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
-		/* If the timeout delay is exeeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+  /* Send I2C2 STOP Condition */
+  I2C_GenerateSTOP(I2C2, ENABLE);
 
-	/* Send Data */
-	I2C_SendData(I2C2, Data);
-
-	/* Test on I2C2 EV8 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-
-	while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
-		/* If the timeout delay is exeeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
-
-	/* Send I2C2 STOP Condition */
-	I2C_GenerateSTOP(I2C2, ENABLE);
-
-	/* If operation is OK, return 0 */
-	return 0;
+  /* If operation is OK, return 0 */
+  return 0;
 }
 
 /**
@@ -280,7 +282,7 @@ uint8_t mt9v034_WriteReg(uint16_t Addr, uint8_t Data)
   */
 uint8_t mt9v034_WriteReg16(uint16_t address, uint16_t Data)
 {
-	uint8_t result = mt9v034_WriteReg(address, (uint8_t)(Data >> 8));  // write upper byte
+	uint8_t result = mt9v034_WriteReg(address, (uint8_t)( Data >> 8)); // write upper byte
 	result |= mt9v034_WriteReg(0xF0, (uint8_t) Data); // write lower byte
 	return result;
 }
@@ -293,86 +295,86 @@ uint8_t mt9v034_WriteReg16(uint16_t address, uint16_t Data)
   */
 uint8_t mt9v034_ReadReg(uint16_t Addr)
 {
-	uint32_t timeout = TIMEOUT_MAX;
-	uint8_t Data = 0;
+  uint32_t timeout = TIMEOUT_MAX;
+  uint8_t Data = 0;
 
-	/* Generate the Start Condition */
-	I2C_GenerateSTART(I2C2, ENABLE);
+  /* Generate the Start Condition */
+  I2C_GenerateSTART(I2C2, ENABLE);
 
-	/* Test on I2C2 EV5 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  /* Test on I2C2 EV5 and clear it */
+  timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT))
+  {
+    /* If the timeout delay is exeeded, exit with error code */
+    if ((timeout--) == 0) return 0xFF;
+  }
 
-	while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT)) {
-		/* If the timeout delay is exeeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+  /* Send DCMI selcted device slave Address for write */
+  I2C_Send7bitAddress(I2C2, mt9v034_DEVICE_READ_ADDRESS, I2C_Direction_Transmitter);
 
-	/* Send DCMI selcted device slave Address for write */
-	I2C_Send7bitAddress(I2C2, mt9v034_DEVICE_READ_ADDRESS, I2C_Direction_Transmitter);
+  /* Test on I2C2 EV6 and clear it */
+  timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
+  {
+    /* If the timeout delay is exeeded, exit with error code */
+    if ((timeout--) == 0) return 0xFF;
+  }
 
-	/* Test on I2C2 EV6 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  /* Send I2C2 location address LSB */
+  I2C_SendData(I2C2, (uint8_t)(Addr));
 
-	while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED)) {
-		/* If the timeout delay is exeeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+  /* Test on I2C2 EV8 and clear it */
+  timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+  {
+    /* If the timeout delay is exeeded, exit with error code */
+    if ((timeout--) == 0) return 0xFF;
+  }
 
-	/* Send I2C2 location address LSB */
-	I2C_SendData(I2C2, (uint8_t)(Addr));
+  /* Clear AF flag if arised */
+  I2C2->SR1 |= (uint16_t)0x0400;
 
-	/* Test on I2C2 EV8 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  /* Generate the Start Condition */
+  I2C_GenerateSTART(I2C2, ENABLE);
 
-	while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
-		/* If the timeout delay is exeeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+  /* Test on I2C2 EV6 and clear it */
+  timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT))
+  {
+    /* If the timeout delay is exeeded, exit with error code */
+    if ((timeout--) == 0) return 0xFF;
+  }
 
-	/* Clear AF flag if arised */
-	I2C2->SR1 |= (uint16_t)0x0400;
+  /* Send DCMI selcted device slave Address for write */
+  I2C_Send7bitAddress(I2C2, mt9v034_DEVICE_READ_ADDRESS, I2C_Direction_Receiver);
 
-	/* Generate the Start Condition */
-	I2C_GenerateSTART(I2C2, ENABLE);
+  /* Test on I2C2 EV6 and clear it */
+  timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
+  {
+    /* If the timeout delay is exeeded, exit with error code */
+    if ((timeout--) == 0) return 0xFF;
+  }
 
-	/* Test on I2C2 EV6 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  /* Prepare an NACK for the next data received */
+  I2C_AcknowledgeConfig(I2C2, DISABLE);
 
-	while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT)) {
-		/* If the timeout delay is exeeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+  /* Test on I2C2 EV7 and clear it */
+  timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_RECEIVED))
+  {
+    /* If the timeout delay is exeeded, exit with error code */
+    if ((timeout--) == 0) return 0xFF;
+  }
 
-	/* Send DCMI selcted device slave Address for write */
-	I2C_Send7bitAddress(I2C2, mt9v034_DEVICE_READ_ADDRESS, I2C_Direction_Receiver);
+  /* Prepare Stop after receiving data */
+  I2C_GenerateSTOP(I2C2, ENABLE);
 
-	/* Test on I2C2 EV6 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
+  /* Receive the Data */
+  Data = I2C_ReceiveData(I2C2);
 
-	while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED)) {
-		/* If the timeout delay is exeeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
-
-	/* Prepare an NACK for the next data received */
-	I2C_AcknowledgeConfig(I2C2, DISABLE);
-
-	/* Test on I2C2 EV7 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-
-	while (!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_RECEIVED)) {
-		/* If the timeout delay is exeeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
-
-	/* Prepare Stop after receiving data */
-	I2C_GenerateSTOP(I2C2, ENABLE);
-
-	/* Receive the Data */
-	Data = I2C_ReceiveData(I2C2);
-
-	/* return the read data */
-	return Data;
+  /* return the read data */
+  return Data;
 }
 
 /**

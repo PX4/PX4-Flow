@@ -48,51 +48,57 @@
 /**
   * @brief  parameter access
   */
-typedef enum {
-	READ_ONLY   = 0,
-	READ_WRITE  = 1,
+typedef enum
+{
+  READ_ONLY   = 0,
+  READ_WRITE  = 1,
 } ParameterAccess_TypeDef;
 
 /**
   * @brief  sensor position enumeration
   */
-typedef enum {
-	BOTTOM = 0x00, 	/*!< at bottom position */
-	FRONT  = 0x01, 	/*!< at front position */
-	TOP    = 0x02, 	/*!< at top position */
-	BACK   = 0x03,  	/*!< at back position */
-	RIGHT  = 0x04,  	/*!< at right position */
-	LEFT   = 0x05  	/*!< at left position */
+typedef enum
+{
+  BOTTOM = 0x00, 	/*!< at bottom position */
+  FRONT  = 0x01, 	/*!< at front position */
+  TOP    = 0x02, 	/*!< at top position */
+  BACK   = 0x03,  	/*!< at back position */
+  RIGHT  = 0x04,  	/*!< at right position */
+  LEFT   = 0x05  	/*!< at left position */
 } SensorPosition_TypeDef;
 
 /**
   * @brief  sensor position enumeration
   */
-typedef enum {
-	NO_VIDEO   = 0,
-	CAM_VIDEO  = 1,
-	FLOW_VIDEO = 2,
+typedef enum
+{
+  NO_VIDEO   = 0,
+  CAM_VIDEO  = 1,
+  FLOW_VIDEO = 2,
 } VideoStreamMode_TypeDef;
 
 /**
   * @brief  gyro sensitivity enumeration
   */
-typedef enum {
-	DPS250  = 250, 	/*!< 250 dps */
-	DPS500  = 500, 	/*!< 500 dps */
-	DPS2000 = 2000	/*!< 2000 dps */
+typedef enum
+{
+  DPS250  = 250, 	/*!< 250 dps */
+  DPS500  = 500, 	/*!< 500 dps */
+  DPS2000 = 2000	/*!< 2000 dps */
 } GyroSensitivity_TypeDef;
 
 /******************************************************************
   * ALL SETTINGS VARIABLES
   */
 
-typedef struct {
+typedef struct
+{
 	/* nothing here until now */
 
 } SysState_TypeDef;
 
-enum {
+enum
+{
 	PARAM_SYSTEM_ID = 0,
 	PARAM_COMPONENT_ID,
 	PARAM_SENSOR_ID,
@@ -138,7 +144,8 @@ enum {
 
 } global_param_id;
 
-struct global_struct {
+struct global_struct
+{
 	SysState_TypeDef system_state;
 	float param[ONBOARD_PARAM_COUNT];
 	char param_name[ONBOARD_PARAM_COUNT][ONBOARD_PARAM_NAME_LENGTH];

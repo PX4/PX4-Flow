@@ -42,12 +42,12 @@
 /**
  * @brief Copy image to fast RAM address
  */
-void dma_copy_image_buffers(uint8_t **current_image, uint8_t **previous_image, uint16_t buffer_size, uint8_t image_step);
+void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image, uint16_t buffer_size, uint8_t image_step);
 
 /**
  * @brief Send calibration image with MAVLINK over USB
  */
-void send_calibration_image(uint8_t **image_buffer_fast_1, uint8_t **image_buffer_fast_2);
+void send_calibration_image(uint8_t ** image_buffer_fast_1, uint8_t ** image_buffer_fast_2);
 
 /**
  * @brief Initialize DCMI DMA and enable image capturing

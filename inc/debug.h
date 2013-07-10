@@ -38,13 +38,13 @@
 #define DEBUG_MAX_LEN MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN
 
 /** @brief Buffer one debug message */
-uint8_t debug_string_message_buffer(const char *string);
+uint8_t debug_string_message_buffer(const char* string);
 
 /** @brief Concatenate string and int and buffer debug message */
-uint8_t debug_int_message_buffer(const char *string, int32_t num);
+uint8_t debug_int_message_buffer(const char* string, int32_t num);
 
 /** @brief Concatenate string and float and buffer debug message */
-uint8_t debug_float_message_buffer(const char *string, float num);
+uint8_t debug_float_message_buffer(const char* string, float num);
 
 /** @brief Send one of the buffered messages */
 void debug_message_send_one(void);

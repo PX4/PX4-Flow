@@ -38,15 +38,16 @@
 #include "settings.h"
 #include "debug.h"
 
-typedef enum {
-	DEBUG_STRING,
-	DEBUG_INT,
-	DEBUG_FLOAT
+typedef enum
+{
+  DEBUG_STRING,
+  DEBUG_INT,
+  DEBUG_FLOAT
 } DebugMsgType_TypeDef;
 
 /* send buffers */
 static DebugMsgType_TypeDef m_debug_buf_type[DEBUG_COUNT];
-static char const *m_debug_buf_pointer[DEBUG_COUNT];  //string pointer buffer
+static char const * m_debug_buf_pointer[DEBUG_COUNT]; //string pointer buffer
 static int32_t m_debug_buf_int[DEBUG_COUNT];
 static float m_debug_buf_float[DEBUG_COUNT];
 
@@ -62,15 +63,15 @@ static bool m_debug_was_full = false;
  * @param string Message
  * @return 1 if successfully added, 0 else
  */
-static uint8_t debug_message_buffer(const char *string)
+static uint8_t debug_message_buffer(const char* string)
 {
 	if (m_debug_index_read - m_debug_index_write == 1 || (m_debug_index_read
-			== 0 && m_debug_index_write == DEBUG_COUNT - 1)) {
+			== 0 && m_debug_index_write == DEBUG_COUNT - 1))
+	{
 		/* buffer full, can't send */
 		m_debug_was_full = true;
 		return 0;
 	}
-
 	m_debug_index_write = (m_debug_index_write + 1) % DEBUG_COUNT;
 	m_debug_count++;
 
@@ -86,14 +87,16 @@ static uint8_t debug_message_buffer(const char *string)
  * @param string Message
  * @return 1 if successfully added, 0 else
  */
-uint8_t debug_string_message_buffer(const char *string)
+uint8_t debug_string_message_buffer(const char* string)
 {
-	if (debug_message_buffer(string)) {
+	if (debug_message_buffer(string))
+	{
 		/* Could write, save message to buffer */
 		m_debug_buf_type[m_debug_index_write] = DEBUG_STRING;
 		return 1;
-
-	} else {
+	}
+	else
+	{
 		/* Could not write, do nothing */
 		return 0;
 	}
@@ -105,15 +108,17 @@ uint8_t debug_string_message_buffer(const char *string)
  * @param string Message
  * @return 1 if successfully added, 0 else
  */
-uint8_t debug_int_message_buffer(const char *string, int32_t num)
+uint8_t debug_int_message_buffer(const char* string, int32_t num)
 {
-	if (debug_message_buffer(string)) {
+	if (debug_message_buffer(string))
+	{
 		/* Could write, save integer to buffer */
 		m_debug_buf_int[m_debug_index_write] = num;
 		m_debug_buf_type[m_debug_index_write] = DEBUG_INT;
 		return 1;
-
-	} else {
+	}
+	else
+	{
 		/* Could not write, do nothing */
 		return 0;
 	}
@@ -125,15 +130,17 @@ uint8_t debug_int_message_buffer(const char *string, int32_t num)
  * @param string Message
  * @return 1 if successfully added, 0 else
  */
-uint8_t debug_float_message_buffer(const char *string, float num)
+uint8_t debug_float_message_buffer(const char* string, float num)
 {
-	if (debug_message_buffer(string)) {
+	if (debug_message_buffer(string))
+	{
 		/* Could write, save float to buffer */
 		m_debug_buf_float[m_debug_index_write] = num;
 		m_debug_buf_type[m_debug_index_write] = DEBUG_FLOAT;
 		return 1;
-
-	} else {
+	}
+	else
+	{
 		/* Could not write, do nothing */
 		return 0;
 	}
@@ -144,39 +151,41 @@ uint8_t debug_float_message_buffer(const char *string, float num)
  */
 void debug_message_send_one(void)
 {
-	if (m_debug_index_write == m_debug_index_read) {
+	if (m_debug_index_write == m_debug_index_read)
+	{
 		/* buffer empty */
 		return;
 	}
-
 	m_debug_index_read = (m_debug_index_read + 1) % DEBUG_COUNT;
 
 	char msg[DEBUG_MAX_LEN] = {};
 
-	switch (m_debug_buf_type[m_debug_index_read]) {
-	case (DEBUG_STRING):
-		strncpy(msg, m_debug_buf_pointer[m_debug_index_read], DEBUG_MAX_LEN);
-		break;
+	switch(m_debug_buf_type[m_debug_index_read])
+	{
+		case(DEBUG_STRING):
+			strncpy(msg, m_debug_buf_pointer[m_debug_index_read], DEBUG_MAX_LEN);
+			break;
 
-	case (DEBUG_INT):
-		strncat(msg, m_debug_buf_pointer[m_debug_index_read], DEBUG_MAX_LEN);
-		strncat(msg, " ", DEBUG_MAX_LEN);
-		strncat(msg, ftoa(m_debug_buf_int[m_debug_index_read]), DEBUG_MAX_LEN);
-		msg[strlen(msg) - 2] = '\0'; // TODO workaround: cut ".0" of float
-		break;
+		case(DEBUG_INT):
+			strncat(msg, m_debug_buf_pointer[m_debug_index_read], DEBUG_MAX_LEN);
+			strncat(msg, " ", DEBUG_MAX_LEN);
+			strncat(msg, ftoa(m_debug_buf_int[m_debug_index_read]), DEBUG_MAX_LEN);
+			msg[strlen(msg) - 2] = '\0'; // TODO workaround: cut ".0" of float
+			break;
 
-	case (DEBUG_FLOAT):
-		strncat(msg, m_debug_buf_pointer[m_debug_index_read], DEBUG_MAX_LEN);
-		strncat(msg, " ", DEBUG_MAX_LEN);
-		strncat(msg, ftoa(m_debug_buf_float[m_debug_index_read]), DEBUG_MAX_LEN);
-		break;
+		case(DEBUG_FLOAT):
+			strncat(msg, m_debug_buf_pointer[m_debug_index_read], DEBUG_MAX_LEN);
+			strncat(msg, " ", DEBUG_MAX_LEN);
+			strncat(msg, ftoa(m_debug_buf_float[m_debug_index_read]), DEBUG_MAX_LEN);
+			break;
 
-	default:
-		return;
+		default:
+			return;
 	}
 
 
-	if (m_debug_was_full) {
+	if(m_debug_was_full)
+	{
 		msg[0] = '+';
 		m_debug_was_full = false;
 	}

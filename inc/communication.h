@@ -46,10 +46,10 @@ void communication_parameter_send(void);
 void communication_receive(void);
 void communication_receive_forward(void);
 void communication_receive_usb(void);
-void handle_mavlink_message(mavlink_channel_t chan, mavlink_message_t *msg);
+void handle_mavlink_message(mavlink_channel_t chan, mavlink_message_t* msg);
 
-void mavlink_send_uart_bytes(mavlink_channel_t chan, uint8_t *ch, uint16_t length);
-mavlink_status_t *mavlink_get_channel_status(uint8_t channel);
-mavlink_message_t *mavlink_get_channel_buffer(uint8_t channel);
+void mavlink_send_uart_bytes(mavlink_channel_t chan, uint8_t * ch, uint16_t length);
+mavlink_status_t* mavlink_get_channel_status(uint8_t channel);
+mavlink_message_t* mavlink_get_channel_buffer(uint8_t channel);
 
 #endif /* COMMUNICATION_H_ */

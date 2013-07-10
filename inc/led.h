@@ -37,7 +37,8 @@
 #include "stm32f4xx_conf.h"
 #include "stm32f4xx.h"
 
-typedef enum {
+typedef enum
+{
 	LED_ACT = 0,	// Blue
 	LED_COM = 1, 	// Amber
 	LED_ERR = 2,	// Red

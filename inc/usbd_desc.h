@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */
+  */ 
 
 #ifndef __USB_DESC_H
 #define __USB_DESC_H
@@ -40,18 +40,18 @@
 
 extern  uint8_t USBD_DeviceDesc  [USB_SIZ_DEVICE_DESC];
 extern  uint8_t USBD_StrDesc[USB_MAX_STR_DESC_SIZ];
-extern  uint8_t USBD_OtherSpeedCfgDesc[USB_LEN_CFG_DESC];
+extern  uint8_t USBD_OtherSpeedCfgDesc[USB_LEN_CFG_DESC]; 
 extern  uint8_t USBD_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC];
 extern  uint8_t USBD_LangIDDesc[USB_SIZ_STRING_LANGID];
-extern  USBD_DEVICE USR_desc;
+extern  USBD_DEVICE USR_desc; 
 
-uint8_t      *USBD_USR_DeviceDescriptor(uint8_t speed , uint16_t *length);
-uint8_t      *USBD_USR_LangIDStrDescriptor(uint8_t speed , uint16_t *length);
-uint8_t      *USBD_USR_ManufacturerStrDescriptor(uint8_t speed , uint16_t *length);
-uint8_t      *USBD_USR_ProductStrDescriptor(uint8_t speed , uint16_t *length);
-uint8_t      *USBD_USR_SerialStrDescriptor(uint8_t speed , uint16_t *length);
-uint8_t      *USBD_USR_ConfigStrDescriptor(uint8_t speed , uint16_t *length);
-uint8_t      *USBD_USR_InterfaceStrDescriptor(uint8_t speed , uint16_t *length);
+uint8_t *     USBD_USR_DeviceDescriptor( uint8_t speed , uint16_t *length);
+uint8_t *     USBD_USR_LangIDStrDescriptor( uint8_t speed , uint16_t *length);
+uint8_t *     USBD_USR_ManufacturerStrDescriptor ( uint8_t speed , uint16_t *length);
+uint8_t *     USBD_USR_ProductStrDescriptor ( uint8_t speed , uint16_t *length);
+uint8_t *     USBD_USR_SerialStrDescriptor( uint8_t speed , uint16_t *length);
+uint8_t *     USBD_USR_ConfigStrDescriptor( uint8_t speed , uint16_t *length);
+uint8_t *     USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length);
 
 #endif /* __USBD_DESC_H */
 

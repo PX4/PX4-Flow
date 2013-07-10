@@ -95,7 +95,7 @@ void dma_reconfigure(void)
 {
 	dcmi_dma_disable();
 
-	if (global_data.param[PARAM_CALIBRATION_ON])
+	if(global_data.param[PARAM_CALIBRATION_ON])
 		dcmi_dma_init(FULL_IMAGE_SIZE);
 	else
 		dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]);
@@ -109,8 +109,7 @@ void dma_reconfigure(void)
 void dcmi_restart_calibration_routine(void)
 {
 	/* wait until we have all 4 parts of image */
-	while (frame_counter < 4) {}
-
+	while(frame_counter < 4){}
 	frame_counter = 0;
 	dcmi_dma_enable();
 }
@@ -120,7 +119,8 @@ void dcmi_restart_calibration_routine(void)
  */
 void DCMI_IRQHandler(void)
 {
-	if (DCMI_GetITStatus(DCMI_IT_FRAME) != RESET) {
+	if (DCMI_GetITStatus(DCMI_IT_FRAME) != RESET)
+	{
 		DCMI_ClearITPendingBit(DCMI_IT_FRAME);
 	}
 
@@ -133,12 +133,15 @@ void DCMI_IRQHandler(void)
 void DMA2_Stream1_IRQHandler(void)
 {
 	/* transfer completed */
-	if (DMA_GetITStatus(DMA2_Stream1, DMA_IT_TCIF1) != RESET) {
+	if (DMA_GetITStatus(DMA2_Stream1, DMA_IT_TCIF1) != RESET)
+	{
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
 		frame_counter++;
 
-		if (global_data.param[PARAM_CALIBRATION_ON]) {
-			if (frame_counter >= 4) {
+		if(global_data.param[PARAM_CALIBRATION_ON])
+		{
+			if (frame_counter >= 4)
+			{
 				dcmi_dma_disable();
 				calibration_used = DMA_GetCurrentMemoryTarget(DMA2_Stream1);
 				calibration_unused = dcmi_image_buffer_unused;
@@ -155,7 +158,8 @@ void DMA2_Stream1_IRQHandler(void)
 	 * We use three buffers and switch the buffers if dma transfer
 	 * is in half state.
 	 */
-	if (DMA_GetITStatus(DMA2_Stream1, DMA_IT_HTIF1) != RESET) {
+	if (DMA_GetITStatus(DMA2_Stream1, DMA_IT_HTIF1) != RESET)
+	{
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_HTIF1);
 	}
 
@@ -168,7 +172,8 @@ void DMA2_Stream1_IRQHandler(void)
 void dma_swap_buffers(void)
 {
 	/* check which buffer is in use */
-	if (DMA_GetCurrentMemoryTarget(DMA2_Stream1)) {
+	if (DMA_GetCurrentMemoryTarget(DMA2_Stream1))
+	{
 		/* swap dcmi image buffer */
 		if (dcmi_image_buffer_unused == 1)
 			DMA_MemoryTargetConfig(DMA2_Stream1, (uint32_t) dcmi_image_buffer_8bit_1, DMA_Memory_0);
@@ -180,8 +185,9 @@ void dma_swap_buffers(void)
 		int tmp_buffer = dcmi_image_buffer_memory0;
 		dcmi_image_buffer_memory0 = dcmi_image_buffer_unused;
 		dcmi_image_buffer_unused = tmp_buffer;
-
-	} else {
+	}
+	else
+	{
 		/* swap dcmi image buffer */
 		if (dcmi_image_buffer_unused == 1)
 			DMA_MemoryTargetConfig(DMA2_Stream1, (uint32_t) dcmi_image_buffer_8bit_1, DMA_Memory_1);
@@ -199,10 +205,12 @@ void dma_swap_buffers(void)
 	cycle_time = get_boot_time_ms() - time_last_frame;
 	time_last_frame = get_boot_time_ms();
 
-	if (image_counter) { // image was not fetched jet
+	if(image_counter) // image was not fetched jet
+	{
 		time_between_next_images = time_between_next_images + cycle_time;
-
-	} else {
+	}
+	else
+	{
 		time_between_next_images = cycle_time;
 	}
 
@@ -212,13 +220,11 @@ void dma_swap_buffers(void)
 	return;
 }
 
-uint32_t get_time_between_images(void)
-{
+uint32_t get_time_between_images(void){
 	return time_between_images;
 }
 
-uint32_t get_frame_counter(void)
-{
+uint32_t get_frame_counter(void){
 	return frame_counter;
 }
 
@@ -230,32 +236,33 @@ uint32_t get_frame_counter(void)
  * @param image_size Image size of the image to copy
  * @param image_step Image to wait for (if 1 no waiting)
  */
-void dma_copy_image_buffers(uint8_t **current_image, uint8_t **previous_image, uint16_t image_size, uint8_t image_step)
-{
+void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image, uint16_t image_size, uint8_t image_step){
 
 	/* swap image buffers */
-	uint8_t *tmp_image = *current_image;
+	uint8_t * tmp_image = *current_image;
 	*current_image = *previous_image;
 	*previous_image = tmp_image;
 
 	/* wait for new image if needed */
-	while (image_counter < image_step) {}
-
+	while(image_counter < image_step) {}
 	image_counter = 0;
 
 	/* time between images */
 	time_between_images = time_between_next_images;
 
 	/* copy image */
-	if (dcmi_image_buffer_unused == 1) {
+	if (dcmi_image_buffer_unused == 1)
+	{
 		for (uint16_t pixel = 0; pixel < image_size; pixel++)
 			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_1[pixel]);
-
-	} else if (dcmi_image_buffer_unused == 2) {
+	}
+	else if (dcmi_image_buffer_unused == 2)
+	{
 		for (uint16_t pixel = 0; pixel < image_size; pixel++)
 			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_2[pixel]);
-
-	} else {
+	}
+	else
+	{
 		for (uint16_t pixel = 0; pixel < image_size; pixel++)
 			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_3[pixel]);
 	}
@@ -267,61 +274,69 @@ void dma_copy_image_buffers(uint8_t **current_image, uint8_t **previous_image, u
  * @param image_buffer_fast_1 Image buffer in fast RAM
  * @param image_buffer_fast_2 Image buffer in fast RAM
  */
-void send_calibration_image(uint8_t **image_buffer_fast_1, uint8_t **image_buffer_fast_2)
-{
+void send_calibration_image(uint8_t ** image_buffer_fast_1, uint8_t ** image_buffer_fast_2) {
 
 	/*  transmit raw 8-bit image */
 	/* TODO image is too large for this transmission protocol (too much packets), but it works */
 	mavlink_msg_data_transmission_handshake_send(
-		MAVLINK_COMM_2,
-		MAVLINK_DATA_STREAM_IMG_RAW8U,
-		FULL_IMAGE_SIZE * 4,
-		FULL_IMAGE_ROW_SIZE * 2,
-		FULL_IMAGE_COLUMN_SIZE * 2,
-		FULL_IMAGE_SIZE * 4 / 253 + 1,
-		253,
-		100);
+			MAVLINK_COMM_2,
+			MAVLINK_DATA_STREAM_IMG_RAW8U,
+			FULL_IMAGE_SIZE * 4,
+			FULL_IMAGE_ROW_SIZE * 2,
+			FULL_IMAGE_COLUMN_SIZE * 2,
+			FULL_IMAGE_SIZE * 4 / 253 + 1,
+			253,
+			100);
 
 	uint16_t frame = 0;
 	uint8_t image = 0;
 	uint8_t frame_buffer[253];
 
-	for (int i = 0; i < FULL_IMAGE_SIZE * 4; i++) {
+	for (int i = 0; i < FULL_IMAGE_SIZE * 4; i++)
+	{
 
-		if (i % FULL_IMAGE_SIZE == 0 && i != 0) {
+		if (i % FULL_IMAGE_SIZE == 0 && i != 0)
+		{
 			image++;
 		}
 
-		if (i % 253 == 0 && i != 0) {
+		if (i % 253 == 0 && i != 0)
+		{
 			mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, frame_buffer);
 			frame++;
 			delay(2);
 		}
 
-		if (image == 0) {
+		if (image == 0 )
+		{
 			frame_buffer[i % 253] = (uint8_t)(*image_buffer_fast_1)[i % FULL_IMAGE_SIZE];
-
-		} else if (image == 1) {
+		}
+		else if (image == 1 )
+		{
 			frame_buffer[i % 253] = (uint8_t)(*image_buffer_fast_2)[i % FULL_IMAGE_SIZE];
-
-		} else if (image == 2) {
+		}
+		else if (image == 2)
+		{
 			if (calibration_unused == 1)
 				frame_buffer[i % 253] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
 			else if (calibration_unused == 2)
 				frame_buffer[i % 253] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
 			else
 				frame_buffer[i % 253] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
-
-		} else {
-			if (calibration_used) {
+		}
+		else
+		{
+			if (calibration_used)
+			{
 				if (calibration_mem0 == 1)
 					frame_buffer[i % 253] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
 				else if (calibration_mem0 == 2)
 					frame_buffer[i % 253] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
 				else
 					frame_buffer[i % 253] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
-
-			} else {
+			}
+			else
+			{
 				if (calibration_mem1 == 1)
 					frame_buffer[i % 253] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
 				else if (calibration_mem1 == 2)
@@ -350,7 +365,7 @@ void dcmi_it_init()
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	DCMI_ITConfig(DCMI_IT_FRAME, ENABLE);
+	DCMI_ITConfig(DCMI_IT_FRAME,ENABLE);
 }
 
 /**
@@ -469,8 +484,8 @@ void dcmi_hw_init(void)
 	/*** Configures the DCMI GPIOs to interface with the OV2640 camera module ***/
 	/* Enable DCMI GPIOs clocks */
 	RCC_AHB1PeriphClockCmd(
-		RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC
-		| RCC_AHB1Periph_GPIOD | RCC_AHB1Periph_GPIOE, ENABLE);
+			RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC
+					| RCC_AHB1Periph_GPIOD | RCC_AHB1Periph_GPIOE, ENABLE);
 
 	/* Connect DCMI pins to AF13 */
 	GPIO_PinAFConfig(GPIOA, GPIO_PinSource4, GPIO_AF_DCMI); //DCMI_HSYNC
@@ -506,7 +521,7 @@ void dcmi_hw_init(void)
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_4
-				      | GPIO_Pin_5 | GPIO_Pin_6;
+			| GPIO_Pin_5 | GPIO_Pin_6;
 	GPIO_Init(GPIOE, &GPIO_InitStructure);
 
 	/* I2C2 clock enable */
@@ -593,8 +608,8 @@ void dcmi_dma_init(uint16_t buffer_size)
 	DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
 	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
 
-	DMA_DoubleBufferModeConfig(DMA2_Stream1, (uint32_t) dcmi_image_buffer_8bit_2, DMA_Memory_0);
-	DMA_DoubleBufferModeCmd(DMA2_Stream1, ENABLE);
+	DMA_DoubleBufferModeConfig(DMA2_Stream1,(uint32_t) dcmi_image_buffer_8bit_2, DMA_Memory_0);
+	DMA_DoubleBufferModeCmd(DMA2_Stream1,ENABLE);
 
 	/* DCMI configuration */
 	DCMI_Init(&DCMI_InitStructure);

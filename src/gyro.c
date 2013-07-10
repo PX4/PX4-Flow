@@ -65,7 +65,7 @@ void gyro_config()
  * @param y_rate Return value y rate
  * @param z_rate Return value z rate
  */
-void gyro_read(float *x_rate, float *y_rate, float *z_rate)
+void gyro_read(float* x_rate, float* y_rate, float* z_rate)
 {
 	int16_t x_rate_raw, y_rate_raw, z_rate_raw;
 	x_rate_raw = 0;
@@ -101,19 +101,23 @@ void l3gd20_config()
 	/* enable sensor, 760Hz, bandwidth 30Hz */
 	l3gd20_SendHalfWord(0x0000 | 0x2000 | 0x00CF);
 
-	if (global_data.param[PARAM_GYRO_SENSITIVITY_DPS] == 250) {
+	if (global_data.param[PARAM_GYRO_SENSITIVITY_DPS] == 250)
+	{
 		/* enable +-250dps range */
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0000);
-
-	} else if (global_data.param[PARAM_GYRO_SENSITIVITY_DPS] == 500) {
+	}
+	else if (global_data.param[PARAM_GYRO_SENSITIVITY_DPS] == 500)
+	{
 		/* enable +-500dps range */
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0010);
-
-	} else if (global_data.param[PARAM_GYRO_SENSITIVITY_DPS] == 2000) {
+	}
+	else if (global_data.param[PARAM_GYRO_SENSITIVITY_DPS] == 2000)
+	{
 		/* enable +-2000dps range */
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0020);
-
-	} else {
+	}
+	else
+	{
 		/* wrong configuration -> reset to default*/
 		global_data.param[PARAM_GYRO_SENSITIVITY_DPS] = 500;
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0010);
@@ -208,7 +212,6 @@ uint8_t l3gd20_ReadByte(void)
 uint8_t l3gd20_SendByte(uint8_t byte)
 {
 	l3gd20_CS_LOW();
-
 	/* Loop while DR register in not emplty */
 	while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_TXE) == RESET);
 
@@ -232,7 +235,6 @@ uint16_t l3gd20_SendHalfWord(uint16_t HalfWord)
 {
 	/* Loop while DR register in not empty */
 	while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_TXE) == RESET);
-
 	l3gd20_CS_LOW();
 
 	/* Send Half Word through the sFLASH peripheral */
@@ -240,7 +242,6 @@ uint16_t l3gd20_SendHalfWord(uint16_t HalfWord)
 
 	/*!< Wait to receive a Half Word */
 	while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_RXNE) == RESET);
-
 	l3gd20_CS_HIGH();
 
 	/* Return the Half Word read from the SPI bus */
@@ -281,12 +282,14 @@ void l3gd20_WaitForWriteEnd(void)
 	l3gd20_SendByte(l3gd20_CMD_RDSR);
 
 	/* Loop as long as the memory is busy with a write cycle */
-	do {
+	do
+	{
 		/* Send a dummy byte to generate the clock needed by the FLASH
 		 * and put the value of the status register in FLASH_Status variable
 		 */
 		flashstatus = l3gd20_SendByte(l3gd20_DUMMY_BYTE);
-	} while ((flashstatus & l3gd20_WIP_FLAG) == SET); /* Write in progress */
+	}
+	while ((flashstatus & l3gd20_WIP_FLAG) == SET); /* Write in progress */
 
 	/* Deselect the FLASH: Chip Select high */
 	l3gd20_CS_HIGH();

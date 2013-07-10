@@ -78,22 +78,24 @@ void communication_system_state_send(void)
 void communication_parameter_send(void)
 {
 	/* send parameters one by one */
-	if (m_parameter_i < ONBOARD_PARAM_COUNT) {
+	if (m_parameter_i < ONBOARD_PARAM_COUNT)
+	{
 		mavlink_msg_param_value_send(MAVLINK_COMM_0,
-					     global_data.param_name[m_parameter_i],
-					     global_data.param[m_parameter_i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+				global_data.param_name[m_parameter_i],
+				global_data.param[m_parameter_i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
 		mavlink_msg_param_value_send(MAVLINK_COMM_2,
-					     global_data.param_name[m_parameter_i],
-					     global_data.param[m_parameter_i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+				global_data.param_name[m_parameter_i],
+				global_data.param[m_parameter_i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
 		m_parameter_i++;
 	}
 }
 
 void handle_mavlink_message(mavlink_channel_t chan,
-			    mavlink_message_t *msg)
+		mavlink_message_t* msg)
 {
 	/* all messages from usart2 are directly forwarded */
-	if (chan == MAVLINK_COMM_1) {
+	if(chan == MAVLINK_COMM_1)
+	{
 		uint8_t buf[MAVLINK_MAX_PACKET_LEN];
 		uint32_t len;
 
@@ -101,7 +103,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 		len = mavlink_msg_to_send_buffer(buf, msg);
 		mavlink_send_uart_bytes(MAVLINK_COMM_0, buf, len);
 
-		if (global_data.param[PARAM_USB_SEND_FORWARD])
+		if(global_data.param[PARAM_USB_SEND_FORWARD])
 			mavlink_send_uart_bytes(MAVLINK_COMM_2, buf, len);
 
 		return;
@@ -113,110 +115,127 @@ void handle_mavlink_message(mavlink_channel_t chan,
 
 	/* copy to usart2 */
 	len = mavlink_msg_to_send_buffer(buf, msg);
-
-	for (int i = 0; i < len; i++) {
+	for (int i = 0; i < len; i++)
+	{
 		usart2_tx_ringbuffer_push(buf, len);
 	}
 
 	/* handling messages */
-	switch (msg->msgid) {
-	case MAVLINK_MSG_ID_PARAM_REQUEST_READ: {
+	switch (msg->msgid)
+	{
+		case MAVLINK_MSG_ID_PARAM_REQUEST_READ:
+		{
 			mavlink_param_request_read_t set;
 			mavlink_msg_param_request_read_decode(msg, &set);
 
 			/* Check if this message is for this system */
 			if ((uint8_t) set.target_system
-			    == (uint8_t) global_data.param[PARAM_SYSTEM_ID]
-			    && (uint8_t) set.target_component
-			    == (uint8_t) global_data.param[PARAM_COMPONENT_ID]) {
-				char *key = (char *) set.param_id;
+					== (uint8_t) global_data.param[PARAM_SYSTEM_ID]
+												   && (uint8_t) set.target_component
+												   == (uint8_t) global_data.param[PARAM_COMPONENT_ID])
+			{
+				char* key = (char*) set.param_id;
 
-				if (set.param_id[0] == '\0') {
+				if (set.param_id[0] == '\0')
+				{
 					/* Choose parameter based on index */
-					if (set.param_index < ONBOARD_PARAM_COUNT) {
+					if (set.param_index < ONBOARD_PARAM_COUNT)
+					{
 						/* Report back value */
 						mavlink_msg_param_value_send(chan,
-									     global_data.param_name[set.param_index],
-									     global_data.param[set.param_index], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, set.param_index);
+								global_data.param_name[set.param_index],
+								global_data.param[set.param_index], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, set.param_index);
 					}
-
-				} else {
-					for (int i = 0; i < ONBOARD_PARAM_COUNT; i++) {
+				}
+				else
+				{
+					for (int i = 0; i < ONBOARD_PARAM_COUNT; i++)
+					{
 						bool match = true;
-
-						for (int j = 0; j < ONBOARD_PARAM_NAME_LENGTH; j++) {
+						for (int j = 0; j < ONBOARD_PARAM_NAME_LENGTH; j++)
+						{
 							/* Compare */
-							if (((char)(global_data.param_name[i][j]))
-							    != (char)(key[j])) {
+							if (((char) (global_data.param_name[i][j]))
+									!= (char) (key[j]))
+							{
 								match = false;
 							}
 
 							/* End matching if null termination is reached */
-							if (((char) global_data.param_name[i][j]) == '\0') {
+							if (((char) global_data.param_name[i][j]) == '\0')
+							{
 								break;
 							}
 						}
 
 						/* Check if matched */
-						if (match) {
+						if (match)
+						{
 							/* Report back value */
 							mavlink_msg_param_value_send(chan,
-										     global_data.param_name[i],
-										     global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+									global_data.param_name[i],
+									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
 						}
 					}
 				}
 			}
 		}
 		break;
-
-	case MAVLINK_MSG_ID_PARAM_REQUEST_LIST: {
+		case MAVLINK_MSG_ID_PARAM_REQUEST_LIST:
+		{
 			/* Start sending parameters */
 			m_parameter_i = 0;
 		}
 		break;
-
-	case MAVLINK_MSG_ID_PARAM_SET: {
+		case MAVLINK_MSG_ID_PARAM_SET:
+		{
 			mavlink_param_set_t set;
 			mavlink_msg_param_set_decode(msg, &set);
 
 			/* Check if this message is for this system */
 			if ((uint8_t) set.target_system
-			    == (uint8_t) global_data.param[PARAM_SYSTEM_ID]
-			    && (uint8_t) set.target_component
-			    == (uint8_t) global_data.param[PARAM_COMPONENT_ID]) {
-				char *key = (char *) set.param_id;
+					== (uint8_t) global_data.param[PARAM_SYSTEM_ID]
+												   && (uint8_t) set.target_component
+												   == (uint8_t) global_data.param[PARAM_COMPONENT_ID])
+			{
+				char* key = (char*) set.param_id;
 
-				for (int i = 0; i < ONBOARD_PARAM_COUNT; i++) {
+				for (int i = 0; i < ONBOARD_PARAM_COUNT; i++)
+				{
 					bool match = true;
-
-					for (int j = 0; j < ONBOARD_PARAM_NAME_LENGTH; j++) {
+					for (int j = 0; j < ONBOARD_PARAM_NAME_LENGTH; j++)
+					{
 						/* Compare */
-						if (((char)(global_data.param_name[i][j]))
-						    != (char)(key[j])) {
+						if (((char) (global_data.param_name[i][j]))
+								!= (char) (key[j]))
+						{
 							match = false;
 						}
 
 						/* End matching if null termination is reached */
-						if (((char) global_data.param_name[i][j]) == '\0') {
+						if (((char) global_data.param_name[i][j]) == '\0')
+						{
 							break;
 						}
 					}
 
 					/* Check if matched */
-					if (match) {
+					if (match)
+					{
 						/* Only write and emit changes if there is actually a difference
 						 * AND only write if new value is NOT "not-a-number"
 						 * AND is NOT infinity
 						 */
 						if (global_data.param[i] != set.param_value
-						    && !isnan(set.param_value)
-						    && !isinf(set.param_value)
-						    && global_data.param_access[i]) {
+								&& !isnan(set.param_value)
+								&& !isinf(set.param_value)
+								&& global_data.param_access[i])
+						{
 							global_data.param[i] = set.param_value;
 
 							/* handle sensor position */
-							if (i == PARAM_SENSOR_POSITION) {
+							if(i == PARAM_SENSOR_POSITION)
+							{
 								set_sensor_position_settings((uint8_t) set.param_value);
 								mt9v034_context_configuration();
 								dma_reconfigure();
@@ -224,49 +243,55 @@ void handle_mavlink_message(mavlink_channel_t chan,
 							}
 
 							/* handle low light mode and noise correction */
-							else if (i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR) {
+							else if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR)
+							{
 								mt9v034_context_configuration();
 								dma_reconfigure();
 								buffer_reset();
 							}
 
 							/* handle calibration on/off */
-							else if (i == PARAM_CALIBRATION_ON) {
+							else if(i == PARAM_CALIBRATION_ON)
+							{
 								mt9v034_set_context();
 								dma_reconfigure();
 								buffer_reset();
 
-								if (global_data.param[PARAM_CALIBRATION_ON])
+								if(global_data.param[PARAM_CALIBRATION_ON])
 									debug_string_message_buffer("Calibration Mode On");
 								else
 									debug_string_message_buffer("Calibration Mode Off");
 							}
 
 							/* handle sensor position */
-							else if (i == PARAM_GYRO_SENSITIVITY_DPS) {
+							else if(i == PARAM_GYRO_SENSITIVITY_DPS)
+							{
 								l3gd20_config();
 							}
 
-							else {
+							else
+							{
 								debug_int_message_buffer("Parameter received, param id =", i);
 							}
 
 							/* report back new value */
 							mavlink_msg_param_value_send(MAVLINK_COMM_0,
-										     global_data.param_name[i],
-										     global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+									global_data.param_name[i],
+									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
 							mavlink_msg_param_value_send(MAVLINK_COMM_2,
-										     global_data.param_name[i],
-										     global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+									global_data.param_name[i],
+									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
 
-						} else {
+						}
+						else
+						{
 							/* send back current value because it is not accepted or not write access*/
 							mavlink_msg_param_value_send(MAVLINK_COMM_0,
-										     global_data.param_name[i],
-										     global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+									global_data.param_name[i],
+									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
 							mavlink_msg_param_value_send(MAVLINK_COMM_2,
-										     global_data.param_name[i],
-										     global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+									global_data.param_name[i],
+									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
 						}
 					}
 				}
@@ -274,11 +299,12 @@ void handle_mavlink_message(mavlink_channel_t chan,
 		}
 		break;
 
-	case MAVLINK_MSG_ID_PING: {
+		case MAVLINK_MSG_ID_PING:
+		{
 			mavlink_ping_t ping;
 			mavlink_msg_ping_decode(msg, &ping);
-
-			if (ping.target_system == 0 && ping.target_component == 0) {
+			if (ping.target_system == 0 && ping.target_component == 0)
+			{
 				/* Respond to ping */
 				uint64_t r_timestamp = get_boot_time_ms() * 1000;
 				mavlink_msg_ping_send(chan, ping.seq, msg->sysid, msg->compid, r_timestamp);
@@ -286,8 +312,8 @@ void handle_mavlink_message(mavlink_channel_t chan,
 		}
 		break;
 
-	default:
-		break;
+		default:
+			break;
 	}
 }
 
@@ -299,15 +325,16 @@ void communication_receive(void)
 	mavlink_message_t msg;
 	mavlink_status_t status = { 0 };
 
-	while (usart3_char_available()) {
+	while (usart3_char_available())
+	{
 		uint8_t c = usart3_rx_ringbuffer_pop();
 
 		/* Try to get a new message */
-		if (mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)) {
+		if (mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status))
+		{
 			/* Handle message */
 			handle_mavlink_message(MAVLINK_COMM_0, &msg);
 		}
-
 		/* And get the next one */
 	}
 }
@@ -320,15 +347,16 @@ void communication_receive_forward(void)
 	mavlink_message_t msg;
 	mavlink_status_t status = { 0 };
 
-	while (usart2_char_available()) {
+	while (usart2_char_available())
+	{
 		uint8_t c = usart2_rx_ringbuffer_pop();
 
 		/* Try to get a new message */
-		if (mavlink_parse_char(MAVLINK_COMM_1, c, &msg, &status)) {
+		if (mavlink_parse_char(MAVLINK_COMM_1, c, &msg, &status))
+		{
 			/* Handle message */
 			handle_mavlink_message(MAVLINK_COMM_1, &msg);
 		}
-
 		/* And get the next one */
 	}
 }
@@ -342,13 +370,14 @@ void communication_receive_usb(void)
 	mavlink_status_t status = { 0 };
 	uint8_t character;
 
-	while (VCP_get_char(&character)) {
+	while (VCP_get_char(&character))
+	{
 		/* Try to get a new message */
-		if (mavlink_parse_char(MAVLINK_COMM_2, character, &msg, &status)) {
+		if (mavlink_parse_char(MAVLINK_COMM_2, character, &msg, &status))
+		{
 			/* Handle message */
 			handle_mavlink_message(MAVLINK_COMM_2, &msg);
 		}
-
 		/* And get the next one */
 	}
 }
@@ -359,16 +388,18 @@ void communication_receive_usb(void)
  * @param chan MAVLink channel to use
  * @param ch Character to send
  */
-void mavlink_send_uart_bytes(mavlink_channel_t chan, uint8_t *ch, uint16_t length)
+void mavlink_send_uart_bytes(mavlink_channel_t chan, uint8_t * ch, uint16_t length)
 {
-	if (chan == MAVLINK_COMM_0) {
+	if (chan == MAVLINK_COMM_0)
+	{
 		/* send to UART3 */
 		usart3_tx_ringbuffer_push(ch, length);
 	}
-
-	if (chan == MAVLINK_COMM_2) {
+	if (chan == MAVLINK_COMM_2)
+	{
 		/* send to USB serial port */
-		for (int i = 0; i < length; i++) {
+		for (int i = 0; i < length; i++)
+		{
 			VCP_put_char(ch[i]);
 		}
 	}
@@ -377,7 +408,7 @@ void mavlink_send_uart_bytes(mavlink_channel_t chan, uint8_t *ch, uint16_t lengt
 /*
  * Internal function to give access to the channel status for each channel
  */
-mavlink_status_t *mavlink_get_channel_status(uint8_t channel)
+mavlink_status_t* mavlink_get_channel_status(uint8_t channel)
 {
 	static mavlink_status_t m_mavlink_status[MAVLINK_COMM_NUM_BUFFERS];
 	return &m_mavlink_status[channel];
@@ -386,7 +417,7 @@ mavlink_status_t *mavlink_get_channel_status(uint8_t channel)
 /*
  * Internal function to give access to the channel buffer for each channel
  */
-mavlink_message_t *mavlink_get_channel_buffer(uint8_t channel)
+mavlink_message_t* mavlink_get_channel_buffer(uint8_t channel)
 {
 	static mavlink_message_t m_mavlink_buffer[MAVLINK_COMM_NUM_BUFFERS];
 	return &m_mavlink_buffer[channel];
