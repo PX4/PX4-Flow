@@ -37,6 +37,10 @@
 
 #include "led.h"
 #include "i2c_frame.h"
+#include "gyro.h"
+#include "sonar.h"
+#include "main.h"
+
 static char offset = 0;
 
 void i2c_init()
@@ -103,8 +107,8 @@ void i2c_init()
     I2C_Cmd(I2C1, ENABLE);
 }
 
-uint8_t rxData[2][I2C_FRAME_SIZE];
-uint8_t rxBufferIndex = 0;
+uint8_t txData[2][I2C_FRAME_SIZE];
+uint8_t txBufferIndex = 0;
 
 void I2C1_EV_IRQHandler(void)
 {
@@ -138,7 +142,7 @@ void I2C1_EV_IRQHandler(void)
     case I2C_EVENT_SLAVE_BYTE_TRANSMITTING :
     case I2C_EVENT_SLAVE_BYTE_TRANSMITTED :
     {
-        I2C_SendData(I2C1, rxData[rxBufferIndex][txDataIndex]);
+        I2C_SendData(I2C1, txData[txBufferIndex][txDataIndex]);
         txDataIndex++;
         break;
     }
@@ -180,7 +184,7 @@ void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow
         char c[I2C_FRAME_SIZE];
     } u[2];
 
-    int nrxBufferIndex = 1 - rxBufferIndex;
+    int nrxBufferIndex = 1 - txBufferIndex;
 
     u[nrxBufferIndex].f.frame_count = frame_count;
     u[nrxBufferIndex].f.pixel_flow_x_sum = pixel_flow_x_sum;
@@ -189,9 +193,11 @@ void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow
     u[nrxBufferIndex].f.flow_comp_m_y = flow_comp_m_y * 1000;
     u[nrxBufferIndex].f.qual = qual;
     u[nrxBufferIndex].f.ground_distance = ground_distance * 1000;
-    u[nrxBufferIndex].f.gyro_x_rate = gyro_x_rate * 1000;
-    u[nrxBufferIndex].f.gyro_y_rate = gyro_y_rate * 1000;
-    u[nrxBufferIndex].f.gyro_z_rate = gyro_z_rate * 1000;
+
+    u[nrxBufferIndex].f.gyro_x_rate = gyro_x_rate * getGyroScalingFactor();
+    u[nrxBufferIndex].f.gyro_y_rate = gyro_y_rate * getGyroScalingFactor();
+    u[nrxBufferIndex].f.gyro_z_rate = gyro_z_rate * getGyroScalingFactor();
+    u[nrxBufferIndex].f.gyro_range = getGyroRange();
 
     uint32_t sonar_time_interrupt = get_sonar_measure_time_interrupt();
     uint32_t sonar_time = get_sonar_measure_time();
@@ -210,9 +216,9 @@ void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow
     u[nrxBufferIndex].f.sonar_timestamp = time;
 
     for (i = 0; i < I2C_FRAME_SIZE; i++)
-        rxData[rxBufferIndex][i] = u[nrxBufferIndex].c[i];
+        txData[txBufferIndex][i] = u[nrxBufferIndex].c[i];
 
-    rxBufferIndex = 1 - rxBufferIndex;
+    txBufferIndex = 1 - txBufferIndex;
     frame_count++;
 
 }

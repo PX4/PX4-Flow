@@ -138,8 +138,8 @@
 #define l3gd20_CS_HIGH()      GPIO_SetBits(l3gd20_CS_GPIO_PORT, l3gd20_CS_PIN)
 
 /**
-  * @brief  Configures Gyroscope.
-  */
+ * @brief  Configures Gyroscope.
+ */
 void gyro_config(void);
 
 /**
@@ -155,5 +155,7 @@ uint8_t l3gd20_SendByte(uint8_t byte);
 uint16_t l3gd20_SendHalfWord(uint16_t HalfWord);
 void l3gd20_WriteEnable(void);
 void l3gd20_WaitForWriteEnd(void);
+uint8_t getGyroRange();
+int getGyroScalingFactor();
 
 #endif /* SPI_L3GD20_H_ */
