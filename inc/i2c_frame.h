@@ -1,6 +1,7 @@
 /****************************************************************************
  *
- *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2013 Fortiss An-Institut TU Munchen All rights reserved.
+ *   Author: Thomas Boehm <thomas.boehm@fortiss.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -12,9 +13,6 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name PX4 nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -30,41 +28,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
+#ifndef I2C_FRAME_H_
+#define I2C_FRAME_H_
+#include <inttypes.h>
 
-#ifndef SONAR_H_
-#define SONAR_H_
+#define I2C_FRAME_SIZE (sizeof(i2c_frame))
+typedef struct i2c_frame
+{
+    uint16_t frame_count;
+    int16_t pixel_flow_x_sum;
+    int16_t pixel_flow_y_sum;
+    int16_t flow_comp_m_x;
+    int16_t flow_comp_m_y;
+    int16_t qual;
+    int16_t gyro_x_rate;
+    int16_t gyro_y_rate;
+    int16_t gyro_z_rate;
+    uint8_t gyro_range;
+    uint8_t sonar_timestamp;
+    int16_t ground_distance;
+} i2c_frame;
 
-#include <stdint.h>
-#include "settings.h"
-
-/**
- * @brief  Configures the sonar sensor Peripheral.
- */
-void sonar_config(void);
-
-/**
-  * @brief  Sonar interrupt handler
-  */
-void UART4_IRQHandler(void);
-
-/**
-  * @brief  Triggers the sonar to measure the next value
-  */
-void sonar_trigger(void);
-
-/**
-  * @brief  Read out newest sonar data
-  */
-void sonar_read(float* sonar_value_filtered, float* sonar_value_raw);
-
-/**
-  * @brief Get the timestamp of the new sonar value when available to the main code
-  */
-uint32_t get_sonar_measure_time();
-
-/**
-  * @brief Get the timestamp of the new sonar value when the interrupt is triggered
-  */
-uint32_t get_sonar_measure_time_interrupt();
-
-#endif /* SONAR_H_ */
+#endif /* I2C_FRAME_H_ */

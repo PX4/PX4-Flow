@@ -45,6 +45,15 @@
 float gyro_scale;
 float x_rate_offset = 0.0f, y_rate_offset = 0.0f, z_rate_offset = 0.0f;
 const float gyro_offset_lp_gain = 0.0001;
+static int sensor_range;
+
+enum
+{
+    GYRO_DPS50 = 0, GYRO_DPS100, GYRO_DPS150, GYRO_DPS200, GYRO_DPS250, GYRO_DPS500, GYRO_DPS1000, GYRO_DPS2000
+} GYRO_DPS_Values;
+
+static int scaling_factors[] =
+{ 37548, 18774, 12516, 9387, 7510, 3755, 1877, 939 };
 
 /**
  * @brief Configures Gyro
@@ -105,22 +114,26 @@ void l3gd20_config()
 	{
 		/* enable +-250dps range */
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0000);
+	    sensor_range = GYRO_DPS250;
 	}
 	else if (global_data.param[PARAM_GYRO_SENSITIVITY_DPS] == 500)
 	{
 		/* enable +-500dps range */
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0010);
+	    sensor_range = GYRO_DPS500;
 	}
 	else if (global_data.param[PARAM_GYRO_SENSITIVITY_DPS] == 2000)
 	{
 		/* enable +-2000dps range */
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0020);
+	    sensor_range = GYRO_DPS2000;
 	}
 	else
 	{
 		/* wrong configuration -> reset to default*/
 		global_data.param[PARAM_GYRO_SENSITIVITY_DPS] = 500;
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0010);
+	    sensor_range = GYRO_DPS500;
 	}
 
 	gyro_scale = (global_data.param[PARAM_GYRO_SENSITIVITY_DPS]) / (32768.0f) * 3.1416f / 180.0f; // 32768 -> short range, degree to radian
@@ -295,3 +308,12 @@ void l3gd20_WaitForWriteEnd(void)
 	l3gd20_CS_HIGH();
 }
 
+uint8_t getGyroRange()
+{
+    return sensor_range;
+}
+
+int getGyroScalingFactor()
+{
+    return scaling_factors[sensor_range];
+}

@@ -52,6 +52,7 @@
 #include "dcmi.h"
 #include "mt9v034.h"
 #include "gyro.h"
+#include "i2c.h"
 #include "usart.h"
 #include "sonar.h"
 #include "communication.h"
@@ -222,6 +223,9 @@ int main(void)
 
 	/* usart config*/
 	usart_init();
+
+    /* i2c config*/
+    i2c_init();
 
 	/* sonar config*/
 	float sonar_distance_filtered = 0.0f; // distance in meter
@@ -434,6 +438,10 @@ int main(void)
 						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_ms() * 1000, global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 							flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
+
+                    update_TX_buffer(pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f, flow_comp_m_x, flow_comp_m_y, qual,
+                            ground_distance, x_rate, y_rate, z_rate);
+
 				}
 				else
 				{
@@ -446,7 +454,10 @@ int main(void)
 						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_ms() * 1000, global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 							0.0f, 0.0f, 0, ground_distance);
-				}
+	
+                    update_TX_buffer(pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f, 0.0f, 0.0f, 0, ground_distance, x_rate, y_rate,
+                            z_rate);
+                }
 
 				if(global_data.param[PARAM_USB_SEND_GYRO])
 				{
