@@ -342,12 +342,10 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	for (j = 0; j < hist_size; j++) { histx[j] = 0; histy[j] = 0; }
 
 	/* iterate over all patterns
-	 * we have to keep an -3 offset to X and Y pixel values,
-	 * 17 to 41 here means 20 to 44 flow
 	 */
-	for (j = 17; j < 64 - 23; j+=3)
+	for (j = 8; j <= 57; j += 7)
 	{
-		for (i = 17; i < 64 - 23; i+=3)
+		for (i = 8; i <= 57; i += 7)
 		{
 			/* test pixel if it is suitable for flow tracking */
 			uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
@@ -418,9 +416,9 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	if (global_data.param[PARAM_USB_SEND_VIDEO] && global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
 	{
 
-		for (j = 17; j < 64 - 23; j+=3) // we have to keep an -3 offset to X and Y pixel values, 17 to 41 here means 20 to 44 flow
+		for (j = 8; j <= 57; j += 7)
 		{
-			for (i = 17; i < 64 - 23; i+=3)
+			for (i = 8; i <= 57; i += 7)
 			{
 
 				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
