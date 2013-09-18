@@ -466,7 +466,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		}
 
 		/* check if there is a peak value in histogram */
-		if (histx[maxpositionx] > meancount / 6 && histy[maxpositiony] > meancount / 6)
+		if (1) //(histx[maxpositionx] > meancount / 6 && histy[maxpositiony] > meancount / 6)
 		{
 			if (global_data.param[PARAM_BOTTOM_FLOW_HIST_FILTER])
 			{
