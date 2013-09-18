@@ -48,6 +48,11 @@
 #define __ASM asm
 #include "core_cm4_simd.h"
 
+#define FRAME_SIZE	global_data.param[PARAM_IMAGE_WIDTH]
+#define SEARCH_SIZE	(4 + 1)         // maximum offset to search: 4 + 1/2 pixels
+#define TILE_SIZE	8               // x & y tile size
+#define NUM_BLOCKS	8               // x & y number of tiles to check
+
 #define sign(x) (( x > 0 ) - ( x < 0 ))
 
 /**
@@ -325,6 +330,9 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	const uint16_t hist_size = 2*(winmax-winmin+1)+1;
 
 	/* variables */
+        uint16_t pixLo = SEARCH_SIZE;
+        uint16_t pixHi = FRAME_SIZE - SEARCH_SIZE - TILE_SIZE;
+        uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
 	uint16_t i, j;
 	uint32_t acc[8]; // subpixels
 	uint16_t histx[hist_size]; // counter for x shift
@@ -342,12 +350,10 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	for (j = 0; j < hist_size; j++) { histx[j] = 0; histy[j] = 0; }
 
 	/* iterate over all patterns
-	 * we have to keep an -3 offset to X and Y pixel values,
-	 * 17 to 41 here means 20 to 44 flow
 	 */
-	for (j = 17; j < 64 - 23; j+=3)
+	for (j = pixLo; j < pixHi; j += pixStep)
 	{
-		for (i = 17; i < 64 - 23; i+=3)
+		for (i = pixLo; i < pixHi; i += pixStep)
 		{
 			/* test pixel if it is suitable for flow tracking */
 			uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
@@ -418,9 +424,9 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	if (global_data.param[PARAM_USB_SEND_VIDEO] && global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
 	{
 
-		for (j = 17; j < 64 - 23; j+=3) // we have to keep an -3 offset to X and Y pixel values, 17 to 41 here means 20 to 44 flow
+		for (j = pixLo; j < pixHi; j += pixStep)
 		{
-			for (i = 17; i < 64 - 23; i+=3)
+			for (i = pixLo; i < pixHi; i += pixStep)
 			{
 
 				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
