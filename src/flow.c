@@ -55,6 +55,77 @@
 
 #define sign(x) (( x > 0 ) - ( x < 0 ))
 
+// compliments of Adam Williams
+#define ABSDIFF(frame1, frame2) \
+({ \
+ int result = 0; \
+ asm volatile( \
+  "mov %[result], #0\n"           /* accumulator */ \
+ \
+  "ldr r4, [%[src], #0]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #0]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #4]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #4]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 1)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 1)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 1 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 1 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 2)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 2)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 2 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 2 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 3)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 3)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 3 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 3 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 4)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 4 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 4 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 5)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 5)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 5 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 5 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 6)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 6)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 6 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 6 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 7)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 7)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 7 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 7 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  : [result] "+r" (result) \
+  : [src] "r" (frame1), [dst] "r" (frame2) \
+  : "r4", "r5" \
+  ); \
+  \
+ result; \
+})
+
 /**
  * @brief Computes the Hessian at a pixel location
  *
@@ -366,11 +437,17 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			int8_t sumx = 0;
 			int8_t sumy = 0;
 			int8_t ii, jj;
+
+			uint8_t *base1 = image1 + j * (uint16_t) global_data.param[PARAM_IMAGE_WIDTH] + i;
+
 			for (jj = winmin; jj <= winmax; jj++)
 			{
+				uint8_t *base2 = image2 + (j+jj) * (uint16_t) global_data.param[PARAM_IMAGE_WIDTH] + i;
+
 				for (ii = winmin; ii <= winmax; ii++)
 				{
-					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+//					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+					uint32_t temp_dist = ABSDIFF(base1, base2 + ii);
 					if (temp_dist < dist)
 					{
 						sumx = ii;
