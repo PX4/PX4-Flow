@@ -62,6 +62,9 @@ static volatile int data_counter = 0;
 static volatile int data_valid = 0;
 static volatile int new_value = 0;
 
+static volatile uint32_t sonar_measure_time_interrupt = 0;
+static volatile uint32_t sonar_measure_time = 0;
+
 /* kalman filter states */
 float x_pred = 0.0f; // m
 float v_pred = 0.0f;
@@ -121,6 +124,7 @@ void UART4_IRQHandler(void)
 					/* it is in normal sensor range, take it */
 					last_measure_time = measure_time;
 					measure_time = get_boot_time_ms();
+                    sonar_measure_time_interrupt = measure_time;
 					dt = ((float)(measure_time - last_measure_time)) / 1000.0f;
 
 					valid_data = temp;
@@ -171,6 +175,7 @@ void sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
 	if(new_value) {
 		sonar_filter();
 		new_value = 0;
+        sonar_measure_time = get_boot_time_ms();
 	}
 
 	*sonar_value_filtered = x_post;
@@ -213,7 +218,6 @@ void sonar_config(void)
 	/* Enable GPIO clocks */
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
 
-
 	/* Connect UART pins to AF7 */
 	GPIO_PinAFConfig(GPIOC, GPIO_PinSource11, GPIO_AF_UART4);
 
@@ -245,3 +249,14 @@ void sonar_config(void)
 	USART_Cmd(UART4, ENABLE);
 
 }
+
+uint32_t get_sonar_measure_time()
+{
+    return sonar_measure_time;
+}
+
+uint32_t get_sonar_measure_time_interrupt()
+{
+    return sonar_measure_time_interrupt;
+}
+

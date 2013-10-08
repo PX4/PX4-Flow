@@ -48,7 +48,83 @@
 #define __ASM asm
 #include "core_cm4_simd.h"
 
+#define FRAME_SIZE	global_data.param[PARAM_IMAGE_WIDTH]
+#define SEARCH_SIZE	(4 + 1)         // maximum offset to search: 4 + 1/2 pixels
+#define TILE_SIZE	8               // x & y tile size
+#define NUM_BLOCKS	8               // x & y number of tiles to check
+
 #define sign(x) (( x > 0 ) - ( x < 0 ))
+
+// compliments of Adam Williams
+#define ABSDIFF(frame1, frame2) \
+({ \
+ int result = 0; \
+ asm volatile( \
+  "mov %[result], #0\n"           /* accumulator */ \
+ \
+  "ldr r4, [%[src], #0]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #0]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #4]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #4]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 1)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 1)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 1 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 1 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 2)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 2)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 2 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 2 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 3)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 3)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 3 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 3 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 4)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 4 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 4 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 5)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 5)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 5 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 5 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 6)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 6)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 6 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 6 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  "ldr r4, [%[src], #(64 * 7)]\n"        /* read data from address + offset*/ \
+  "ldr r5, [%[dst], #(64 * 7)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+  "ldr r4, [%[src], #(64 * 7 + 4)]\n"        /* read data from address + offset */ \
+  "ldr r5, [%[dst], #(64 * 7 + 4)]\n" \
+  "usada8 %[result], r4, r5, %[result]\n"      /* difference */ \
+ \
+  : [result] "+r" (result) \
+  : [src] "r" (frame1), [dst] "r" (frame2) \
+  : "r4", "r5" \
+  ); \
+  \
+ result; \
+})
 
 /**
  * @brief Computes the Hessian at a pixel location
@@ -325,6 +401,9 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	const uint16_t hist_size = 2*(winmax-winmin+1)+1;
 
 	/* variables */
+        uint16_t pixLo = SEARCH_SIZE;
+        uint16_t pixHi = FRAME_SIZE - SEARCH_SIZE - TILE_SIZE;
+        uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
 	uint16_t i, j;
 	uint32_t acc[8]; // subpixels
 	uint16_t histx[hist_size]; // counter for x shift
@@ -342,12 +421,10 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	for (j = 0; j < hist_size; j++) { histx[j] = 0; histy[j] = 0; }
 
 	/* iterate over all patterns
-	 * we have to keep an -3 offset to X and Y pixel values,
-	 * 17 to 41 here means 20 to 44 flow
 	 */
-	for (j = 17; j < 64 - 23; j+=3)
+	for (j = pixLo; j < pixHi; j += pixStep)
 	{
-		for (i = 17; i < 64 - 23; i+=3)
+		for (i = pixLo; i < pixHi; i += pixStep)
 		{
 			/* test pixel if it is suitable for flow tracking */
 			uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
@@ -360,11 +437,17 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			int8_t sumx = 0;
 			int8_t sumy = 0;
 			int8_t ii, jj;
+
+			uint8_t *base1 = image1 + j * (uint16_t) global_data.param[PARAM_IMAGE_WIDTH] + i;
+
 			for (jj = winmin; jj <= winmax; jj++)
 			{
+				uint8_t *base2 = image2 + (j+jj) * (uint16_t) global_data.param[PARAM_IMAGE_WIDTH] + i;
+
 				for (ii = winmin; ii <= winmax; ii++)
 				{
-					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+//					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+					uint32_t temp_dist = ABSDIFF(base1, base2 + ii);
 					if (temp_dist < dist)
 					{
 						sumx = ii;
@@ -418,9 +501,9 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	if (global_data.param[PARAM_USB_SEND_VIDEO] && global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
 	{
 
-		for (j = 17; j < 64 - 23; j+=3) // we have to keep an -3 offset to X and Y pixel values, 17 to 41 here means 20 to 44 flow
+		for (j = pixLo; j < pixHi; j += pixStep)
 		{
-			for (i = 17; i < 64 - 23; i+=3)
+			for (i = pixLo; i < pixHi; i += pixStep)
 			{
 
 				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
@@ -460,7 +543,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		}
 
 		/* check if there is a peak value in histogram */
-		if (histx[maxpositionx] > meancount / 6 && histy[maxpositiony] > meancount / 6)
+		if (1) //(histx[maxpositionx] > meancount / 6 && histy[maxpositiony] > meancount / 6)
 		{
 			if (global_data.param[PARAM_BOTTOM_FLOW_HIST_FILTER])
 			{
