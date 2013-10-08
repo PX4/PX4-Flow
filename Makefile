@@ -9,9 +9,9 @@ OPENOCD		?= ../../sat/bin/openocd
 JTAGCONFIG 	?= olimex-jtag-tiny.cfg
 #JTAGCONFIG	?= olimex-arm-usb-tiny-h.cfg
 
-MAVLINKBASEDIR = ../Firmware/mavlink/include/mavlink/v1.0
-MAVLINKDIR = ../Firmware/mavlink/include/mavlink/v1.0/pixhawk
-MAVLINKUSERDIR = ../Firmware/mavlink/include/mavlink/v1.0/user
+MAVLINKBASEDIR = mavlink/include/mavlink/v1.0
+MAVLINKDIR = mavlink/include/mavlink/v1.0/pixhawk
+MAVLINKUSERDIR = mavlink/include/mavlink/v1.0/user
 
 AS =		arm-none-eabi-as
 CC =		arm-none-eabi-gcc
