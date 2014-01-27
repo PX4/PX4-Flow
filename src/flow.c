@@ -676,30 +676,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				{
 					/* calc pixel of gyro */
 					float y_rate_pixel = y_rate * (get_time_between_images() / 1000.0f) * focal_length_px;
-
-					if(sign(histflowx) != sign(y_rate_pixel))
-					{
-						/* subtraction case */
-						/* do not correct over zero */
-						if(fabsf(y_rate_pixel) < fabsf(histflowx))
-						{
-							*pixel_flow_x = histflowx + y_rate_pixel;
-						} else
-						{
-							*pixel_flow_x = 0.0f;
-						}
-
-					} else
-					{
-						/* additional case */
-						if(fabsf(y_rate_pixel) > 4.0f)
-						{
-							/* not more valid flow calculation possible */
-							*pixel_flow_x = 0.0f;
-						} else {
-							*pixel_flow_x = histflowx + y_rate_pixel;
-						}
-					}
+                    *pixel_flow_x = histflowx + y_rate_pixel;
 				}
 				else
 				{
@@ -710,30 +687,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				{
 					/* calc pixel of gyro */
 					float x_rate_pixel = x_rate * (get_time_between_images() / 1000.0f) * focal_length_px;
-
-					if(sign(histflowy) == sign(x_rate_pixel))
-					{
-						/* subtraction case */
-						/* do not correct over zero */
-						if(fabsf(x_rate_pixel) < fabsf(histflowy))
-						{
-							*pixel_flow_y = histflowy - x_rate_pixel;
-						} else
-						{
-							*pixel_flow_y = 0.0f;
-						}
-
-					} else
-					{
-						/* additional case */
-						if(fabsf(x_rate_pixel) > 4.0f)
-						{
-							/* not more valid flow calculation possible */
-							*pixel_flow_y = 0.0f;
-						} else {
-							*pixel_flow_y = histflowy - x_rate_pixel;
-						}
-					}
+					*pixel_flow_y = histflowy - x_rate_pixel;
 				}
 				else
 				{
