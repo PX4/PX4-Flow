@@ -49,9 +49,9 @@
 #include "core_cm4_simd.h"
 
 #define FRAME_SIZE	global_data.param[PARAM_IMAGE_WIDTH]
-#define SEARCH_SIZE	(4 + 1)         // maximum offset to search: 4 + 1/2 pixels
-#define TILE_SIZE	8               // x & y tile size
-#define NUM_BLOCKS	8               // x & y number of tiles to check
+#define SEARCH_SIZE	global_data.param[PARAM_MAX_FLOW_PIXEL] // maximum offset to search: 4 + 1/2 pixels
+#define TILE_SIZE	8               						// x & y tile size
+#define NUM_BLOCKS	8               						// x & y number of tiles to check
 
 #define sign(x) (( x > 0 ) - ( x < 0 ))
 
@@ -396,13 +396,13 @@ static inline uint32_t compute_sad_8x8(uint8_t *image1, uint8_t *image2, uint16_
 uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate, float *pixel_flow_x, float *pixel_flow_y) {
 
 	/* constants */
-	const int16_t winmin = -4;
-	const int16_t winmax = 4;
+	const int16_t winmin = -SEARCH_SIZE;
+	const int16_t winmax = SEARCH_SIZE;
 	const uint16_t hist_size = 2*(winmax-winmin+1)+1;
 
 	/* variables */
-        uint16_t pixLo = SEARCH_SIZE;
-        uint16_t pixHi = FRAME_SIZE - SEARCH_SIZE - TILE_SIZE;
+        uint16_t pixLo = SEARCH_SIZE + 1;
+        uint16_t pixHi = FRAME_SIZE - (SEARCH_SIZE + 1) - TILE_SIZE;
         uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
 	uint16_t i, j;
 	uint32_t acc[8]; // subpixels
@@ -663,9 +663,10 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
 			/*
-			 * gyro compensation handles within two limits
-			 * -> subtracts maximum flow value
-			 * -> adds max 4 pixels to flow value
+			 * gyro compensation
+			 * the compensated value is clamped to
+			 * the maximum measurable flow value (param BFLOW_MAX_PIX) +0.5
+			 * (sub pixel flow can add half pixel to the value)
 			 *
 			 * -y_rate gives x flow
 			 * x_rates gives y_flow
@@ -676,7 +677,15 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				{
 					/* calc pixel of gyro */
 					float y_rate_pixel = y_rate * (get_time_between_images() / 1000.0f) * focal_length_px;
-                    *pixel_flow_x = histflowx + y_rate_pixel;
+					float comp_x = histflowx + y_rate_pixel;
+
+                    /* clamp value to maximum search window size plus half pixel from subpixel search */
+                    if (comp_x < (-SEARCH_SIZE - 0.5f))
+                    	*pixel_flow_x = (-SEARCH_SIZE - 0.5f);
+                    else if (comp_x > (SEARCH_SIZE + 0.5f))
+                    	*pixel_flow_x = (SEARCH_SIZE + 0.5f);
+                    else
+                    	*pixel_flow_x = comp_x;
 				}
 				else
 				{
@@ -687,7 +696,15 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				{
 					/* calc pixel of gyro */
 					float x_rate_pixel = x_rate * (get_time_between_images() / 1000.0f) * focal_length_px;
-					*pixel_flow_y = histflowy - x_rate_pixel;
+					float comp_y = histflowy - x_rate_pixel;
+
+					/* clamp value to maximum search window size plus/minus half pixel from subpixel search */
+					if (comp_y < (-SEARCH_SIZE - 0.5f))
+						*pixel_flow_y = (-SEARCH_SIZE - 0.5f);
+					else if (comp_y > (SEARCH_SIZE + 0.5f))
+						*pixel_flow_y = (SEARCH_SIZE + 0.5f);
+					else
+						*pixel_flow_y = comp_y;
 				}
 				else
 				{
