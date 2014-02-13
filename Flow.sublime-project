@@ -1,0 +1,50 @@
+{
+	"build_systems":
+	[
+		{
+			"cmd":
+			[
+				"make"
+			],
+			"file_regex": "^(..[^:]*):([0-9]+):?([0-9]+)?:? (.*)$",
+			"name": "PX4",
+			"working_dir": "${project_path}"
+		}
+	],
+	"folders":
+	[
+		{
+			"file_exclude_patterns":
+			[
+				"*.o",
+				"*.a",
+				"*.d",
+				"*.elf",
+				".built",
+				".context",
+				".depend",
+				".config",
+				".version",
+				"Make.dep",
+				".configured",
+				"*.sublime-project",
+				"*.sublime-workspace",
+				".project",
+				".cproject",
+				"cscope.out"
+			],
+			"folder_exclude_patterns":
+			[
+				".settings"
+			],
+			"follow_symlinks": true,
+			"path": "."
+		}
+	],
+	"settings":
+	{
+		"highlight_line": true,
+		"tab_size": 8,
+		"translate_tabs_to_spaces": false
+	}
+}
