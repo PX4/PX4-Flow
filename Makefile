@@ -119,9 +119,9 @@ endif
 
 upload-usb:
 	@echo Attempting to flash PX4FLOW board via USB
-	@python -u ../Firmware/Tools/px_mkfw.py --board_id 6 > px4flow_prototype.px4
-	@python -u ../Firmware/Tools/px_mkfw.py --prototype px4flow_prototype.px4 --image $(BINARY_BIN) > px4flow.px4
-	@python -u ../Firmware/Tools/px_uploader.py px4flow.px4 --baud 921600 --port $(SERIAL_PORTS)
+	@python -u Tools/px_mkfw.py --board_id 6 > px4flow_prototype.px4
+	@python -u Tools/px_mkfw.py --prototype px4flow_prototype.px4 --image $(BINARY_BIN) > px4flow.px4
+	@python -u Tools/px_uploader.py px4flow.px4 --baud 921600 --port $(SERIAL_PORTS)
 
 
 #-include $(DEPS)
