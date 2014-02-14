@@ -136,10 +136,10 @@ void handle_mavlink_message(mavlink_channel_t chan,
 			{
 				char* key = (char*) set.param_id;
 
-				if (set.param_id[0] == '\0')
+				if (set.param_id[0] != -1)
 				{
 					/* Choose parameter based on index */
-					if (set.param_index < ONBOARD_PARAM_COUNT)
+					if (0 <= set.param_index < ONBOARD_PARAM_COUNT)
 					{
 						/* Report back value */
 						mavlink_msg_param_value_send(chan,
@@ -174,7 +174,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 							/* Report back value */
 							mavlink_msg_param_value_send(chan,
 									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
 						}
 					}
 				}
@@ -277,10 +277,10 @@ void handle_mavlink_message(mavlink_channel_t chan,
 							/* report back new value */
 							mavlink_msg_param_value_send(MAVLINK_COMM_0,
 									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
 							mavlink_msg_param_value_send(MAVLINK_COMM_2,
 									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
 
 						}
 						else
@@ -288,10 +288,10 @@ void handle_mavlink_message(mavlink_channel_t chan,
 							/* send back current value because it is not accepted or not write access*/
 							mavlink_msg_param_value_send(MAVLINK_COMM_0,
 									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
 							mavlink_msg_param_value_send(MAVLINK_COMM_2,
 									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
 						}
 					}
 				}
