@@ -251,13 +251,13 @@ void handle_mavlink_message(mavlink_channel_t chan,
 							}
 
 							/* handle calibration on/off */
-							else if(i == PARAM_CALIBRATION_ON)
+							else if(i == PARAM_VIDEO_ONLY)
 							{
 								mt9v034_set_context();
 								dma_reconfigure();
 								buffer_reset();
 
-								if(global_data.param[PARAM_CALIBRATION_ON])
+								if(global_data.param[PARAM_VIDEO_ONLY])
 									debug_string_message_buffer("Calibration Mode On");
 								else
 									debug_string_message_buffer("Calibration Mode Off");

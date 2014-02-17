@@ -144,9 +144,9 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_USB_SEND_DEBUG], "USB_SEND_DEBUG");
 	global_data.param_access[PARAM_USB_SEND_DEBUG] = READ_WRITE;
 
-	global_data.param[PARAM_VIDEO_USB_MODE] = 1; // cam frames
-	strcpy(global_data.param_name[PARAM_VIDEO_USB_MODE], "VIDEO_MODE");
-	global_data.param_access[PARAM_VIDEO_USB_MODE] = READ_WRITE;
+	global_data.param[PARAM_VIDEO_ONLY] = 0;
+	strcpy(global_data.param_name[PARAM_VIDEO_ONLY], "VIDEO_ONLY");
+	global_data.param_access[PARAM_VIDEO_ONLY] = READ_WRITE;
 
 	global_data.param[PARAM_VIDEO_RATE] = 150;
 	strcpy(global_data.param_name[PARAM_VIDEO_RATE], "VIDEO_RATE");
@@ -183,10 +183,6 @@ void global_data_reset_param_defaults(void){
 	global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW] = 0.3f;
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_WEIGHT_NEW], "BFLOW_W_NEW");
 	global_data.param_access[PARAM_BOTTOM_FLOW_WEIGHT_NEW] = READ_WRITE;
-
-	global_data.param[PARAM_CALIBRATION_ON] = 0;
-	strcpy(global_data.param_name[PARAM_CALIBRATION_ON], "CALIBRATION");
-	global_data.param_access[PARAM_CALIBRATION_ON] = READ_WRITE;
 
 	global_data.param[DEBUG_VARIABLE] = 1;
 	strcpy(global_data.param_name[DEBUG_VARIABLE], "DEBUG");

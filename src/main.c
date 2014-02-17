@@ -273,9 +273,9 @@ int main(void)
 		}
 
 		/* calibration routine */
-		if(global_data.param[PARAM_CALIBRATION_ON])
+		if(global_data.param[PARAM_VIDEO_ONLY])
 		{
-			while(global_data.param[PARAM_CALIBRATION_ON])
+			while(global_data.param[PARAM_VIDEO_ONLY])
 			{
 				dcmi_restart_calibration_routine();
 
@@ -519,43 +519,22 @@ int main(void)
 			image_width_send = global_data.param[PARAM_IMAGE_WIDTH];
 			image_height_send = global_data.param[PARAM_IMAGE_HEIGHT];
 
-			if (global_data.param[PARAM_VIDEO_USB_MODE] == CAM_VIDEO)
+			mavlink_msg_data_transmission_handshake_send(
+					MAVLINK_COMM_2,
+					MAVLINK_DATA_STREAM_IMG_RAW8U,
+					image_size_send,
+					image_width_send,
+					image_height_send,
+					image_size_send / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1,
+					MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN,
+					100);
+			LEDToggle(LED_COM);
+			uint16_t frame = 0;
+			for (frame = 0; frame < image_size_send / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1; frame++)
 			{
-				mavlink_msg_data_transmission_handshake_send(
-						MAVLINK_COMM_2,
-						MAVLINK_DATA_STREAM_IMG_RAW8U,
-						image_size_send,
-						image_width_send,
-						image_height_send,
-						image_size_send / 253 + 1,
-						253,
-						100);
-				LEDToggle(LED_COM);
-				uint16_t frame;
-				for (frame = 0; frame < image_size_send / 253 + 1; frame++)
-				{
-					mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) current_image)[frame * 253]);
-				}
+				mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) current_image)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
+			}
 
-			}
-			else if (global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
-			{
-				mavlink_msg_data_transmission_handshake_send(
-						MAVLINK_COMM_2,
-						MAVLINK_DATA_STREAM_IMG_RAW8U,
-						image_size_send,
-						image_width_send,
-						image_height_send,
-						image_size_send / 253 + 1,
-						253,
-						100);
-				LEDToggle(LED_COM);
-				uint16_t frame;
-				for (frame = 0; frame < image_size / 253 + 1; frame++)
-				{
-					mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image)[frame * 253]);
-				}
-			}
 			send_image_now = false;
 		}
 		else if (!global_data.param[PARAM_USB_SEND_VIDEO])

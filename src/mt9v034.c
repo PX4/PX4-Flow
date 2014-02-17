@@ -66,7 +66,7 @@ void mt9v034_context_configuration(void)
 
 	uint16_t new_control;
 
-	if (global_data.param[PARAM_CALIBRATION_ON])
+	if (global_data.param[PARAM_VIDEO_ONLY])
 		new_control = 0x8188; // Context B
 	else
 		new_control = 0x0188; // Context A
@@ -117,6 +117,11 @@ void mt9v034_context_configuration(void)
 	uint16_t coarse_sw2 = 0x01D9; // default from context A
 	uint16_t shutter_width_ctrl = 0x0164; // default from context A
 	uint16_t total_shutter_width = 0x01E0; // default from context A
+	uint16_t aec_update_freq = 0x02; // default Number of frames to skip between changes in AEC VALID RANGE: 0-15
+	uint16_t aec_low_pass = 0x01; // default VALID RANGE: 0-2
+	uint16_t agc_update_freq = 0x02; // default Number of frames to skip between changes in AGC VALID RANGE: 0-15
+	uint16_t agc_low_pass = 0x02; // default VALID RANGE: 0-2
+
 
 	if(global_data.param[PARAM_IMAGE_LOW_LIGHT])
 	{
@@ -195,6 +200,11 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_AGC_AEC_DESIRED_BIN_REG, desired_brightness);
 		mt9v034_WriteReg16(MTV_ADC_RES_CTRL_REG, resolution_ctrl); // here is the way to regulate darkness :)
 
+		mt9v034_WriteReg16(MTV_AEC_UPDATE_REG,aec_update_freq);
+		mt9v034_WriteReg16(MTV_AEC_LOWPASS_REG,aec_low_pass);
+		mt9v034_WriteReg16(MTV_AGC_UPDATE_REG,agc_update_freq);
+		mt9v034_WriteReg16(MTV_AGC_LOWPASS_REG,agc_low_pass);
+
 		/* Reset */
 		mt9v034_WriteReg16(MTV_SOFT_RESET_REG, 0x01);
 	}
@@ -207,7 +217,7 @@ void mt9v034_context_configuration(void)
 void mt9v034_set_context()
 {
 	uint16_t new_control;
-	if (global_data.param[PARAM_CALIBRATION_ON])
+	if (global_data.param[PARAM_VIDEO_ONLY])
 		new_control = 0x8188; // Context B
 	else
 		new_control = 0x0188; // Context A

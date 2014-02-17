@@ -95,7 +95,7 @@ void dma_reconfigure(void)
 {
 	dcmi_dma_disable();
 
-	if(global_data.param[PARAM_CALIBRATION_ON])
+	if(global_data.param[PARAM_VIDEO_ONLY])
 		dcmi_dma_init(FULL_IMAGE_SIZE);
 	else
 		dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]);
@@ -138,7 +138,7 @@ void DMA2_Stream1_IRQHandler(void)
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
 		frame_counter++;
 
-		if(global_data.param[PARAM_CALIBRATION_ON])
+		if(global_data.param[PARAM_VIDEO_ONLY])
 		{
 			if (frame_counter >= 4)
 			{
@@ -284,13 +284,13 @@ void send_calibration_image(uint8_t ** image_buffer_fast_1, uint8_t ** image_buf
 			FULL_IMAGE_SIZE * 4,
 			FULL_IMAGE_ROW_SIZE * 2,
 			FULL_IMAGE_COLUMN_SIZE * 2,
-			FULL_IMAGE_SIZE * 4 / 253 + 1,
-			253,
+			FULL_IMAGE_SIZE * 4 / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1,
+			MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN,
 			100);
 
 	uint16_t frame = 0;
 	uint8_t image = 0;
-	uint8_t frame_buffer[253];
+	uint8_t frame_buffer[MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN];
 
 	for (int i = 0; i < FULL_IMAGE_SIZE * 4; i++)
 	{
@@ -300,7 +300,7 @@ void send_calibration_image(uint8_t ** image_buffer_fast_1, uint8_t ** image_buf
 			image++;
 		}
 
-		if (i % 253 == 0 && i != 0)
+		if (i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN == 0 && i != 0)
 		{
 			mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, frame_buffer);
 			frame++;
@@ -309,40 +309,40 @@ void send_calibration_image(uint8_t ** image_buffer_fast_1, uint8_t ** image_buf
 
 		if (image == 0 )
 		{
-			frame_buffer[i % 253] = (uint8_t)(*image_buffer_fast_1)[i % FULL_IMAGE_SIZE];
+			frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = (uint8_t)(*image_buffer_fast_1)[i % FULL_IMAGE_SIZE];
 		}
 		else if (image == 1 )
 		{
-			frame_buffer[i % 253] = (uint8_t)(*image_buffer_fast_2)[i % FULL_IMAGE_SIZE];
+			frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = (uint8_t)(*image_buffer_fast_2)[i % FULL_IMAGE_SIZE];
 		}
 		else if (image == 2)
 		{
 			if (calibration_unused == 1)
-				frame_buffer[i % 253] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
+				frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
 			else if (calibration_unused == 2)
-				frame_buffer[i % 253] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
+				frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
 			else
-				frame_buffer[i % 253] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
+				frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
 		}
 		else
 		{
 			if (calibration_used)
 			{
 				if (calibration_mem0 == 1)
-					frame_buffer[i % 253] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
+					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
 				else if (calibration_mem0 == 2)
-					frame_buffer[i % 253] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
+					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
 				else
-					frame_buffer[i % 253] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
+					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
 			}
 			else
 			{
 				if (calibration_mem1 == 1)
-					frame_buffer[i % 253] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
+					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
 				else if (calibration_mem1 == 2)
-					frame_buffer[i % 253] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
+					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
 				else
-					frame_buffer[i % 253] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
+					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
 			}
 		}
 	}
