@@ -104,6 +104,10 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_IMAGE_ROW_NOISE_CORR], "IMAGE_NOISE_C");
 	global_data.param_access[PARAM_IMAGE_ROW_NOISE_CORR] = READ_WRITE;
 
+	global_data.param[PARAM_IMAGE_TEST_PATTERN] = 0;
+	strcpy(global_data.param_name[PARAM_IMAGE_TEST_PATTERN], "IMAGE_TEST_PAT");
+	global_data.param_access[PARAM_IMAGE_TEST_PATTERN] = READ_WRITE;
+
 	global_data.param[PARAM_GYRO_SENSITIVITY_DPS] = 250;
 	strcpy(global_data.param_name[PARAM_GYRO_SENSITIVITY_DPS], "GYRO_SENS_DPS");
 	global_data.param_access[PARAM_GYRO_SENSITIVITY_DPS] = READ_WRITE;

@@ -151,11 +151,17 @@ void mt9v034_context_configuration(void)
 	}
 
 	uint16_t row_noise_correction = 0x0000; // default
+	uint16_t test_data = 0x0000; // default
 
-	if(global_data.param[PARAM_IMAGE_ROW_NOISE_CORR])
+	if(global_data.param[PARAM_IMAGE_ROW_NOISE_CORR]&&!global_data.param[PARAM_IMAGE_TEST_PATTERN])
 		row_noise_correction = 0x0101;
 	else
 		row_noise_correction = 0x0000;
+
+	if(global_data.param[PARAM_IMAGE_TEST_PATTERN])
+		test_data = 0x3000; //enable vertical gray shade pattern
+	else
+		test_data = 0x0000;
 
 	uint16_t version = mt9v034_ReadReg16(MTV_CHIP_VERSION_REG);
 
@@ -175,6 +181,7 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_COARSE_SW_2_REG_A, coarse_sw2);
 		mt9v034_WriteReg16(MTV_COARSE_SW_CTRL_REG_A, shutter_width_ctrl);
 		mt9v034_WriteReg16(MTV_V2_CTRL_REG_A, total_shutter_width);
+
 
 		/* Context B */
 		mt9v034_WriteReg16(MTV_WINDOW_WIDTH_REG_B, new_width_context_b);
@@ -199,6 +206,8 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_AGC_AEC_PIXEL_COUNT_REG, pixel_count);
 		mt9v034_WriteReg16(MTV_AGC_AEC_DESIRED_BIN_REG, desired_brightness);
 		mt9v034_WriteReg16(MTV_ADC_RES_CTRL_REG, resolution_ctrl); // here is the way to regulate darkness :)
+
+		mt9v034_WriteReg16(MTV_DIGITAL_TEST_REG, test_data);//enable test pattern
 
 		mt9v034_WriteReg16(MTV_AEC_UPDATE_REG,aec_update_freq);
 		mt9v034_WriteReg16(MTV_AEC_LOWPASS_REG,aec_low_pass);

@@ -116,6 +116,7 @@
 #define MTV_AEC_LOWPASS_REG				0xA8
 #define MTV_AGC_UPDATE_REG				0xA9
 #define MTV_AGC_LOWPASS_REG				0xAA
+#define MTV_DIGITAL_TEST_REG			0x7F
 
 /*
  * Resolution:
