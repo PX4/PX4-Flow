@@ -225,13 +225,16 @@ void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow
 
 char readI2CAddressOffset()
 {
+	//read 3bit address offset of 7 bit address
     offset = 0x00;
-    offset = GPIO_ReadInputData(GPIOC ) >> 13;
+    offset = GPIO_ReadInputData(GPIOC) >> 13;//bit 0
+    offset = offset | ((GPIO_ReadInputData(GPIOC) >> 14)<<1);//bit 1
+    offset = offset | ((GPIO_ReadInputData(GPIOC) >> 15)<<2);//bit 2
     offset = (~offset) & 0x07;
     return offset;
 }
 
 char i2c_get_ownaddress1()
 {
-    return (I2C1_OWNADDRESS_1_BASE + readI2CAddressOffset()) << 1;
+    return (I2C1_OWNADDRESS_1_BASE + readI2CAddressOffset()) << 1;//add offset to base and shift 1 bit to generate valid 7 bit address
 }
