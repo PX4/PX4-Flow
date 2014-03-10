@@ -66,7 +66,7 @@ void mt9v034_context_configuration(void)
 
 	uint16_t new_control;
 
-	if (global_data.param[PARAM_CALIBRATION_ON])
+	if (global_data.param[PARAM_VIDEO_ONLY])
 		new_control = 0x8188; // Context B
 	else
 		new_control = 0x0188; // Context A
@@ -117,6 +117,11 @@ void mt9v034_context_configuration(void)
 	uint16_t coarse_sw2 = 0x01D9; // default from context A
 	uint16_t shutter_width_ctrl = 0x0164; // default from context A
 	uint16_t total_shutter_width = 0x01E0; // default from context A
+	uint16_t aec_update_freq = 0x02; // default Number of frames to skip between changes in AEC VALID RANGE: 0-15
+	uint16_t aec_low_pass = 0x01; // default VALID RANGE: 0-2
+	uint16_t agc_update_freq = 0x02; // default Number of frames to skip between changes in AGC VALID RANGE: 0-15
+	uint16_t agc_low_pass = 0x02; // default VALID RANGE: 0-2
+
 
 	if(global_data.param[PARAM_IMAGE_LOW_LIGHT])
 	{
@@ -146,11 +151,17 @@ void mt9v034_context_configuration(void)
 	}
 
 	uint16_t row_noise_correction = 0x0000; // default
+	uint16_t test_data = 0x0000; // default
 
-	if(global_data.param[PARAM_IMAGE_ROW_NOISE_CORR])
+	if(global_data.param[PARAM_IMAGE_ROW_NOISE_CORR]&&!global_data.param[PARAM_IMAGE_TEST_PATTERN])
 		row_noise_correction = 0x0101;
 	else
 		row_noise_correction = 0x0000;
+
+	if(global_data.param[PARAM_IMAGE_TEST_PATTERN])
+		test_data = 0x3000; //enable vertical gray shade pattern
+	else
+		test_data = 0x0000;
 
 	uint16_t version = mt9v034_ReadReg16(MTV_CHIP_VERSION_REG);
 
@@ -170,6 +181,7 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_COARSE_SW_2_REG_A, coarse_sw2);
 		mt9v034_WriteReg16(MTV_COARSE_SW_CTRL_REG_A, shutter_width_ctrl);
 		mt9v034_WriteReg16(MTV_V2_CTRL_REG_A, total_shutter_width);
+
 
 		/* Context B */
 		mt9v034_WriteReg16(MTV_WINDOW_WIDTH_REG_B, new_width_context_b);
@@ -195,6 +207,13 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_AGC_AEC_DESIRED_BIN_REG, desired_brightness);
 		mt9v034_WriteReg16(MTV_ADC_RES_CTRL_REG, resolution_ctrl); // here is the way to regulate darkness :)
 
+		mt9v034_WriteReg16(MTV_DIGITAL_TEST_REG, test_data);//enable test pattern
+
+		mt9v034_WriteReg16(MTV_AEC_UPDATE_REG,aec_update_freq);
+		mt9v034_WriteReg16(MTV_AEC_LOWPASS_REG,aec_low_pass);
+		mt9v034_WriteReg16(MTV_AGC_UPDATE_REG,agc_update_freq);
+		mt9v034_WriteReg16(MTV_AGC_LOWPASS_REG,agc_low_pass);
+
 		/* Reset */
 		mt9v034_WriteReg16(MTV_SOFT_RESET_REG, 0x01);
 	}
@@ -207,7 +226,7 @@ void mt9v034_context_configuration(void)
 void mt9v034_set_context()
 {
 	uint16_t new_control;
-	if (global_data.param[PARAM_CALIBRATION_ON])
+	if (global_data.param[PARAM_VIDEO_ONLY])
 		new_control = 0x8188; // Context B
 	else
 		new_control = 0x0188; // Context A

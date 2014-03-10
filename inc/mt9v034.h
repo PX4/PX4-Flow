@@ -112,6 +112,11 @@
 #define MTV_MAX_EXPOSURE_REG       		0xAD  // datasheet max coarse shutter width
 #define MTV_AEC_AGC_ENABLE_REG			0xAF
 #define MTV_AGC_AEC_PIXEL_COUNT_REG		0xB0
+#define MTV_AEC_UPDATE_REG				0xA6
+#define MTV_AEC_LOWPASS_REG				0xA8
+#define MTV_AGC_UPDATE_REG				0xA9
+#define MTV_AGC_LOWPASS_REG				0xAA
+#define MTV_DIGITAL_TEST_REG			0x7F
 
 /*
  * Resolution:

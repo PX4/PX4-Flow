@@ -32,7 +32,7 @@
 #define I2C_H_
 #include <inttypes.h>
 
-#define I2C1_OWNADDRESS_1_BASE 0x42
+#define I2C1_OWNADDRESS_1_BASE 0x42 //7bit base address
 /**
  * @brief  Configures I2C1 for communication as a slave (default behaviour for STM32F)
  */
