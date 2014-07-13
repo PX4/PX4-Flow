@@ -49,6 +49,8 @@
 
 extern uint32_t get_boot_time_ms();
 extern void buffer_reset();
+extern void systemreset(bool to_bootloader);
+
 mavlink_system_t mavlink_system;
 
 static uint32_t m_parameter_i = 0;
@@ -308,6 +310,37 @@ void handle_mavlink_message(mavlink_channel_t chan,
 				/* Respond to ping */
 				uint64_t r_timestamp = get_boot_time_ms() * 1000;
 				mavlink_msg_ping_send(chan, ping.seq, msg->sysid, msg->compid, r_timestamp);
+			}
+		}
+		break;
+
+		case MAVLINK_MSG_ID_COMMAND_LONG:
+		{
+			mavlink_command_long_t cmd;
+			mavlink_msg_command_long_decode(msg, &cmd);
+
+			switch (cmd.command) {
+				case MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN:
+				if (((int)(cmd.param1)) == 1) {
+					mavlink_msg_command_ack_send(chan, cmd.command, MAV_RESULT_ACCEPTED);
+					/* reboot */
+					systemreset(false);
+
+				} else if (((int)(cmd.param1)) == 3) {
+					mavlink_msg_command_ack_send(chan, cmd.command, MAV_RESULT_ACCEPTED);
+					/* reboot to bootloader */
+					systemreset(true);
+
+				} else {
+					/* parameters are wrong */
+					mavlink_msg_command_ack_send(chan, cmd.command, MAV_RESULT_FAILED);
+					// XXX add INVALID INPUT to MAV_RESULT
+				}
+				break;
+
+				default:
+					mavlink_msg_command_ack_send(chan, cmd.command, MAV_RESULT_UNSUPPORTED);
+				break;
 			}
 		}
 		break;
