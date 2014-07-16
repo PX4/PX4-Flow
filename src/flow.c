@@ -51,7 +51,7 @@
 #define FRAME_SIZE	global_data.param[PARAM_IMAGE_WIDTH]
 #define SEARCH_SIZE	global_data.param[PARAM_MAX_FLOW_PIXEL] // maximum offset to search: 4 + 1/2 pixels
 #define TILE_SIZE	8               						// x & y tile size
-#define NUM_BLOCKS	8               						// x & y number of tiles to check
+#define NUM_BLOCKS	5 // x & y number of tiles to check
 
 #define sign(x) (( x > 0 ) - ( x < 0 ))
 
@@ -466,13 +466,13 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				compute_subpixel(image1, image2, i, j, i + sumx, j + sumy, acc, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
 				uint32_t mindist = dist; // best SAD until now
 				uint8_t mindir = 8; // direction 8 for no direction
-				for(uint8_t i = 0; i < 8; i++)
+				for(uint8_t k = 0; k < 8; k++)
 				{
-					if (acc[i] < mindist)
+					if (acc[k] < mindist)
 					{
-						// SAD becomes better in direction i
-						mindist = acc[i];
-						mindir = i;
+						// SAD becomes better in direction k
+						mindist = acc[k];
+						mindir = k;
 					}
 				}
 				dirsx[meancount] = sumx;
