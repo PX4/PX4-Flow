@@ -558,6 +558,15 @@ void dcmi_hw_init(void)
 
 	/* Initialize the I2C peripheral w/ selected parameters */
 	I2C_Init(I2C2, &I2C_InitStruct);
+
+	/* Initialize GPIOs for EXPOSURE and STANDBY lines of the camera */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIOA, GPIO_Pin_2 | GPIO_Pin_3);
 }
 
 /**

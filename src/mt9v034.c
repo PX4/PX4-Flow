@@ -78,7 +78,7 @@ void mt9v034_context_configuration(void)
 	uint16_t new_height_context_b = FULL_IMAGE_COLUMN_SIZE * 4;
 
 	/* blanking settings */
-	uint16_t new_hor_blanking_context_a = MAX_IMAGE_WIDTH - new_width_context_a + MINIMUM_HORIZONTAL_BLANKING;
+	uint16_t new_hor_blanking_context_a = 350 + MINIMUM_HORIZONTAL_BLANKING;// 350 is minimum value without distortions
 	uint16_t new_ver_blanking_context_a = 10; // this value is the first without image errors (dark lines)
 	uint16_t new_hor_blanking_context_b = MAX_IMAGE_WIDTH - new_width_context_b + MINIMUM_HORIZONTAL_BLANKING;
 	uint16_t new_ver_blanking_context_b = 10;
@@ -102,7 +102,7 @@ void mt9v034_context_configuration(void)
 	 * Settings for both context:
 	 *
 	 * Exposure time should not affect frame time
-	 * so we set max on 64 (lines) = 0x44
+	 * so we set max on 64 (lines) = 0x40
 	 */
 	uint16_t min_exposure = 0x0001; // default
 	uint16_t max_exposure = 0x01E0; // default
@@ -139,7 +139,7 @@ void mt9v034_context_configuration(void)
 	else
 	{
 		min_exposure = 0x0001;
-		max_exposure = 0x0080;
+		max_exposure = 0x0040;
 		desired_brightness = 50; // VALID RANGE: 1-64
 		resolution_ctrl = 0x0202;
 		hdr_enabled = 0x0000; // off
