@@ -741,7 +741,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	}
 
 	/* calc quality */
-	uint8_t qual = meancount * 255 / 64;
+	uint8_t qual = (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
 
 	return qual;
 }
