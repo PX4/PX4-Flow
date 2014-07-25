@@ -339,6 +339,7 @@ int main(void)
 
 			/* compute optical flow */
 			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+//			qual = compute_klt(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
 
 			if (sonar_distance_filtered > 5.0f || sonar_distance_filtered == 0.0f)
 			{
