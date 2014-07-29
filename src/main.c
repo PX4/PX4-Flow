@@ -338,8 +338,8 @@ int main(void)
 			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
 
 			/* compute optical flow */
-			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
-//			qual = compute_klt(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+//			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+			qual = compute_klt(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
 
 			if (sonar_distance_filtered > 5.0f || sonar_distance_filtered == 0.0f)
 			{
@@ -516,9 +516,9 @@ int main(void)
 			uint16_t image_width_send;
 			uint16_t image_height_send;
 
-			image_size_send = image_size;
 			image_width_send = global_data.param[PARAM_IMAGE_WIDTH];
-			image_height_send = global_data.param[PARAM_IMAGE_HEIGHT];
+			image_height_send = global_data.param[PARAM_IMAGE_HEIGHT];//+global_data.param[PARAM_IMAGE_HEIGHT]/2;
+			image_size_send = image_width_send*image_height_send;
 
 			mavlink_msg_data_transmission_handshake_send(
 					MAVLINK_COMM_2,
