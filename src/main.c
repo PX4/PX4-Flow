@@ -373,12 +373,12 @@ int main(void)
       {
         if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
         {
-          flow_compx = flow_compx + y_rate;
+          flow_compx = flow_compx - y_rate;
         }
 
         if(fabsf(x_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
         {
-          flow_compy = flow_compy - x_rate;
+          flow_compy = flow_compy + x_rate;
         }
       }
 
