@@ -85,8 +85,8 @@ $(BINARY):	$(SRCS)
 	
 objcopy:
 	@$(OBJCOPY) -O binary px4flow.elf px4flow.bin
-	@python -u ../Firmware/Tools/px_mkfw.py --board_id 6 > px4flow_prototype.px4
-	@python -u ../Firmware/Tools/px_mkfw.py --prototype px4flow_prototype.px4 --image $(BINARY_BIN) > px4flow.px4
+	@python -u Tools/px_mkfw.py --board_id 6 > px4flow_prototype.px4
+	@python -u Tools/px_mkfw.py --prototype px4flow_prototype.px4 --image $(BINARY_BIN) > px4flow.px4
 
 clean:
 	rm -f *.o *.d $(BINARY) $(BINARY_BIN)

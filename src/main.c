@@ -360,6 +360,29 @@ int main(void)
 			float flow_compx = pixel_flow_x / focal_length_px / (get_time_between_images() / 1000.0f);
 			float flow_compy = pixel_flow_y / focal_length_px / (get_time_between_images() / 1000.0f);
 
+
+      /*
+       * gyro compensation
+       *
+       * TODO: do not compensate more than the valid flow value (+/- 4.5 pixels)
+       *
+       * -y_rate gives x flow
+       * x_rates gives y_flow
+       */
+      if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION])
+      {
+        if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+        {
+          flow_compx = flow_compx + y_rate;
+        }
+
+        if(fabsf(x_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+        {
+          flow_compy = flow_compy - x_rate;
+        }
+      }
+
+
 			/* integrate velocity and output values only if distance is valid */
 			if (distance_valid)
 			{
