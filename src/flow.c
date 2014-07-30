@@ -658,73 +658,9 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 
 			}
 
-			/* compensate rotation */
-			/* calculate focal_length in pixel */
-			const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
-
-			/*
-			 * gyro compensation
-			 * the compensated value is clamped to
-			 * the maximum measurable flow value (param BFLOW_MAX_PIX) +0.5
-			 * (sub pixel flow can add half pixel to the value)
-			 *
-			 * -y_rate gives x flow
-			 * x_rates gives y_flow
-			 */
-			if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION])
-			{
-				if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
-				{
-					/* calc pixel of gyro */
-					float y_rate_pixel = y_rate * (get_time_between_images() / 1000.0f) * focal_length_px;
-					float comp_x = histflowx + y_rate_pixel;
-
-                    /* clamp value to maximum search window size plus half pixel from subpixel search */
-                    if (comp_x < (-SEARCH_SIZE - 0.5f))
-                    	*pixel_flow_x = (-SEARCH_SIZE - 0.5f);
-                    else if (comp_x > (SEARCH_SIZE + 0.5f))
-                    	*pixel_flow_x = (SEARCH_SIZE + 0.5f);
-                    else
-                    	*pixel_flow_x = comp_x;
-				}
-				else
-				{
-					*pixel_flow_x = histflowx;
-				}
-
-				if(fabsf(x_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
-				{
-					/* calc pixel of gyro */
-					float x_rate_pixel = x_rate * (get_time_between_images() / 1000.0f) * focal_length_px;
-					float comp_y = histflowy - x_rate_pixel;
-
-					/* clamp value to maximum search window size plus/minus half pixel from subpixel search */
-					if (comp_y < (-SEARCH_SIZE - 0.5f))
-						*pixel_flow_y = (-SEARCH_SIZE - 0.5f);
-					else if (comp_y > (SEARCH_SIZE + 0.5f))
-						*pixel_flow_y = (SEARCH_SIZE + 0.5f);
-					else
-						*pixel_flow_y = comp_y;
-				}
-				else
-				{
-					*pixel_flow_y = histflowy;
-				}
-
-				/* alternative compensation */
-//				/* compensate y rotation */
-//				*pixel_flow_x = histflowx + y_rate_pixel;
-//
-//				/* compensate x rotation */
-//				*pixel_flow_y = histflowy - x_rate_pixel;
-
-			} else
-			{
-				/* without gyro compensation */
-				*pixel_flow_x = histflowx;
-				*pixel_flow_y = histflowy;
-			}
-
+      /* write results */
+      *pixel_flow_x = histflowx;
+      *pixel_flow_y = histflowy;
 		}
 		else
 		{
