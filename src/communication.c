@@ -47,7 +47,7 @@
 #include "debug.h"
 #include "communication.h"
 
-extern uint32_t get_boot_time_ms();
+extern uint32_t get_boot_time_us();
 extern void buffer_reset();
 extern void systemreset(bool to_bootloader);
 
@@ -308,7 +308,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 			if (ping.target_system == 0 && ping.target_component == 0)
 			{
 				/* Respond to ping */
-				uint64_t r_timestamp = get_boot_time_ms() * 1000;
+				uint64_t r_timestamp = get_boot_time_us();
 				mavlink_msg_ping_send(chan, ping.seq, msg->sysid, msg->compid, r_timestamp);
 			}
 		}

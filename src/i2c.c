@@ -42,6 +42,12 @@
 #include "main.h"
 
 static char offset = 0;
+uint8_t dataRX=0;
+uint8_t txData[2][I2C_FRAME_SIZE+I2C_INTEGRAL_FRAME_SIZE];
+uint8_t publishedIndex = 0;
+uint8_t readout_done = 0;
+uint8_t stop_accumulation = 0;
+
 
 void i2c_init()
 {
@@ -107,13 +113,10 @@ void i2c_init()
     I2C_Cmd(I2C1, ENABLE);
 }
 
-uint8_t txData[2][I2C_FRAME_SIZE];
-uint8_t txBufferIndex = 0;
-
 void I2C1_EV_IRQHandler(void)
 {
 
-    uint8_t dataRX;
+    //uint8_t dataRX;
     static uint8_t txDataIndex = 0x00;
     static uint8_t rxDataIndex = 0x00;
     switch (I2C_GetLastEvent(I2C1 ))
@@ -130,20 +133,30 @@ void I2C1_EV_IRQHandler(void)
     {
         I2C1 ->SR1;
         I2C1 ->SR2;
-        txDataIndex = 0;
         break;
     }
     case I2C_EVENT_SLAVE_BYTE_RECEIVED :
     {
+    	//receive address offset
         dataRX = I2C_ReceiveData(I2C1 );
         rxDataIndex++;
+        //reset Index and indicate sending
+        txDataIndex = 0;
+        readout_done= 0;
         break;
     }
     case I2C_EVENT_SLAVE_BYTE_TRANSMITTING :
     case I2C_EVENT_SLAVE_BYTE_TRANSMITTED :
     {
-        I2C_SendData(I2C1, txData[txBufferIndex][txDataIndex]);
+    	//todo check overrun condition
+        I2C_SendData(I2C1, txData[publishedIndex][dataRX+txDataIndex]);
         txDataIndex++;
+
+        //check whether last byte is read what indicates readout of integral frame and force reset of accumulation
+        if(dataRX+txDataIndex>=(I2C_FRAME_SIZE+I2C_INTEGRAL_FRAME_SIZE)){
+        	readout_done=1;
+        }
+
         break;
     }
 
@@ -182,43 +195,101 @@ void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow
     {
         i2c_frame f;
         char c[I2C_FRAME_SIZE];
-    } u[2];
+    } u;
 
-    int nrxBufferIndex = 1 - txBufferIndex;
+    u.f.frame_count = frame_count;
+    u.f.pixel_flow_x_sum = pixel_flow_x_sum;
+    u.f.pixel_flow_y_sum = pixel_flow_y_sum;
+    u.f.flow_comp_m_x = flow_comp_m_x * 1000;
+    u.f.flow_comp_m_y = flow_comp_m_y * 1000;
+    u.f.qual = qual;
+    u.f.ground_distance = ground_distance * 1000;
 
-    u[nrxBufferIndex].f.frame_count = frame_count;
-    u[nrxBufferIndex].f.pixel_flow_x_sum = pixel_flow_x_sum;
-    u[nrxBufferIndex].f.pixel_flow_y_sum = pixel_flow_y_sum;
-    u[nrxBufferIndex].f.flow_comp_m_x = flow_comp_m_x * 1000;
-    u[nrxBufferIndex].f.flow_comp_m_y = flow_comp_m_y * 1000;
-    u[nrxBufferIndex].f.qual = qual;
-    u[nrxBufferIndex].f.ground_distance = ground_distance * 1000;
+    u.f.gyro_x_rate = gyro_x_rate * getGyroScalingFactor();
+    u.f.gyro_y_rate = gyro_y_rate * getGyroScalingFactor();
+    u.f.gyro_z_rate = gyro_z_rate * getGyroScalingFactor();
+    u.f.gyro_range = getGyroRange();
 
-    u[nrxBufferIndex].f.gyro_x_rate = gyro_x_rate * getGyroScalingFactor();
-    u[nrxBufferIndex].f.gyro_y_rate = gyro_y_rate * getGyroScalingFactor();
-    u[nrxBufferIndex].f.gyro_z_rate = gyro_z_rate * getGyroScalingFactor();
-    u[nrxBufferIndex].f.gyro_range = getGyroRange();
 
-    uint32_t sonar_time_interrupt = get_sonar_measure_time_interrupt();
-    uint32_t sonar_time = get_sonar_measure_time();
-    uint32_t time;
+    uint32_t time_since_last_sonar_update;
 
-    if (sonar_time < sonar_time_interrupt)
-        time = sonar_time;
-    else
-        time = sonar_time_interrupt;
+    time_since_last_sonar_update = (get_boot_time_us() - get_sonar_measure_time());
 
-    time = get_boot_time_ms() - time;
 
-    if (time > 255)
-        time = 255;
+    if (time_since_last_sonar_update < 255*1000){
+    	u.f.sonar_timestamp = time_since_last_sonar_update/1000;//convert to ms
+    }
+    else{
+    	u.f.sonar_timestamp = 255;
+    }
 
-    u[nrxBufferIndex].f.sonar_timestamp = time;
 
+    union
+    {
+        i2c_integral_frame f;
+        char c_integral[I2C_INTEGRAL_FRAME_SIZE];
+    } u_integral;
+
+    static uint16_t accumulated_flow_x = 0;
+    static uint16_t accumulated_flow_y = 0;
+    static uint16_t accumulated_framecount = 0;
+    static int16_t accumulated_gyro_x = 0;
+    static int16_t accumulated_gyro_y = 0;
+    static int16_t accumulated_gyro_z = 0;
+    static uint32_t time_between_readings = 0;
+    static uint32_t lasttime = 0;
+
+
+    //accumulate flow and gyro values between sucessive I2C readings
+    if(stop_accumulation==0 && readout_done==1){
+    	 // reset if readout has been performed
+         time_between_readings = time_between_readings/accumulated_framecount; //fill in minimal time between frames
+    	 accumulated_flow_x = pixel_flow_x_sum;
+    	 accumulated_flow_y = pixel_flow_y_sum;
+    	 accumulated_framecount = 1;
+    	 accumulated_gyro_x = gyro_x_rate * getGyroScalingFactor();
+    	 accumulated_gyro_y = gyro_y_rate * getGyroScalingFactor();
+    	 accumulated_gyro_z = gyro_z_rate * getGyroScalingFactor();
+    }
+    else{
+    	 // accumulate if there is no readout
+		 time_between_readings += (get_boot_time_us()-lasttime);
+    	 accumulated_flow_x += pixel_flow_x_sum;
+    	 accumulated_flow_y += pixel_flow_y_sum;
+    	 accumulated_framecount++;
+    	 accumulated_gyro_x += gyro_x_rate * getGyroScalingFactor();
+    	 accumulated_gyro_y += gyro_y_rate * getGyroScalingFactor();
+    	 accumulated_gyro_z += gyro_z_rate * getGyroScalingFactor();
+    }
+
+    lasttime = get_boot_time_us();
+    stop_accumulation=readout_done;
+
+    u_integral.f.frame_count_since_last_readout = accumulated_framecount;
+    u_integral.f.gyro_x_rate_integral =accumulated_gyro_x;
+    u_integral.f.gyro_y_rate_integral =accumulated_gyro_y;
+    u_integral.f.gyro_z_rate_integral =accumulated_gyro_z;
+    u_integral.f.gyro_range = getGyroRange();
+    u_integral.f.pixel_flow_x_integral =accumulated_flow_x;
+    u_integral.f.pixel_flow_y_integral =accumulated_flow_y;
+    u_integral.f.time_since_last_readout = time_between_readings;
+    u_integral.f.ground_distance = ground_distance * 1000;
+    u_integral.f.sonar_timestamp = time_since_last_sonar_update;
+
+    int notpublishedIndex = 1 - publishedIndex; // choose not the current published buffer
+
+    // fill I2C transmitbuffer with values
     for (i = 0; i < I2C_FRAME_SIZE; i++)
-        txData[txBufferIndex][i] = u[nrxBufferIndex].c[i];
+        txData[notpublishedIndex][i] = u.c[i];
 
-    txBufferIndex = 1 - txBufferIndex;
+    for (i = I2C_FRAME_SIZE; i < I2C_INTEGRAL_FRAME_SIZE+I2C_FRAME_SIZE; i++)
+        txData[notpublishedIndex][i] = u_integral.c_integral[i-I2C_FRAME_SIZE];
+
+
+    if(readout_done){
+    	 publishedIndex = 1 -publishedIndex; //swap buffers if I2C bus is idle
+    }
+
     frame_count++;
 
 }

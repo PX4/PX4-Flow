@@ -32,8 +32,11 @@
 #define I2C_FRAME_H_
 #include <inttypes.h>
 
-#define I2C_FRAME_SIZE (sizeof(i2c_frame))
-typedef struct i2c_frame
+// ***Take care***: struct alignment isn't necessarily what you expect,
+// so unaligned (i.e., single uint8_t values) should go at the end.
+// Otherwise nothing will work.
+
+typedef  struct i2c_frame
 {
     uint16_t frame_count;
     int16_t pixel_flow_x_sum;
@@ -47,6 +50,25 @@ typedef struct i2c_frame
     uint8_t gyro_range;
     uint8_t sonar_timestamp;
     int16_t ground_distance;
-} i2c_frame;
+} __attribute__((packed)) i2c_frame;
+
+#define I2C_FRAME_SIZE (sizeof(i2c_frame))
+
+
+typedef struct i2c_integral_frame
+{
+    uint16_t frame_count_since_last_readout;
+    int16_t pixel_flow_x_integral;
+    int16_t pixel_flow_y_integral;
+    int16_t gyro_x_rate_integral;
+    int16_t gyro_y_rate_integral;
+    int16_t gyro_z_rate_integral;
+    uint32_t time_since_last_readout;
+    uint32_t sonar_timestamp;
+    int16_t ground_distance;
+    uint8_t gyro_range;
+} __attribute__((packed)) i2c_integral_frame;
+
+#define I2C_INTEGRAL_FRAME_SIZE (sizeof(i2c_integral_frame))
 
 #endif /* I2C_FRAME_H_ */

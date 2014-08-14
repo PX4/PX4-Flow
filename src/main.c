@@ -75,8 +75,10 @@ uint8_t* image_buffer_8bit_1 = ((uint8_t*) 0x10000000);
 uint8_t* image_buffer_8bit_2 = ((uint8_t*) ( 0x10000000 | FULL_IMAGE_SIZE ));
 uint8_t buffer_reset_needed;
 
-/* boot time in milli seconds */
+/* boot time in milliseconds ticks */
 volatile uint32_t boot_time_ms = 0;
+/* boot time in 10 microseconds ticks */
+volatile uint32_t boot_time10_us = 0;
 
 /* timer constants */
 #define NTIMERS         	8
@@ -88,11 +90,13 @@ volatile uint32_t boot_time_ms = 0;
 #define TIMER_RECEIVE		5
 #define TIMER_PARAMS		6
 #define TIMER_IMAGE			7
-#define LED_TIMER_COUNT		500
-#define SONAR_TIMER_COUNT 	100
-#define SYSTEM_STATE_COUNT	1000
-#define PARAMS_COUNT		100
+#define MS_TIMER_COUNT		100 /* steps in 10 microseconds ticks */
+#define LED_TIMER_COUNT		500 /* steps in milliseconds ticks */
+#define SONAR_TIMER_COUNT 	100	/* steps in milliseconds ticks */
+#define SYSTEM_STATE_COUNT	1000/* steps in milliseconds ticks */
+#define PARAMS_COUNT		100	/* steps in milliseconds ticks */
 static volatile unsigned timer[NTIMERS];
+static volatile unsigned timer_ms = MS_TIMER_COUNT;
 
 /* timer/system booleans */
 bool send_system_state_now = true;
@@ -101,11 +105,11 @@ bool send_params_now = true;
 bool send_image_now = true;
 
 /**
-  * @brief  Increment boot_time variable and decrement timer array.
+  * @brief  Increment boot_time_ms variable and decrement timer array.
   * @param  None
   * @retval None
   */
-void timer_update(void)
+void timer_update_ms(void)
 {
 	boot_time_ms++;
 
@@ -113,6 +117,7 @@ void timer_update(void)
 	for (unsigned i = 0; i < NTIMERS; i++)
 		if (timer[i] > 0)
 			timer[i]--;
+
 
 	if (timer[TIMER_LED] == 0)
 	{
@@ -152,9 +157,35 @@ void timer_update(void)
 	}
 }
 
+/**
+  * @brief  Increment boot_time10_us variable and decrement millisecond timer, triggered by timer interrupt
+  * @param  None
+  * @retval None
+  */
+void timer_update(void)
+{
+	boot_time10_us++;
+
+	/*  decrements every 10 microseconds*/
+	timer_ms--;
+
+	if (timer_ms == 0)
+	{
+		timer_update_ms();
+		timer_ms = MS_TIMER_COUNT;
+	}
+
+}
+
+
 uint32_t get_boot_time_ms(void)
 {
 	return boot_time_ms;
+}
+
+uint32_t get_boot_time_us(void)
+{
+	return boot_time10_us*10;// *10 to return microseconds
 }
 
 void delay(unsigned msec)
@@ -188,7 +219,7 @@ int main(void)
 	SCB_CPACR |= ((3UL << 10 * 2) | (3UL << 11 * 2)); /* set CP10 Full Access and set CP11 Full Access */
 
 	/* init clock */
-	if (SysTick_Config(SystemCoreClock / 1000))
+	if (SysTick_Config(SystemCoreClock / 100000))/*set timer to trigger interrupt every 10 microsecond */
 	{
 		/* capture clock error */
 		LEDOn(LED_ERR);
@@ -321,8 +352,8 @@ int main(void)
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
 		/* debug */
-		float x_rate_pixel = x_rate * (get_time_between_images() / 1000.0f) * focal_length_px;
-		float y_rate_pixel = y_rate * (get_time_between_images() / 1000.0f) * focal_length_px;
+		float x_rate_pixel = x_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
+		float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
 
 		//FIXME for the old sensor PX4FLOW v1.2 uncomment this!!!!
 //		x_rate = x_rate_raw_sensor; // change x and y rates
@@ -356,8 +387,8 @@ int main(void)
 			 * x / f = X / Z
 			 * y / f = Y / Z
 			 */
-			float flow_compx = pixel_flow_x / focal_length_px / (get_time_between_images() / 1000.0f);
-			float flow_compy = pixel_flow_y / focal_length_px / (get_time_between_images() / 1000.0f);
+			float flow_compx = pixel_flow_x / focal_length_px / (get_time_between_images() / 1000000.0f);
+			float flow_compy = pixel_flow_y / focal_length_px / (get_time_between_images() / 1000000.0f);
 
 			/* integrate velocity and output values only if distance is valid */
 			if (distance_valid)
@@ -406,7 +437,7 @@ int main(void)
 		if(global_data.param[PARAM_SENSOR_POSITION] == BOTTOM)
 		{
 			/* send bottom flow if activated */
-			if (counter % 2 == 0)
+			if (counter % 1 == 0)
 			{
 				float flow_comp_m_x = 0.0f;
 				float flow_comp_m_y = 0.0f;
@@ -430,12 +461,12 @@ int main(void)
 				if (valid_frame_count > 0)
 				{
 					// send flow
-					mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_ms() * 1000, global_data.param[PARAM_SENSOR_ID],
+					mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 							flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 
 					if (global_data.param[PARAM_USB_SEND_FLOW])
-						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_ms() * 1000, global_data.param[PARAM_SENSOR_ID],
+						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 							flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 
@@ -446,12 +477,12 @@ int main(void)
 				else
 				{
 					// send distance
-					mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_ms() * 1000, global_data.param[PARAM_SENSOR_ID],
+					mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 						pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 						0.0f, 0.0f, 0, ground_distance);
 
 					if (global_data.param[PARAM_USB_SEND_FLOW])
-						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_ms() * 1000, global_data.param[PARAM_SENSOR_ID],
+						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 							0.0f, 0.0f, 0, ground_distance);
 	
@@ -461,7 +492,7 @@ int main(void)
 
 				if(global_data.param[PARAM_USB_SEND_GYRO])
 				{
-					mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_ms() * 1000, x_rate, y_rate, z_rate);
+					mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_us(), x_rate, y_rate, z_rate);
 				}
 
 				velocity_x_sum = 0.0f;

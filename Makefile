@@ -57,7 +57,7 @@ SRCS += 	lib/STM32F4xx_StdPeriph_Driver/src/misc.c \
 .PHONY: clean upload-usb
 
 CFLAGS		 = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
-			-O1 -g \
+			-O3 \
 			-std=gnu99 \
 			-Wall \
 			-MD \

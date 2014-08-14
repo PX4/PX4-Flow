@@ -50,7 +50,7 @@
 #include "sonar.h"
 
 extern int atoi (__const char *__nptr);
-extern uint32_t get_boot_time_ms(void);
+extern uint32_t get_boot_time_us(void);
 
 static char data_buffer[5]; // array for collecting decoded data
 
@@ -123,9 +123,9 @@ void UART4_IRQHandler(void)
 				{
 					/* it is in normal sensor range, take it */
 					last_measure_time = measure_time;
-					measure_time = get_boot_time_ms();
+					measure_time = get_boot_time_us();
                     sonar_measure_time_interrupt = measure_time;
-					dt = ((float)(measure_time - last_measure_time)) / 1000.0f;
+					dt = ((float)(measure_time - last_measure_time)) / 1000000.0f;
 
 					valid_data = temp;
 					new_value = 1;
@@ -175,7 +175,7 @@ void sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
 	if(new_value) {
 		sonar_filter();
 		new_value = 0;
-        sonar_measure_time = get_boot_time_ms();
+        sonar_measure_time = get_boot_time_us();
 	}
 
 	*sonar_value_filtered = x_post;

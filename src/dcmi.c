@@ -73,7 +73,7 @@ uint8_t dcmi_image_buffer_8bit_3[FULL_IMAGE_SIZE];
 uint32_t time_between_images;
 
 /* extern functions */
-extern uint32_t get_boot_time_ms(void);
+extern uint32_t get_boot_time_us(void);
 extern void delay(unsigned msec);
 
 /**
@@ -202,8 +202,8 @@ void dma_swap_buffers(void)
 	}
 
 	/* set next time_between_images */
-	cycle_time = get_boot_time_ms() - time_last_frame;
-	time_last_frame = get_boot_time_ms();
+	cycle_time = get_boot_time_us() - time_last_frame;
+	time_last_frame = get_boot_time_us();
 
 	if(image_counter) // image was not fetched jet
 	{
