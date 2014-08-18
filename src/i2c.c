@@ -45,7 +45,8 @@ static char offset = 0;
 uint8_t dataRX=0;
 uint8_t txData[2][I2C_FRAME_SIZE+I2C_INTEGRAL_FRAME_SIZE];
 uint8_t publishedIndex = 0;
-uint8_t readout_done = 0;
+uint8_t readout_done_frame1 = 0;
+uint8_t readout_done_frame2 = 0;
 uint8_t stop_accumulation = 0;
 
 
@@ -142,7 +143,8 @@ void I2C1_EV_IRQHandler(void)
         rxDataIndex++;
         //reset Index and indicate sending
         txDataIndex = 0;
-        readout_done= 0;
+        readout_done_frame1 = 0;
+        readout_done_frame2 = 0;
         break;
     }
     case I2C_EVENT_SLAVE_BYTE_TRANSMITTING :
@@ -153,8 +155,12 @@ void I2C1_EV_IRQHandler(void)
         txDataIndex++;
 
         //check whether last byte is read what indicates readout of integral frame and force reset of accumulation
+        if(dataRX+txDataIndex>=(I2C_FRAME_SIZE)){
+        	readout_done_frame1=1;
+        }
+
         if(dataRX+txDataIndex>=(I2C_FRAME_SIZE+I2C_INTEGRAL_FRAME_SIZE)){
-        	readout_done=1;
+        	readout_done_frame2=1;
         }
 
         break;
@@ -241,7 +247,7 @@ void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow
 
 
     //accumulate flow and gyro values between sucessive I2C readings
-    if(stop_accumulation==0 && readout_done==1){
+    if(stop_accumulation==0 && readout_done_frame2==1){
     	 // reset if readout has been performed
          time_between_readings = time_between_readings/accumulated_framecount; //fill in minimal time between frames
     	 accumulated_flow_x = pixel_flow_x_sum;
@@ -263,7 +269,7 @@ void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow
     }
 
     lasttime = get_boot_time_us();
-    stop_accumulation=readout_done;
+    stop_accumulation=readout_done_frame2;
 
     u_integral.f.frame_count_since_last_readout = accumulated_framecount;
     u_integral.f.gyro_x_rate_integral =accumulated_gyro_x;
@@ -279,14 +285,15 @@ void update_TX_buffer(float pixel_flow_x_sum, float pixel_flow_y_sum, float flow
     int notpublishedIndex = 1 - publishedIndex; // choose not the current published buffer
 
     // fill I2C transmitbuffer with values
-    for (i = 0; i < I2C_FRAME_SIZE; i++)
+    for (i = 0; i < I2C_FRAME_SIZE; i++){
         txData[notpublishedIndex][i] = u.c[i];
+    }
 
     for (i = I2C_FRAME_SIZE; i < I2C_INTEGRAL_FRAME_SIZE+I2C_FRAME_SIZE; i++)
         txData[notpublishedIndex][i] = u_integral.c_integral[i-I2C_FRAME_SIZE];
 
 
-    if(readout_done){
+    if(readout_done_frame1){ //checks frame1 only! todo implement both checks while maintaining compatibility
     	 publishedIndex = 1 -publishedIndex; //swap buffers if I2C bus is idle
     }
 
