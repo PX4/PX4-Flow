@@ -63,10 +63,10 @@ typedef struct i2c_integral_frame
     int16_t gyro_x_rate_integral;
     int16_t gyro_y_rate_integral;
     int16_t gyro_z_rate_integral;
-    uint32_t time_since_last_readout;
+    uint32_t integration_timespan;
     uint32_t sonar_timestamp;
-    int16_t ground_distance;
-    uint8_t gyro_range;
+    uint16_t ground_distance;
+    uint8_t qual;
 } __attribute__((packed)) i2c_integral_frame;
 
 #define I2C_INTEGRAL_FRAME_SIZE (sizeof(i2c_integral_frame))

@@ -176,7 +176,7 @@ void global_data_reset_param_defaults(void){
 	global_data.param_access[PARAM_BOTTOM_FLOW_HIST_FILTER] = READ_WRITE;
 
 //	global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = 0;
-	global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = 1;
+	global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = 0;
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION], "BFLOW_GYRO_COM");
 	global_data.param_access[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = READ_WRITE;
 
@@ -187,6 +187,10 @@ void global_data_reset_param_defaults(void){
 	global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW] = 0.3f;
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_WEIGHT_NEW], "BFLOW_W_NEW");
 	global_data.param_access[PARAM_BOTTOM_FLOW_WEIGHT_NEW] = READ_WRITE;
+
+	global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = 10.0f;
+	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR], "BFLOW_THROTT");
+	global_data.param_access[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = READ_WRITE;
 
 	global_data.param[DEBUG_VARIABLE] = 1;
 	strcpy(global_data.param_name[DEBUG_VARIABLE], "DEBUG");

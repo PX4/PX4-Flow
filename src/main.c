@@ -431,17 +431,33 @@ int main(void)
 
 		counter++;
 
-		/* TODO for debugging */
-		//mavlink_msg_named_value_float_send(MAVLINK_COMM_2, boot_time_ms, "blabla", blabla);
-
 		if(global_data.param[PARAM_SENSOR_POSITION] == BOTTOM)
 		{
 			/* send bottom flow if activated */
-			if (counter % 1 == 0)
+
+			float ground_distance = 0.0f;
+
+
+			if(global_data.param[PARAM_SONAR_FILTERED])
 			{
+				ground_distance = sonar_distance_filtered;
+			}
+			else
+			{
+				ground_distance = sonar_distance_raw;
+			}
+
+			//update I2C transmitbuffer
+            update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_sum/valid_frame_count, velocity_y_sum/valid_frame_count, qual,
+                    ground_distance, x_rate, y_rate, z_rate);
+
+            //serial mavlink  + usb mavlink output throttled
+			if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
+			{
+
 				float flow_comp_m_x = 0.0f;
 				float flow_comp_m_y = 0.0f;
-				float ground_distance = 0.0f;
+
 				if(global_data.param[PARAM_BOTTOM_FLOW_LP_FILTERED])
 				{
 					flow_comp_m_x = velocity_x_lp;
@@ -453,42 +469,19 @@ int main(void)
 					flow_comp_m_y = velocity_y_sum/valid_frame_count;
 				}
 
-				if(global_data.param[PARAM_SONAR_FILTERED])
-					ground_distance = sonar_distance_filtered;
-				else
-					ground_distance = sonar_distance_raw;
 
-				if (valid_frame_count > 0)
-				{
-					// send flow
-					mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
-							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
-							flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
-
-					if (global_data.param[PARAM_USB_SEND_FLOW])
-						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
-							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
-							flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
-
-                    update_TX_buffer(pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f, flow_comp_m_x, flow_comp_m_y, qual,
-                            ground_distance, x_rate, y_rate, z_rate);
-
-				}
-				else
-				{
-					// send distance
-					mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
+				// send flow
+				mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 						pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
-						0.0f, 0.0f, 0, ground_distance);
+						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 
-					if (global_data.param[PARAM_USB_SEND_FLOW])
-						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
+				if (global_data.param[PARAM_USB_SEND_FLOW])
+				{
+					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
-							0.0f, 0.0f, 0, ground_distance);
-	
-                    update_TX_buffer(pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f, 0.0f, 0.0f, 0, ground_distance, x_rate, y_rate,
-                            z_rate);
-                }
+						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
+				}
+
 
 				if(global_data.param[PARAM_USB_SEND_GYRO])
 				{
