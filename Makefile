@@ -10,7 +10,7 @@ JTAGCONFIG 	?= olimex-jtag-tiny.cfg
 #JTAGCONFIG	?= olimex-arm-usb-tiny-h.cfg
 
 MAVLINKBASEDIR = mavlink/include/mavlink/v1.0
-MAVLINKDIR = mavlink/include/mavlink/v1.0/pixhawk
+MAVLINKDIR = mavlink/include/mavlink/v1.0/common
 MAVLINKUSERDIR = mavlink/include/mavlink/v1.0/user
 
 AS =		arm-none-eabi-as
