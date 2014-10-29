@@ -59,7 +59,7 @@ uint8_t usart3_rx_ringbuffer_pop(void);
 /**
   * @brief  Push one byte to ringbuffer of USART3
   */
-uint8_t usart3_tx_ringbuffer_push(uint8_t* ch, uint8_t len);
+uint8_t usart3_tx_ringbuffer_push(const uint8_t* ch, uint8_t len);
 
 /**
   * @brief  Check character availability USART2

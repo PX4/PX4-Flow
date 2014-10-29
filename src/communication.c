@@ -141,7 +141,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 				if (set.param_id[0] != -1)
 				{
 					/* Choose parameter based on index */
-					if (0 <= set.param_index < ONBOARD_PARAM_COUNT)
+					if ((set.param_index >= 0) && (set.param_index < ONBOARD_PARAM_COUNT))
 					{
 						/* Report back value */
 						mavlink_msg_param_value_send(chan,
@@ -421,7 +421,7 @@ void communication_receive_usb(void)
  * @param chan MAVLink channel to use
  * @param ch Character to send
  */
-void mavlink_send_uart_bytes(mavlink_channel_t chan, uint8_t * ch, uint16_t length)
+void mavlink_send_uart_bytes(mavlink_channel_t chan, const uint8_t * ch, uint16_t length)
 {
 	if (chan == MAVLINK_COMM_0)
 	{
