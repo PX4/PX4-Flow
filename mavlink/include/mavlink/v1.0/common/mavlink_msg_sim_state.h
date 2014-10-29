@@ -4,10 +4,10 @@
 
 typedef struct __mavlink_sim_state_t
 {
- float q1; ///< True attitude quaternion component 1
- float q2; ///< True attitude quaternion component 2
- float q3; ///< True attitude quaternion component 3
- float q4; ///< True attitude quaternion component 4
+ float q1; ///< True attitude quaternion component 1, w (1 in null-rotation)
+ float q2; ///< True attitude quaternion component 2, x (0 in null-rotation)
+ float q3; ///< True attitude quaternion component 3, y (0 in null-rotation)
+ float q4; ///< True attitude quaternion component 4, z (0 in null-rotation)
  float roll; ///< Attitude roll expressed as Euler angles, not recommended except for human-readable outputs
  float pitch; ///< Attitude pitch expressed as Euler angles, not recommended except for human-readable outputs
  float yaw; ///< Attitude yaw expressed as Euler angles, not recommended except for human-readable outputs
@@ -69,10 +69,10 @@ typedef struct __mavlink_sim_state_t
  * @param component_id ID of this component (e.g. 200 for IMU)
  * @param msg The MAVLink message to compress the data into
  *
- * @param q1 True attitude quaternion component 1
- * @param q2 True attitude quaternion component 2
- * @param q3 True attitude quaternion component 3
- * @param q4 True attitude quaternion component 4
+ * @param q1 True attitude quaternion component 1, w (1 in null-rotation)
+ * @param q2 True attitude quaternion component 2, x (0 in null-rotation)
+ * @param q3 True attitude quaternion component 3, y (0 in null-rotation)
+ * @param q4 True attitude quaternion component 4, z (0 in null-rotation)
  * @param roll Attitude roll expressed as Euler angles, not recommended except for human-readable outputs
  * @param pitch Attitude pitch expressed as Euler angles, not recommended except for human-readable outputs
  * @param yaw Attitude yaw expressed as Euler angles, not recommended except for human-readable outputs
@@ -161,10 +161,10 @@ static inline uint16_t mavlink_msg_sim_state_pack(uint8_t system_id, uint8_t com
  * @param component_id ID of this component (e.g. 200 for IMU)
  * @param chan The MAVLink channel this message will be sent over
  * @param msg The MAVLink message to compress the data into
- * @param q1 True attitude quaternion component 1
- * @param q2 True attitude quaternion component 2
- * @param q3 True attitude quaternion component 3
- * @param q4 True attitude quaternion component 4
+ * @param q1 True attitude quaternion component 1, w (1 in null-rotation)
+ * @param q2 True attitude quaternion component 2, x (0 in null-rotation)
+ * @param q3 True attitude quaternion component 3, y (0 in null-rotation)
+ * @param q4 True attitude quaternion component 4, z (0 in null-rotation)
  * @param roll Attitude roll expressed as Euler angles, not recommended except for human-readable outputs
  * @param pitch Attitude pitch expressed as Euler angles, not recommended except for human-readable outputs
  * @param yaw Attitude yaw expressed as Euler angles, not recommended except for human-readable outputs
@@ -279,10 +279,10 @@ static inline uint16_t mavlink_msg_sim_state_encode_chan(uint8_t system_id, uint
  * @brief Send a sim_state message
  * @param chan MAVLink channel to send the message
  *
- * @param q1 True attitude quaternion component 1
- * @param q2 True attitude quaternion component 2
- * @param q3 True attitude quaternion component 3
- * @param q4 True attitude quaternion component 4
+ * @param q1 True attitude quaternion component 1, w (1 in null-rotation)
+ * @param q2 True attitude quaternion component 2, x (0 in null-rotation)
+ * @param q3 True attitude quaternion component 3, y (0 in null-rotation)
+ * @param q4 True attitude quaternion component 4, z (0 in null-rotation)
  * @param roll Attitude roll expressed as Euler angles, not recommended except for human-readable outputs
  * @param pitch Attitude pitch expressed as Euler angles, not recommended except for human-readable outputs
  * @param yaw Attitude yaw expressed as Euler angles, not recommended except for human-readable outputs
@@ -366,6 +366,78 @@ static inline void mavlink_msg_sim_state_send(mavlink_channel_t chan, float q1, 
 #endif
 }
 
+#if MAVLINK_MSG_ID_SIM_STATE_LEN <= MAVLINK_MAX_PAYLOAD_LEN
+/*
+  This varient of _send() can be used to save stack space by re-using
+  memory from the receive buffer.  The caller provides a
+  mavlink_message_t which is the size of a full mavlink message. This
+  is usually the receive buffer for the channel, and allows a reply to an
+  incoming message with minimum stack space usage.
+ */
+static inline void mavlink_msg_sim_state_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  float q1, float q2, float q3, float q4, float roll, float pitch, float yaw, float xacc, float yacc, float zacc, float xgyro, float ygyro, float zgyro, float lat, float lon, float alt, float std_dev_horz, float std_dev_vert, float vn, float ve, float vd)
+{
+#if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
+	char *buf = (char *)msgbuf;
+	_mav_put_float(buf, 0, q1);
+	_mav_put_float(buf, 4, q2);
+	_mav_put_float(buf, 8, q3);
+	_mav_put_float(buf, 12, q4);
+	_mav_put_float(buf, 16, roll);
+	_mav_put_float(buf, 20, pitch);
+	_mav_put_float(buf, 24, yaw);
+	_mav_put_float(buf, 28, xacc);
+	_mav_put_float(buf, 32, yacc);
+	_mav_put_float(buf, 36, zacc);
+	_mav_put_float(buf, 40, xgyro);
+	_mav_put_float(buf, 44, ygyro);
+	_mav_put_float(buf, 48, zgyro);
+	_mav_put_float(buf, 52, lat);
+	_mav_put_float(buf, 56, lon);
+	_mav_put_float(buf, 60, alt);
+	_mav_put_float(buf, 64, std_dev_horz);
+	_mav_put_float(buf, 68, std_dev_vert);
+	_mav_put_float(buf, 72, vn);
+	_mav_put_float(buf, 76, ve);
+	_mav_put_float(buf, 80, vd);
+
+#if MAVLINK_CRC_EXTRA
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_SIM_STATE, buf, MAVLINK_MSG_ID_SIM_STATE_LEN, MAVLINK_MSG_ID_SIM_STATE_CRC);
+#else
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_SIM_STATE, buf, MAVLINK_MSG_ID_SIM_STATE_LEN);
+#endif
+#else
+	mavlink_sim_state_t *packet = (mavlink_sim_state_t *)msgbuf;
+	packet->q1 = q1;
+	packet->q2 = q2;
+	packet->q3 = q3;
+	packet->q4 = q4;
+	packet->roll = roll;
+	packet->pitch = pitch;
+	packet->yaw = yaw;
+	packet->xacc = xacc;
+	packet->yacc = yacc;
+	packet->zacc = zacc;
+	packet->xgyro = xgyro;
+	packet->ygyro = ygyro;
+	packet->zgyro = zgyro;
+	packet->lat = lat;
+	packet->lon = lon;
+	packet->alt = alt;
+	packet->std_dev_horz = std_dev_horz;
+	packet->std_dev_vert = std_dev_vert;
+	packet->vn = vn;
+	packet->ve = ve;
+	packet->vd = vd;
+
+#if MAVLINK_CRC_EXTRA
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_SIM_STATE, (const char *)packet, MAVLINK_MSG_ID_SIM_STATE_LEN, MAVLINK_MSG_ID_SIM_STATE_CRC);
+#else
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_SIM_STATE, (const char *)packet, MAVLINK_MSG_ID_SIM_STATE_LEN);
+#endif
+#endif
+}
+#endif
+
 #endif
 
 // MESSAGE SIM_STATE UNPACKING
@@ -374,7 +446,7 @@ static inline void mavlink_msg_sim_state_send(mavlink_channel_t chan, float q1, 
 /**
  * @brief Get field q1 from sim_state message
  *
- * @return True attitude quaternion component 1
+ * @return True attitude quaternion component 1, w (1 in null-rotation)
  */
 static inline float mavlink_msg_sim_state_get_q1(const mavlink_message_t* msg)
 {
@@ -384,7 +456,7 @@ static inline float mavlink_msg_sim_state_get_q1(const mavlink_message_t* msg)
 /**
  * @brief Get field q2 from sim_state message
  *
- * @return True attitude quaternion component 2
+ * @return True attitude quaternion component 2, x (0 in null-rotation)
  */
 static inline float mavlink_msg_sim_state_get_q2(const mavlink_message_t* msg)
 {
@@ -394,7 +466,7 @@ static inline float mavlink_msg_sim_state_get_q2(const mavlink_message_t* msg)
 /**
  * @brief Get field q3 from sim_state message
  *
- * @return True attitude quaternion component 3
+ * @return True attitude quaternion component 3, y (0 in null-rotation)
  */
 static inline float mavlink_msg_sim_state_get_q3(const mavlink_message_t* msg)
 {
@@ -404,7 +476,7 @@ static inline float mavlink_msg_sim_state_get_q3(const mavlink_message_t* msg)
 /**
  * @brief Get field q4 from sim_state message
  *
- * @return True attitude quaternion component 4
+ * @return True attitude quaternion component 4, z (0 in null-rotation)
  */
 static inline float mavlink_msg_sim_state_get_q4(const mavlink_message_t* msg)
 {

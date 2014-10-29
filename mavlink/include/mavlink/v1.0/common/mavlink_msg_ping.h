@@ -4,7 +4,7 @@
 
 typedef struct __mavlink_ping_t
 {
- uint64_t time_usec; ///< Unix timestamp in microseconds
+ uint64_t time_usec; ///< Unix timestamp in microseconds or since system boot if smaller than MAVLink epoch (1.1.2009)
  uint32_t seq; ///< PING sequence
  uint8_t target_system; ///< 0: request ping from all receiving systems, if greater than 0: message is a ping response and number is the system id of the requesting system
  uint8_t target_component; ///< 0: request ping from all receiving components, if greater than 0: message is a ping response and number is the system id of the requesting system
@@ -35,7 +35,7 @@ typedef struct __mavlink_ping_t
  * @param component_id ID of this component (e.g. 200 for IMU)
  * @param msg The MAVLink message to compress the data into
  *
- * @param time_usec Unix timestamp in microseconds
+ * @param time_usec Unix timestamp in microseconds or since system boot if smaller than MAVLink epoch (1.1.2009)
  * @param seq PING sequence
  * @param target_system 0: request ping from all receiving systems, if greater than 0: message is a ping response and number is the system id of the requesting system
  * @param target_component 0: request ping from all receiving components, if greater than 0: message is a ping response and number is the system id of the requesting system
@@ -76,7 +76,7 @@ static inline uint16_t mavlink_msg_ping_pack(uint8_t system_id, uint8_t componen
  * @param component_id ID of this component (e.g. 200 for IMU)
  * @param chan The MAVLink channel this message will be sent over
  * @param msg The MAVLink message to compress the data into
- * @param time_usec Unix timestamp in microseconds
+ * @param time_usec Unix timestamp in microseconds or since system boot if smaller than MAVLink epoch (1.1.2009)
  * @param seq PING sequence
  * @param target_system 0: request ping from all receiving systems, if greater than 0: message is a ping response and number is the system id of the requesting system
  * @param target_component 0: request ping from all receiving components, if greater than 0: message is a ping response and number is the system id of the requesting system
@@ -143,7 +143,7 @@ static inline uint16_t mavlink_msg_ping_encode_chan(uint8_t system_id, uint8_t c
  * @brief Send a ping message
  * @param chan MAVLink channel to send the message
  *
- * @param time_usec Unix timestamp in microseconds
+ * @param time_usec Unix timestamp in microseconds or since system boot if smaller than MAVLink epoch (1.1.2009)
  * @param seq PING sequence
  * @param target_system 0: request ping from all receiving systems, if greater than 0: message is a ping response and number is the system id of the requesting system
  * @param target_component 0: request ping from all receiving components, if greater than 0: message is a ping response and number is the system id of the requesting system
@@ -179,6 +179,44 @@ static inline void mavlink_msg_ping_send(mavlink_channel_t chan, uint64_t time_u
 #endif
 }
 
+#if MAVLINK_MSG_ID_PING_LEN <= MAVLINK_MAX_PAYLOAD_LEN
+/*
+  This varient of _send() can be used to save stack space by re-using
+  memory from the receive buffer.  The caller provides a
+  mavlink_message_t which is the size of a full mavlink message. This
+  is usually the receive buffer for the channel, and allows a reply to an
+  incoming message with minimum stack space usage.
+ */
+static inline void mavlink_msg_ping_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  uint64_t time_usec, uint32_t seq, uint8_t target_system, uint8_t target_component)
+{
+#if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
+	char *buf = (char *)msgbuf;
+	_mav_put_uint64_t(buf, 0, time_usec);
+	_mav_put_uint32_t(buf, 8, seq);
+	_mav_put_uint8_t(buf, 12, target_system);
+	_mav_put_uint8_t(buf, 13, target_component);
+
+#if MAVLINK_CRC_EXTRA
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_PING, buf, MAVLINK_MSG_ID_PING_LEN, MAVLINK_MSG_ID_PING_CRC);
+#else
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_PING, buf, MAVLINK_MSG_ID_PING_LEN);
+#endif
+#else
+	mavlink_ping_t *packet = (mavlink_ping_t *)msgbuf;
+	packet->time_usec = time_usec;
+	packet->seq = seq;
+	packet->target_system = target_system;
+	packet->target_component = target_component;
+
+#if MAVLINK_CRC_EXTRA
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_PING, (const char *)packet, MAVLINK_MSG_ID_PING_LEN, MAVLINK_MSG_ID_PING_CRC);
+#else
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_PING, (const char *)packet, MAVLINK_MSG_ID_PING_LEN);
+#endif
+#endif
+}
+#endif
+
 #endif
 
 // MESSAGE PING UNPACKING
@@ -187,7 +225,7 @@ static inline void mavlink_msg_ping_send(mavlink_channel_t chan, uint64_t time_u
 /**
  * @brief Get field time_usec from ping message
  *
- * @return Unix timestamp in microseconds
+ * @return Unix timestamp in microseconds or since system boot if smaller than MAVLink epoch (1.1.2009)
  */
 static inline uint64_t mavlink_msg_ping_get_time_usec(const mavlink_message_t* msg)
 {

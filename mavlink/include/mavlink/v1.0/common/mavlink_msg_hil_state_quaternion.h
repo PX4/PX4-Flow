@@ -5,7 +5,7 @@
 typedef struct __mavlink_hil_state_quaternion_t
 {
  uint64_t time_usec; ///< Timestamp (microseconds since UNIX epoch or microseconds since system boot)
- float attitude_quaternion[4]; ///< Vehicle attitude expressed as normalized quaternion
+ float attitude_quaternion[4]; ///< Vehicle attitude expressed as normalized quaternion in w, x, y, z order (with 1 0 0 0 being the null-rotation)
  float rollspeed; ///< Body frame roll / phi angular speed (rad/s)
  float pitchspeed; ///< Body frame pitch / theta angular speed (rad/s)
  float yawspeed; ///< Body frame yaw / psi angular speed (rad/s)
@@ -60,7 +60,7 @@ typedef struct __mavlink_hil_state_quaternion_t
  * @param msg The MAVLink message to compress the data into
  *
  * @param time_usec Timestamp (microseconds since UNIX epoch or microseconds since system boot)
- * @param attitude_quaternion Vehicle attitude expressed as normalized quaternion
+ * @param attitude_quaternion Vehicle attitude expressed as normalized quaternion in w, x, y, z order (with 1 0 0 0 being the null-rotation)
  * @param rollspeed Body frame roll / phi angular speed (rad/s)
  * @param pitchspeed Body frame pitch / theta angular speed (rad/s)
  * @param yawspeed Body frame yaw / psi angular speed (rad/s)
@@ -135,7 +135,7 @@ static inline uint16_t mavlink_msg_hil_state_quaternion_pack(uint8_t system_id, 
  * @param chan The MAVLink channel this message will be sent over
  * @param msg The MAVLink message to compress the data into
  * @param time_usec Timestamp (microseconds since UNIX epoch or microseconds since system boot)
- * @param attitude_quaternion Vehicle attitude expressed as normalized quaternion
+ * @param attitude_quaternion Vehicle attitude expressed as normalized quaternion in w, x, y, z order (with 1 0 0 0 being the null-rotation)
  * @param rollspeed Body frame roll / phi angular speed (rad/s)
  * @param pitchspeed Body frame pitch / theta angular speed (rad/s)
  * @param yawspeed Body frame yaw / psi angular speed (rad/s)
@@ -236,7 +236,7 @@ static inline uint16_t mavlink_msg_hil_state_quaternion_encode_chan(uint8_t syst
  * @param chan MAVLink channel to send the message
  *
  * @param time_usec Timestamp (microseconds since UNIX epoch or microseconds since system boot)
- * @param attitude_quaternion Vehicle attitude expressed as normalized quaternion
+ * @param attitude_quaternion Vehicle attitude expressed as normalized quaternion in w, x, y, z order (with 1 0 0 0 being the null-rotation)
  * @param rollspeed Body frame roll / phi angular speed (rad/s)
  * @param pitchspeed Body frame pitch / theta angular speed (rad/s)
  * @param yawspeed Body frame yaw / psi angular speed (rad/s)
@@ -305,6 +305,66 @@ static inline void mavlink_msg_hil_state_quaternion_send(mavlink_channel_t chan,
 #endif
 }
 
+#if MAVLINK_MSG_ID_HIL_STATE_QUATERNION_LEN <= MAVLINK_MAX_PAYLOAD_LEN
+/*
+  This varient of _send() can be used to save stack space by re-using
+  memory from the receive buffer.  The caller provides a
+  mavlink_message_t which is the size of a full mavlink message. This
+  is usually the receive buffer for the channel, and allows a reply to an
+  incoming message with minimum stack space usage.
+ */
+static inline void mavlink_msg_hil_state_quaternion_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  uint64_t time_usec, const float *attitude_quaternion, float rollspeed, float pitchspeed, float yawspeed, int32_t lat, int32_t lon, int32_t alt, int16_t vx, int16_t vy, int16_t vz, uint16_t ind_airspeed, uint16_t true_airspeed, int16_t xacc, int16_t yacc, int16_t zacc)
+{
+#if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
+	char *buf = (char *)msgbuf;
+	_mav_put_uint64_t(buf, 0, time_usec);
+	_mav_put_float(buf, 24, rollspeed);
+	_mav_put_float(buf, 28, pitchspeed);
+	_mav_put_float(buf, 32, yawspeed);
+	_mav_put_int32_t(buf, 36, lat);
+	_mav_put_int32_t(buf, 40, lon);
+	_mav_put_int32_t(buf, 44, alt);
+	_mav_put_int16_t(buf, 48, vx);
+	_mav_put_int16_t(buf, 50, vy);
+	_mav_put_int16_t(buf, 52, vz);
+	_mav_put_uint16_t(buf, 54, ind_airspeed);
+	_mav_put_uint16_t(buf, 56, true_airspeed);
+	_mav_put_int16_t(buf, 58, xacc);
+	_mav_put_int16_t(buf, 60, yacc);
+	_mav_put_int16_t(buf, 62, zacc);
+	_mav_put_float_array(buf, 8, attitude_quaternion, 4);
+#if MAVLINK_CRC_EXTRA
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_HIL_STATE_QUATERNION, buf, MAVLINK_MSG_ID_HIL_STATE_QUATERNION_LEN, MAVLINK_MSG_ID_HIL_STATE_QUATERNION_CRC);
+#else
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_HIL_STATE_QUATERNION, buf, MAVLINK_MSG_ID_HIL_STATE_QUATERNION_LEN);
+#endif
+#else
+	mavlink_hil_state_quaternion_t *packet = (mavlink_hil_state_quaternion_t *)msgbuf;
+	packet->time_usec = time_usec;
+	packet->rollspeed = rollspeed;
+	packet->pitchspeed = pitchspeed;
+	packet->yawspeed = yawspeed;
+	packet->lat = lat;
+	packet->lon = lon;
+	packet->alt = alt;
+	packet->vx = vx;
+	packet->vy = vy;
+	packet->vz = vz;
+	packet->ind_airspeed = ind_airspeed;
+	packet->true_airspeed = true_airspeed;
+	packet->xacc = xacc;
+	packet->yacc = yacc;
+	packet->zacc = zacc;
+	mav_array_memcpy(packet->attitude_quaternion, attitude_quaternion, sizeof(float)*4);
+#if MAVLINK_CRC_EXTRA
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_HIL_STATE_QUATERNION, (const char *)packet, MAVLINK_MSG_ID_HIL_STATE_QUATERNION_LEN, MAVLINK_MSG_ID_HIL_STATE_QUATERNION_CRC);
+#else
+    _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_HIL_STATE_QUATERNION, (const char *)packet, MAVLINK_MSG_ID_HIL_STATE_QUATERNION_LEN);
+#endif
+#endif
+}
+#endif
+
 #endif
 
 // MESSAGE HIL_STATE_QUATERNION UNPACKING
@@ -323,7 +383,7 @@ static inline uint64_t mavlink_msg_hil_state_quaternion_get_time_usec(const mavl
 /**
  * @brief Get field attitude_quaternion from hil_state_quaternion message
  *
- * @return Vehicle attitude expressed as normalized quaternion
+ * @return Vehicle attitude expressed as normalized quaternion in w, x, y, z order (with 1 0 0 0 being the null-rotation)
  */
 static inline uint16_t mavlink_msg_hil_state_quaternion_get_attitude_quaternion(const mavlink_message_t* msg, float *attitude_quaternion)
 {
