@@ -145,7 +145,7 @@ void gyro_config(void);
 /**
  * @brief Read out newest gyro value
  */
-void gyro_read(float* x_rate, float* y_rate, float* z_rate);
+void gyro_read(float* x_rate, float* y_rate, float* z_rate, int16_t* gyro_temp);
 
 /* Low layer functions */
 void spi_config(void);

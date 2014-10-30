@@ -66,6 +66,7 @@ typedef struct i2c_integral_frame
     uint32_t integration_timespan;
     uint32_t sonar_timestamp;
     uint16_t ground_distance;
+    int16_t gyro_temperature;
     uint8_t qual;
 } __attribute__((packed)) i2c_integral_frame;
 

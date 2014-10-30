@@ -287,6 +287,18 @@ int main(void)
 	int valid_frame_count = 0;
 	int pixel_flow_count = 0;
 
+	static float accumulated_flow_x = 0;
+	static float accumulated_flow_y = 0;
+	static float accumulated_gyro_x = 0;
+	static float accumulated_gyro_y = 0;
+	static float accumulated_gyro_z = 0;
+	static uint16_t accumulated_framecount = 0;
+	static uint16_t accumulated_quality = 0;
+	static uint32_t integration_timespan = 0;
+	static uint32_t lasttime = 0;
+	uint32_t time_since_last_sonar_update= 0;
+
+
 	/* main loop */
 	while (1)
 	{
@@ -341,7 +353,8 @@ int main(void)
 
 		/* new gyroscope data */
 		float x_rate_sensor, y_rate_sensor, z_rate_sensor;
-		gyro_read(&x_rate_sensor, &y_rate_sensor, &z_rate_sensor);
+		int16_t gyro_temp;
+		gyro_read(&x_rate_sensor, &y_rate_sensor, &z_rate_sensor,&gyro_temp);
 
 		/* gyroscope coordinate transformation */
 		float x_rate = y_rate_sensor; // change x and y rates
@@ -350,14 +363,6 @@ int main(void)
 
 		/* calculate focal_length in pixel */
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
-
-		/* debug */
-		float x_rate_pixel = x_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
-		float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
-
-		//FIXME for the old sensor PX4FLOW v1.2 uncomment this!!!!
-//		x_rate = x_rate_raw_sensor; // change x and y rates
-//		y_rate = y_rate_raw_sensor;
 
 		/* get sonar data */
 		sonar_read(&sonar_distance_filtered, &sonar_distance_raw);
@@ -397,11 +402,23 @@ int main(void)
 				float new_velocity_x = - flow_compx * sonar_distance_filtered;
 				float new_velocity_y = - flow_compy * sonar_distance_filtered;
 
+				time_since_last_sonar_update = (get_boot_time_us()- get_sonar_measure_time());
+
 				if (qual > 0)
 				{
 					velocity_x_sum += new_velocity_x;
 					velocity_y_sum += new_velocity_y;
 					valid_frame_count++;
+
+					uint32_t deltatime = (get_boot_time_us() - lasttime);
+					integration_timespan += deltatime;
+					accumulated_flow_x += pixel_flow_y  / focal_length_px * 1.0f; //rad axis swapped to align x flow around y axis
+					accumulated_flow_y += pixel_flow_x  / focal_length_px * -1.0f;//rad
+					accumulated_gyro_x += x_rate * deltatime / 1000000.0f;	//rad
+					accumulated_gyro_y += y_rate * deltatime / 1000000.0f;	//rad
+					accumulated_gyro_z += z_rate * deltatime / 1000000.0f;	//rad
+					accumulated_framecount++;
+					accumulated_quality += qual;
 
 					/* lowpass velocity output */
 					velocity_x_lp = global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW] * new_velocity_x +
@@ -422,6 +439,8 @@ int main(void)
 				velocity_x_lp = (1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_x_lp;
 				velocity_y_lp = (1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_y_lp;
 			}
+			//update lasttime
+			lasttime = get_boot_time_us();
 
 			pixel_flow_x_sum += pixel_flow_x;
 			pixel_flow_y_sum += pixel_flow_y;
@@ -449,7 +468,7 @@ int main(void)
 
 			//update I2C transmitbuffer
             update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_sum/valid_frame_count, velocity_y_sum/valid_frame_count, qual,
-                    ground_distance, x_rate, y_rate, z_rate);
+                    ground_distance, x_rate, y_rate, z_rate, gyro_temp);
 
             //serial mavlink  + usb mavlink output throttled
 			if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
@@ -475,11 +494,24 @@ int main(void)
 						pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 
+				mavlink_msg_optical_flow_rad_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
+						integration_timespan, accumulated_flow_x, accumulated_flow_y,
+						accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,
+						gyro_temp, accumulated_quality/accumulated_framecount,
+						time_since_last_sonar_update,ground_distance);
+
 				if (global_data.param[PARAM_USB_SEND_FLOW])
 				{
 					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
+
+
+					mavlink_msg_optical_flow_rad_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
+							integration_timespan, accumulated_flow_x, accumulated_flow_y,
+							accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,
+							gyro_temp, accumulated_quality/accumulated_framecount,
+							time_since_last_sonar_update,ground_distance);
 				}
 
 
@@ -487,6 +519,16 @@ int main(void)
 				{
 					mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_us(), x_rate, y_rate, z_rate);
 				}
+
+
+				integration_timespan = 0;
+				accumulated_flow_x = 0;
+				accumulated_flow_y = 0;
+				accumulated_framecount = 0;
+				accumulated_quality = 0;
+				accumulated_gyro_x = 0;
+				accumulated_gyro_y = 0;
+				accumulated_gyro_z = 0;
 
 				velocity_x_sum = 0.0f;
 				velocity_y_sum = 0.0f;

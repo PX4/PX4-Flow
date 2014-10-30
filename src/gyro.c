@@ -74,7 +74,7 @@ void gyro_config()
  * @param y_rate Return value y rate
  * @param z_rate Return value z rate
  */
-void gyro_read(float* x_rate, float* y_rate, float* z_rate)
+void gyro_read(float* x_rate, float* y_rate, float* z_rate,int16_t* gyro_temp)
 {
 	int16_t x_rate_raw, y_rate_raw, z_rate_raw;
 	x_rate_raw = 0;
@@ -96,6 +96,8 @@ void gyro_read(float* x_rate, float* y_rate, float* z_rate)
 	*x_rate = x_rate_raw * gyro_scale - x_rate_offset;
 	*y_rate = y_rate_raw * gyro_scale - y_rate_offset;
 	*z_rate = z_rate_raw * gyro_scale - z_rate_offset;
+
+	*gyro_temp = 789;
 }
 
 /**
