@@ -467,8 +467,16 @@ int main(void)
 			}
 
 			//update I2C transmitbuffer
-            update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_sum/valid_frame_count, velocity_y_sum/valid_frame_count, qual,
-                    ground_distance, x_rate, y_rate, z_rate, gyro_temp);
+			if(valid_frame_count>0)
+			{
+				update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_sum/valid_frame_count, velocity_y_sum/valid_frame_count, qual,
+						ground_distance, x_rate, y_rate, z_rate, gyro_temp);
+			}
+			else
+			{
+				update_TX_buffer(pixel_flow_x, pixel_flow_y, 0.0f, 0.0f, qual,
+						ground_distance, x_rate, y_rate, z_rate, gyro_temp);
+			}
 
             //serial mavlink  + usb mavlink output throttled
 			if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
@@ -484,8 +492,16 @@ int main(void)
 				}
 				else
 				{
-					flow_comp_m_x = velocity_x_sum/valid_frame_count;
-					flow_comp_m_y = velocity_y_sum/valid_frame_count;
+					if(valid_frame_count>0)
+					{
+						flow_comp_m_x = velocity_x_sum/valid_frame_count;
+						flow_comp_m_y = velocity_y_sum/valid_frame_count;
+					}
+					else
+					{
+						flow_comp_m_x = 0.0f;
+						flow_comp_m_y = 0.0f;
+					}
 				}
 
 
