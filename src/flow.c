@@ -190,10 +190,10 @@ static inline uint32_t compute_diff(uint8_t *image, uint16_t offX, uint16_t offY
 	acc = __USADA8(*((uint32_t*) &image[off + 0 + 2 * row_size]), *((uint32_t*) &image[off + 0 + 3 * row_size]), acc);
 
 	/* we need to get columns */
-	uint32_t col1 = (image[off + 0 + 0 * row_size] << 24) | image[off + 1 + 0 * row_size] << 16 | image[off + 2 + 0 * row_size] << 8 | image[off + 3 + 0 * row_size];
-	uint32_t col2 = (image[off + 0 + 1 * row_size] << 24) | image[off + 1 + 1 * row_size] << 16 | image[off + 2 + 1 * row_size] << 8 | image[off + 3 + 1 * row_size];
-	uint32_t col3 = (image[off + 0 + 2 * row_size] << 24) | image[off + 1 + 2 * row_size] << 16 | image[off + 2 + 2 * row_size] << 8 | image[off + 3 + 2 * row_size];
-	uint32_t col4 = (image[off + 0 + 3 * row_size] << 24) | image[off + 1 + 3 * row_size] << 16 | image[off + 2 + 3 * row_size] << 8 | image[off + 3 + 3 * row_size];
+	uint32_t col1 = (image[off + 0 + 0 * row_size] << 24) | image[off + 0 + 1 * row_size] << 16 | image[off + 0 + 2 * row_size] << 8 | image[off + 0 + 3 * row_size];
+	uint32_t col2 = (image[off + 1 + 0 * row_size] << 24) | image[off + 1 + 1 * row_size] << 16 | image[off + 1 + 2 * row_size] << 8 | image[off + 1 + 3 * row_size];
+	uint32_t col3 = (image[off + 2 + 0 * row_size] << 24) | image[off + 2 + 1 * row_size] << 16 | image[off + 2 + 2 * row_size] << 8 | image[off + 2 + 3 * row_size];
+	uint32_t col4 = (image[off + 3 + 0 * row_size] << 24) | image[off + 3 + 1 * row_size] << 16 | image[off + 3 + 2 * row_size] << 8 | image[off + 3 + 3 * row_size];
 
 	/* calc column diff */
 	acc = __USADA8(col1, col2, acc);
@@ -485,8 +485,8 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				if (subdirs[i] == 0 || subdirs[i] == 1 || subdirs[i] == 7) hist_index_x += 1;
 				if (subdirs[i] == 3 || subdirs[i] == 4 || subdirs[i] == 5) hist_index_x += -1;
 				uint8_t hist_index_y = 2*sumy + (winmax-winmin+1);
-				if (subdirs[i] == 5 || subdirs[i] == 6 || subdirs[i] == 7) hist_index_y += 1;
-				if (subdirs[i] == 1 || subdirs[i] == 2 || subdirs[i] == 3) hist_index_y += -1;
+				if (subdirs[i] == 5 || subdirs[i] == 6 || subdirs[i] == 7) hist_index_y += -1;
+				if (subdirs[i] == 1 || subdirs[i] == 2 || subdirs[i] == 3) hist_index_y += 1;
 
 				histx[hist_index_x]++;
 				histy[hist_index_y]++;
@@ -641,14 +641,13 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				{
 					float subdirx = 0.0f;
 					if (subdirs[i] == 0 || subdirs[i] == 1 || subdirs[i] == 7) subdirx = 0.5f;
-
 					if (subdirs[i] == 3 || subdirs[i] == 4 || subdirs[i] == 5) subdirx = -0.5f;
 					histflowx += (float)dirsx[i] + subdirx;
 					meancount_x++;
 
 					float subdiry = 0.0f;
-					if (subdirs[i] == 5 || subdirs[i] == 6 || subdirs[i] == 7) subdiry = 0.5f;
-					if (subdirs[i] == 1 || subdirs[i] == 2 || subdirs[i] == 3) subdiry = -0.5f;
+					if (subdirs[i] == 5 || subdirs[i] == 6 || subdirs[i] == 7) subdiry = -0.5f;
+					if (subdirs[i] == 1 || subdirs[i] == 2 || subdirs[i] == 3) subdiry = 0.5f;
 					histflowy += (float)dirsy[i] + subdiry;
 					meancount_y++;
 				}
