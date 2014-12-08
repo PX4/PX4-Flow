@@ -48,6 +48,9 @@
 #include "usart.h"
 #include "settings.h"
 #include "sonar.h"
+#include "sonar_mode_filter.h"
+
+#define SONAR_SCALE 1000.0f
 
 extern int atoi (__const char *__nptr);
 extern uint32_t get_boot_time_us(void);
@@ -72,6 +75,8 @@ float x_post = 0.0f; // m
 float v_post = 0.0f; // m/s
 
 float sonar_raw = 0.0f;  // m
+
+float sonar_mode = 0.0f;				/**< the mode of all sonar measurements */
 
 /**
   * @brief  Triggers the sonar to measure the next value
@@ -124,10 +129,11 @@ void UART4_IRQHandler(void)
 					/* it is in normal sensor range, take it */
 					last_measure_time = measure_time;
 					measure_time = get_boot_time_us();
-                    sonar_measure_time_interrupt = measure_time;
+					sonar_measure_time_interrupt = measure_time;
 					dt = ((float)(measure_time - last_measure_time)) / 1000000.0f;
 
 					valid_data = temp;
+					sonar_mode = insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
 					new_value = 1;
 				}
 			}
@@ -155,7 +161,7 @@ void sonar_filter()
 	x_pred = x_post + dt * v_pred;
 	v_pred = v_post;
 
-	float x_new = ((float) valid_data) / 1000.0f;
+	float x_new = sonar_mode;
 	sonar_raw = x_new;
 	x_post = x_pred + global_data.param[PARAM_SONAR_KALMAN_L1] * (x_new - x_pred);
 	v_post = v_pred + global_data.param[PARAM_SONAR_KALMAN_L2] * (x_new - x_pred);
@@ -175,7 +181,7 @@ void sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
 	if(new_value) {
 		sonar_filter();
 		new_value = 0;
-        sonar_measure_time = get_boot_time_us();
+		sonar_measure_time = get_boot_time_us();
 	}
 
 	*sonar_value_filtered = x_post;
