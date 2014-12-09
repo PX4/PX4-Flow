@@ -365,7 +365,13 @@ int main(void)
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
 		/* get sonar data */
-		sonar_read(&sonar_distance_filtered, &sonar_distance_raw);
+		distance_valid = sonar_read(&sonar_distance_filtered, &sonar_distance_raw);
+
+		/* reset to zero for invalid distances */
+		if (!distance_valid) {
+			sonar_distance_filtered = 0.0f;
+			sonar_distance_raw = 0.0f;
+		}
 
 		/* compute optical flow */
 		if(global_data.param[PARAM_SENSOR_POSITION] == BOTTOM)
@@ -375,17 +381,6 @@ int main(void)
 
 			/* compute optical flow */
 			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
-
-			if (sonar_distance_filtered > 5.0f || sonar_distance_filtered == 0.0f)
-			{
-				/* distances above 5m are considered invalid */
-				sonar_distance_filtered = 0.0f;
-				distance_valid = false;
-			}
-			else
-			{
-				distance_valid = true;
-			}
 
 			/*
 			 * real point P (X,Y,Z), image plane projection p (x,y,z), focal-length f, distance-to-scene Z
