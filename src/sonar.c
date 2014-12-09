@@ -50,7 +50,9 @@
 #include "sonar.h"
 #include "sonar_mode_filter.h"
 
-#define SONAR_SCALE 1000.0f
+#define SONAR_SCALE	1000.0f
+#define SONAR_MIN	0.001f		/** 1mm sonar minimum distance */
+#define SONAR_MAX	3.5f		/** 3.5m sonar maximum distance */
 
 extern int atoi (__const char *__nptr);
 extern uint32_t get_boot_time_us(void);
@@ -76,7 +78,8 @@ float v_post = 0.0f; // m/s
 
 float sonar_raw = 0.0f;  // m
 
-float sonar_mode = 0.0f;				/**< the mode of all sonar measurements */
+float sonar_mode = 0.0f;
+float sonar_valid = false;				/**< the mode of all sonar measurements */
 
 /**
   * @brief  Triggers the sonar to measure the next value
@@ -121,10 +124,8 @@ void UART4_IRQHandler(void)
 				data_buffer[4] = 0;
 				int temp = atoi(data_buffer);
 
-				/*
-				 * 4744 or 4743 is invalid data (or upper/lower than maximal/minimal range)
-				 */
-				if (temp > 0 && temp < 4743)
+				/* use real-world maximum ranges to cut off pure noise */
+				if ((temp > SONAR_MIN*SONAR_SCALE) && (temp < SONAR_MAX*SONAR_SCALE))
 				{
 					/* it is in normal sensor range, take it */
 					last_measure_time = measure_time;
@@ -135,6 +136,9 @@ void UART4_IRQHandler(void)
 					valid_data = temp;
 					sonar_mode = insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
 					new_value = 1;
+					sonar_valid = true;
+				} else {
+					sonar_valid = false;
 				}
 			}
 
@@ -175,18 +179,24 @@ void sonar_filter()
   * @param  sonar_value_filtered Filtered return value
   * @param  sonar_value_raw Raw return value
   */
-void sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
+bool sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
 {
 	/* getting new data with only around 10Hz */
-	if(new_value) {
+	if (new_value) {
 		sonar_filter();
 		new_value = 0;
 		sonar_measure_time = get_boot_time_us();
 	}
 
+	/* catch post-filter out of band values */
+	if (x_post < SONAR_MIN || x_post > SONAR_MAX) {
+		sonar_valid = false;
+	}
+
 	*sonar_value_filtered = x_post;
 	*sonar_value_raw = sonar_raw;
 
+	return sonar_valid;
 }
 
 /**
