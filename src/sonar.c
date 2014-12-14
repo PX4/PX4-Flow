@@ -51,8 +51,8 @@
 #include "sonar_mode_filter.h"
 
 #define SONAR_SCALE	1000.0f
-#define SONAR_MIN	0.001f		/** 1mm sonar minimum distance */
-#define SONAR_MAX	3.5f		/** 3.5m sonar maximum distance */
+#define SONAR_MIN	0.12f		/** 0.12m sonar minimum distance */
+#define SONAR_MAX	3.5f		/** 3.50m sonar maximum distance */
 
 extern int atoi (__const char *__nptr);
 extern uint32_t get_boot_time_us(void);
