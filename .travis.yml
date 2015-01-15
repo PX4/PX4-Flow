@@ -1,0 +1,51 @@
+language: cpp
+before_script:
+- sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
+- sudo apt-get update -qq
+- if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8 gcc-4.8 libstdc++-4.8-dev;
+  fi
+- if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+- sudo apt-get install s3cmd grep zip mailutils
+- sudo apt-get install libc6:i386 libgcc1:i386 gcc-4.6-base:i386 libstdc++5:i386 libstdc++6:i386
+- sudo apt-get install python-serial python-argparse
+- sudo apt-get install flex bison libncurses5-dev autoconf texinfo build-essential
+  libtool zlib1g-dev genromfs git wget cmake
+- pushd .
+- cd ~
+- wget https://launchpadlibrarian.net/174121628/gcc-arm-none-eabi-4_7-2014q2-20140408-linux.tar.bz2
+- tar -jxf gcc-arm-none-eabi-4_7-2014q2-20140408-linux.tar.bz2
+- exportline="export PATH=$HOME/gcc-arm-none-eabi-4_7-2014q2/bin:\$PATH"
+- if grep -Fxq "$exportline" ~/.profile; then echo nothing to do ; else echo $exportline
+  >> ~/.profile; fi
+- . ~/.profile
+- popd
+git:
+  depth: 500
+env:
+  global:
+  - secure: "IukUGn1p3sl0X0EqL51GOoxEPA3WQrOolvtUY5jnNyTJEb97RxWkneqJEsQu0Z5HAIrqMGb5AOQiXtn01NyVuU8yZCF/GuUeikIip1X1y9cyt1NIl7rndse3SZ/8CVj0g2MdsC5ViQu7sUVqdlQ9gzxMeJQfyKHdGz77V+pcItg="
+  - secure: "GcxEQk+mE/1rdiP6Uac7YVr8kj5ILG55tXGfX322ITt/T/6IgONMJvgeb7seQsxk+s/UMeKQZ3iN8jUMk1FWjLZufVOhXwh8+pvIfSU4Sf+Vvr80kxXCa45CkttN4Qfqh5oP0VBsnS0cUsWO+XjlI//Qj17K3dnwVvALUcn9lHg="
+  - PX4_AWS_BUCKET=px4-travis
+  - PX4_EMAIL_SUBJECT="Travis CI result"
+  - PX4_REPORT=report.txt
+script:
+- arm-none-eabi-gcc --version
+- make
+- zip Flow.zip px4flow.px4
+addons:
+  artifacts:
+    key:
+      secure: Pn7m9GQoHY9eFhq/P0Vb8lzbozNUl9z4kR2k+bpJ0PyuX6nyde8kMHZGICZtc03T7JnQENpkp9/T6MWV3TR71YxNJxyWtKSu/YdJBHz1M/zaQG6FXDZA1VfHpIbdGujGop6gJUMVZ0RaMXWPr63zZDTWGmFuNcU2E1UrswM3m5w=
+    secret:
+      secure: Dkyn1HN21un6pDcivX0EwlK7MYaUiVMp/wBkiqizR0/gH4xheSwW+WHUZEWcYhb6dw7wj+/EH/n79HqJPMhGeTtUl8Tj7TFz4cC60PnMAhA3OO7AkaEbaxYKjG8+MTAlJ7EGl3IGAL1s87boaA5Ig7k0FCyUr6NCaWmVvi8wkpY=
+    bucket: px4-travis
+deploy:
+  provider: s3
+  access_key_id: AKIAI2OHUHVDRRR4BSMA
+  secret_access_key:
+    secure: efZ5up2QNC3p7RWwXqh/jITNVCmoCrw03CUSyCtW5MqQfZnMdz330FEr/j2oU4Zyya62XsvsUwi+ObTF8JbVTp7gC/tsF347FOOyDs59gKW8ORi5CG7avGBWl1iuyiPWDrsYvcs4DC0EsN82TSsY3aItkfSxVRt7ozMNDx+Z6o4=
+  bucket: px4-travis
+  file: Firmware.zip
+  acl: public_read
+  on:
+    repo: PX4/Flow
