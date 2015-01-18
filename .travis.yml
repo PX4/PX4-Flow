@@ -34,6 +34,8 @@ script:
 - zip Flow.zip px4flow.px4
 addons:
   artifacts:
+    paths:
+    - "Flow.zip"
     key:
       secure: Pn7m9GQoHY9eFhq/P0Vb8lzbozNUl9z4kR2k+bpJ0PyuX6nyde8kMHZGICZtc03T7JnQENpkp9/T6MWV3TR71YxNJxyWtKSu/YdJBHz1M/zaQG6FXDZA1VfHpIbdGujGop6gJUMVZ0RaMXWPr63zZDTWGmFuNcU2E1UrswM3m5w=
     secret:
