@@ -70,6 +70,10 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_SYSTEM_SEND_STATE], "SYS_SEND_STATE");
 	global_data.param_access[PARAM_SYSTEM_SEND_STATE] = READ_WRITE;
 
+	global_data.param[PARAM_SYSTEM_SEND_LPOS] = 0;
+	strcpy(global_data.param_name[PARAM_SYSTEM_SEND_LPOS], "SYS_SEND_LPOS");
+	global_data.param_access[PARAM_SYSTEM_SEND_LPOS] = READ_WRITE;
+
 	global_data.param[PARAM_SENSOR_POSITION] = 0; // BOTTOM
 	strcpy(global_data.param_name[PARAM_SENSOR_POSITION], "POSITION");
 	global_data.param_access[PARAM_SENSOR_POSITION] = READ_WRITE;
