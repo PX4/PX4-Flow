@@ -112,14 +112,16 @@ void handle_mavlink_message(mavlink_channel_t chan,
 	}
 
 	/* forwarded received messages from usb and usart3 to usart2 */
-	uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-	uint32_t len;
-
-	/* copy to usart2 */
-	len = mavlink_msg_to_send_buffer(buf, msg);
-	for (int i = 0; i < len; i++)
+	if(chan == MAVLINK_COMM_0 || chan == MAVLINK_COMM_2)
 	{
-		usart2_tx_ringbuffer_push(buf, len);
+		uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+		uint32_t len;
+
+		// Copy to USART 2
+		len = mavlink_msg_to_send_buffer(buf, msg);
+		mavlink_send_uart_bytes(MAVLINK_COMM_1, buf, len);
+
+		return;
 	}
 
 	/* handling messages */
@@ -427,6 +429,11 @@ void mavlink_send_uart_bytes(mavlink_channel_t chan, const uint8_t * ch, uint16_
 	{
 		/* send to UART3 */
 		usart3_tx_ringbuffer_push(ch, length);
+	}
+	if (chan == MAVLINK_COMM_1)
+	{
+		/* send to UART2 */
+		usart2_tx_ringbuffer_push(ch, length);
 	}
 	if (chan == MAVLINK_COMM_2)
 	{

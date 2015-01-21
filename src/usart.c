@@ -62,7 +62,7 @@ int usart3_rx_counter_write = 0;
 /**
   * @brief  Push one byte to ringbuffer of USART2
   */
-uint8_t usart2_tx_ringbuffer_push(uint8_t* ch, uint8_t len)
+uint8_t usart2_tx_ringbuffer_push(const uint8_t* ch, uint8_t len)
 {
 	USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
 

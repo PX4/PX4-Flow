@@ -49,7 +49,7 @@ uint8_t usart2_rx_ringbuffer_pop(void);
 /**
   * @brief  Push one byte to ringbuffer of USART2
   */
-uint8_t usart2_tx_ringbuffer_push(uint8_t* ch, uint8_t len);
+uint8_t usart2_tx_ringbuffer_push(const uint8_t* ch, uint8_t len);
 
 /**
   * @brief  Pop one byte from ringbuffer of USART3
