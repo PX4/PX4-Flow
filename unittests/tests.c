@@ -4,7 +4,7 @@
 
 
 #include <stdio.h>
-#include "../src/sonar_mode_filter.h"
+#include "../inc/sonar_mode_filter.h"
 
 int main(int argc, char *argv[]) {
 
