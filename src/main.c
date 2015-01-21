@@ -537,7 +537,7 @@ int main(void)
 					/* rough local position estimate for unit testing */
 					lpos.x += ground_distance*accumulated_flow_x;
 					lpos.y += ground_distance*accumulated_flow_y;
-					lpos.z = ground_distance;
+					lpos.z = -ground_distance;
  					/* velocity not directly measured and not important for testing */
 					lpos.vx = 0;
 					lpos.vy = 0;
