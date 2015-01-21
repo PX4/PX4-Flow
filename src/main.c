@@ -81,7 +81,7 @@ volatile uint32_t boot_time_ms = 0;
 volatile uint32_t boot_time10_us = 0;
 
 /* timer constants */
-#define NTIMERS         	8
+#define NTIMERS         	9
 #define TIMER_CIN       	0
 #define TIMER_LED       	1
 #define TIMER_DELAY     	2
@@ -90,11 +90,14 @@ volatile uint32_t boot_time10_us = 0;
 #define TIMER_RECEIVE		5
 #define TIMER_PARAMS		6
 #define TIMER_IMAGE			7
+#define TIMER_LPOS		8
 #define MS_TIMER_COUNT		100 /* steps in 10 microseconds ticks */
 #define LED_TIMER_COUNT		500 /* steps in milliseconds ticks */
 #define SONAR_TIMER_COUNT 	100	/* steps in milliseconds ticks */
 #define SYSTEM_STATE_COUNT	1000/* steps in milliseconds ticks */
 #define PARAMS_COUNT		100	/* steps in milliseconds ticks */
+#define LPOS_TIMER_COUNT 	100	/* steps in milliseconds ticks */
+
 static volatile unsigned timer[NTIMERS];
 static volatile unsigned timer_ms = MS_TIMER_COUNT;
 
@@ -103,6 +106,17 @@ bool send_system_state_now = true;
 bool receive_now = true;
 bool send_params_now = true;
 bool send_image_now = true;
+bool send_lpos_now = true;
+
+/* local position estimate without orientation, useful for unit testing w/o FMU */
+struct lpos_t {
+	float x;
+	float y;
+	float z;
+	float vx;
+	float vy;
+	float vz;
+} lpos = {0};
 
 /**
   * @brief  Increment boot_time_ms variable and decrement timer array.
@@ -154,6 +168,12 @@ void timer_update_ms(void)
 	{
 		send_image_now = true;
 		timer[TIMER_IMAGE] = global_data.param[PARAM_VIDEO_RATE];
+	}
+
+	if (timer[TIMER_LPOS] == 0)
+	{
+		send_lpos_now = true;
+		timer[TIMER_LPOS] = LPOS_TIMER_COUNT;
 	}
 }
 
@@ -511,6 +531,28 @@ int main(void)
 						gyro_temp, accumulated_quality/accumulated_framecount,
 						time_since_last_sonar_update,ground_distance);
 
+				/* send approximate local position estimate without heading */
+				if (global_data.param[PARAM_SYSTEM_SEND_LPOS])
+				{
+					/* rough local position estimate for unit testing */
+					lpos.x += ground_distance*accumulated_flow_x;
+					lpos.y += ground_distance*accumulated_flow_y;
+					lpos.z = -ground_distance;
+ 					/* velocity not directly measured and not important for testing */
+					lpos.vx = 0;
+					lpos.vy = 0;
+					lpos.vz = 0;
+
+				} else {
+					/* toggling param allows user reset */
+					lpos.x = 0;
+					lpos.y = 0;
+					lpos.z = 0;
+					lpos.vx = 0;
+					lpos.vy = 0;
+					lpos.vz = 0;
+				}
+
 				if (global_data.param[PARAM_USB_SEND_FLOW])
 				{
 					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
@@ -530,7 +572,6 @@ int main(void)
 				{
 					mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_us(), x_rate, y_rate, z_rate);
 				}
-
 
 				integration_timespan = 0;
 				accumulated_flow_x = 0;
@@ -582,6 +623,16 @@ int main(void)
 			debug_message_send_one();
 			communication_parameter_send();
 			send_params_now = false;
+		}
+
+		/* send local position estimate, for testing only, doesn't account for heading */
+		if (send_lpos_now)
+		{
+			if (global_data.param[PARAM_SYSTEM_SEND_LPOS])
+			{
+				mavlink_msg_local_position_ned_send(MAVLINK_COMM_2, timer_ms, lpos.x, lpos.y, lpos.z, lpos.vx, lpos.vy, lpos.vz);
+			}
+			send_lpos_now = false;
 		}
 
 		/*  transmit raw 8-bit image */
