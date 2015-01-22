@@ -68,6 +68,11 @@
 #define SCB_CPACR (*((uint32_t*) (((0xE000E000UL) + 0x0D00UL) + 0x088)))
 #endif
 
+
+/* prototypes */
+void delay(unsigned msec);
+void buffer_reset(void);
+
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 
 /* fast image buffers for calculations */

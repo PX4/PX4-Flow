@@ -37,9 +37,9 @@
  * @brief  Configures I2C1 for communication as a slave (default behaviour for STM32F)
  */
 
-void i2c_init();
+void i2c_init(void);
 void update_TX_buffer(float pixel_flow_x, float pixel_flow_y, float flow_comp_m_x, float flow_comp_m_y, uint8_t qual,
         float ground_distance, float x_rate, float y_rate, float z_rate, int16_t gyro_temp);
-char i2c_get_ownaddress1();
+char i2c_get_ownaddress1(void);
 #endif /* I2C_H_ */
 

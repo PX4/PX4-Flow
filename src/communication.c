@@ -47,8 +47,8 @@
 #include "debug.h"
 #include "communication.h"
 
-extern uint32_t get_boot_time_us();
-extern void buffer_reset();
+extern uint32_t get_boot_time_us(void);
+extern void buffer_reset(void);
 extern void systemreset(bool to_bootloader);
 
 mavlink_system_t mavlink_system;

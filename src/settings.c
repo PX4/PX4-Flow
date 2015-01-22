@@ -35,6 +35,9 @@
 #include <mavlink.h>
 #include "settings.h"
 
+enum global_param_id_t global_param_id;
+struct global_struct global_data;
+
 extern uint8_t debug_int_message_buffer(const char* string, int32_t num);
 
 /**

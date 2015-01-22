@@ -44,6 +44,11 @@
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 
+/* prototypes */
+void I2C1_EV_IRQHandler(void);
+void I2C1_ER_IRQHandler(void);
+char readI2CAddressOffset(void);
+
 static char offset = 0;
 uint8_t dataRX = 0;
 uint8_t txDataFrame1[2][I2C_FRAME_SIZE];
@@ -337,7 +342,7 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 
 }
 
-char readI2CAddressOffset() {
+char readI2CAddressOffset(void) {
 	//read 3bit address offset of 7 bit address
 	offset = 0x00;
 	offset = GPIO_ReadInputData(GPIOC ) >> 13; //bit 0
@@ -347,6 +352,6 @@ char readI2CAddressOffset() {
 	return offset;
 }
 
-char i2c_get_ownaddress1() {
+char i2c_get_ownaddress1(void) {
 	return (I2C1_OWNADDRESS_1_BASE + readI2CAddressOffset()) << 1; //add offset to base and shift 1 bit to generate valid 7 bit address
 }

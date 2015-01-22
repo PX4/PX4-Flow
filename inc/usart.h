@@ -39,7 +39,7 @@
 /**
   * @brief  Configures USART2 and USART3 for communication
   */
-void usart_init();
+void usart_init(void);
 
 /**
   * @brief  Pop one byte from ringbuffer of USART2
