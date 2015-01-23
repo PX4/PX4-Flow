@@ -98,7 +98,7 @@ typedef struct
 
 } SysState_TypeDef;
 
-enum
+enum global_param_id_t
 {
 	PARAM_SYSTEM_ID = 0,
 	PARAM_COMPONENT_ID,
@@ -146,7 +146,7 @@ enum
 
 	ONBOARD_PARAM_COUNT
 
-} global_param_id;
+};
 
 struct global_struct
 {
@@ -157,7 +157,9 @@ struct global_struct
 
 };
 
-struct global_struct global_data;
+/* global declarations */
+extern enum global_param_id_t global_param_id;
+extern struct global_struct global_data;
 
 /******************************************************************
   * ALL SETTINGS FUNCTIONS

@@ -50,7 +50,7 @@ char *ftoa(float f) //, int *status)
 	static char outbuf[15];
 
 	//*status = 0;
-	if (f == 0.0)
+	if (f == 0.0f)
 	{
 		outbuf[0] = '0';
 		outbuf[1] = '.';

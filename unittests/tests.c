@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
 
 		float out = insert_sonar_value_and_get_mode_value(inf);
 
-		printf("in: %f\tout: %f\n", inf, out);
+		printf("in: %f\tout: %f\n", (double)inf, (double)out);
 	}
 	
 }

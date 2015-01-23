@@ -157,7 +157,7 @@ void UART4_IRQHandler(void)
 void sonar_filter()
 {
 	/* no data for long time */
-	if (dt > 0.25) // more than 2 values lost
+	if (dt > 0.25f) // more than 2 values lost
 	{
 		v_pred = 0;
 	}

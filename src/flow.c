@@ -55,6 +55,8 @@
 
 #define sign(x) (( x > 0 ) - ( x < 0 ))
 
+uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate, float *pixel_flow_x, float *pixel_flow_y);
+
 // compliments of Adam Williams
 #define ABSDIFF(frame1, frame2) \
 ({ \
