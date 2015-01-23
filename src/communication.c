@@ -120,8 +120,6 @@ void handle_mavlink_message(mavlink_channel_t chan,
 		// Copy to USART 2
 		len = mavlink_msg_to_send_buffer(buf, msg);
 		mavlink_send_uart_bytes(MAVLINK_COMM_1, buf, len);
-
-		return;
 	}
 
 	/* handling messages */
