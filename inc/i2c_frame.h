@@ -30,11 +30,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-
 #ifndef I2C_FRAME_H_
 #define I2C_FRAME_H_
 #include <inttypes.h>
 
+enum {
+    SONAR_STAT_NOMINAL = 0,
+    SONAR_STAT_UNINIT = 1,
+    SONAR_STAT_CLOSE = 2,
+    SONAR_STAT_FAR = 3,
+};
+
+/*
+To avoid pad bytes for mem
+efficinecy, it is best to order
+by struct member size, largest at top
+*/
 
 typedef  struct i2c_frame
 {
@@ -50,6 +61,7 @@ typedef  struct i2c_frame
     uint8_t gyro_range;
     uint8_t sonar_timestamp;
     int16_t ground_distance;
+    uint8_t sonar_status;
 } i2c_frame;
 
 #define I2C_FRAME_SIZE (sizeof(i2c_frame))
@@ -68,6 +80,7 @@ typedef struct i2c_integral_frame
     uint16_t ground_distance;
     int16_t gyro_temperature;
     uint8_t qual;
+    uint8_t sonar_status;
 } i2c_integral_frame;
 
 #define I2C_INTEGRAL_FRAME_SIZE (sizeof(i2c_integral_frame))
