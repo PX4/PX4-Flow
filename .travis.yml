@@ -32,22 +32,13 @@ script:
 - arm-none-eabi-gcc --version
 - make
 - zip Flow.zip px4flow.px4
-addons:
-  artifacts:
-    paths:
-    - "Flow.zip"
-    key:
-      secure: Pn7m9GQoHY9eFhq/P0Vb8lzbozNUl9z4kR2k+bpJ0PyuX6nyde8kMHZGICZtc03T7JnQENpkp9/T6MWV3TR71YxNJxyWtKSu/YdJBHz1M/zaQG6FXDZA1VfHpIbdGujGop6gJUMVZ0RaMXWPr63zZDTWGmFuNcU2E1UrswM3m5w=
-    secret:
-      secure: Dkyn1HN21un6pDcivX0EwlK7MYaUiVMp/wBkiqizR0/gH4xheSwW+WHUZEWcYhb6dw7wj+/EH/n79HqJPMhGeTtUl8Tj7TFz4cC60PnMAhA3OO7AkaEbaxYKjG8+MTAlJ7EGl3IGAL1s87boaA5Ig7k0FCyUr6NCaWmVvi8wkpY=
-    bucket: px4-travis
-deploy:
-  provider: s3
-  access_key_id: AKIAI2OHUHVDRRR4BSMA
-  secret_access_key:
-    secure: efZ5up2QNC3p7RWwXqh/jITNVCmoCrw03CUSyCtW5MqQfZnMdz330FEr/j2oU4Zyya62XsvsUwi+ObTF8JbVTp7gC/tsF347FOOyDs59gKW8ORi5CG7avGBWl1iuyiPWDrsYvcs4DC0EsN82TSsY3aItkfSxVRt7ozMNDx+Z6o4=
-  bucket: px4-travis
-  file: Firmware.zip
-  acl: public_read
-  on:
-    repo: PX4/Flow
+
+after_script:
+  - git clone git://github.com/PX4/CI-Tools.git
+  - ./CI-Tools/s3cmd-configure
+# upload newest build for this branch with s3 index
+  - ./CI-Tools/s3cmd-put px4flow.px4 CI-Tools/directory/index.html Flow/$TRAVIS_BRANCH/
+# archive newest build by date with s3 index
+  - ./CI-Tools/s3cmd-put Flow.zip archives/Flow/$TRAVIS_BRANCH/`date "+%Y-%m-%d"`-$TRAVIS_BUILD_ID/
+  - ./CI-Tools/s3cmd-put CI-Tools/directory/index.html archives/Flow/$TRAVIS_BRANCH/
+
