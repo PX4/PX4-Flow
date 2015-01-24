@@ -214,7 +214,8 @@ void I2C1_ER_IRQHandler(void) {
 
 void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 		float flow_comp_m_x, float flow_comp_m_y, uint8_t qual,
-		float ground_distance, float gyro_x_rate, float gyro_y_rate,
+		float ground_distance, uint8_t sonar_status,
+		float gyro_x_rate, float gyro_y_rate,
 		float gyro_z_rate, int16_t gyro_temp) {
 	static uint16_t frame_count = 0;
 	int i;
@@ -230,6 +231,7 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 	u.f.flow_comp_m_y = flow_comp_m_y * 1000;
 	u.f.qual = qual;
 	u.f.ground_distance = ground_distance * 1000;
+	u.f.sonar_status = sonar_status;
 
 	u.f.gyro_x_rate = gyro_x_rate * getGyroScalingFactor();
 	u.f.gyro_y_rate = gyro_y_rate * getGyroScalingFactor();

@@ -1,7 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2013 Fortiss An-Institut TU Munchen All rights reserved.
- *   Author: Thomas Boehm <thomas.boehm@fortiss.org>
+ *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -13,6 +12,9 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -32,9 +34,18 @@
 #define I2C_FRAME_H_
 #include <inttypes.h>
 
-// ***Take care***: struct alignment isn't necessarily what you expect,
-// so unaligned (i.e., single uint8_t values) should go at the end.
-// Otherwise nothing will work.
+enum {
+    SONAR_STAT_NOMINAL = 0,
+    SONAR_STAT_UNINIT = 1,
+    SONAR_STAT_CLOSE = 2,
+    SONAR_STAT_FAR = 3,
+};
+
+/*
+To avoid pad bytes for mem
+efficinecy, it is best to order
+by struct member size, largest at top
+*/
 
 typedef  struct i2c_frame
 {
@@ -50,7 +61,8 @@ typedef  struct i2c_frame
     uint8_t gyro_range;
     uint8_t sonar_timestamp;
     int16_t ground_distance;
-} __attribute__((packed)) i2c_frame;
+    uint8_t sonar_status;
+} i2c_frame;
 
 #define I2C_FRAME_SIZE (sizeof(i2c_frame))
 
@@ -68,7 +80,8 @@ typedef struct i2c_integral_frame
     uint16_t ground_distance;
     int16_t gyro_temperature;
     uint8_t qual;
-} __attribute__((packed)) i2c_integral_frame;
+    uint8_t sonar_status;
+} i2c_integral_frame;
 
 #define I2C_INTEGRAL_FRAME_SIZE (sizeof(i2c_integral_frame))
 
