@@ -1,33 +1,42 @@
-///****************************************************************************
-// *
-// *   Copyright (C) 2013 Fortiss An-Institut TU Munchen All rights reserved.
-// *   Author: Thomas Boehm <thomas.boehm@fortiss.org>
-// *
-// * Redistribution and use in source and binary forms, with or without
-// * modification, are permitted provided that the following conditions
-// * are met:
-// *
-// * 1. Redistributions of source code must retain the above copyright
-// *    notice, this list of conditions and the following disclaimer.
-// * 2. Redistributions in binary form must reproduce the above copyright
-// *    notice, this list of conditions and the following disclaimer in
-// *    the documentation and/or other materials provided with the
-// *    distribution.
-// *
-// * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-// * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-// * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-// * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-// * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
-// * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
-// * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-// * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-// * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// * POSSIBILITY OF SUCH DAMAGE.
-// *
-// ****************************************************************************/
+/****************************************************************************
+ *
+ *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
+
+/**
+ * @file i2c.c
+ * Definition of i2c frames.
+ * @author Thomas Boehm <thomas.boehm@fortiss.org>
+ * @author James Goppert <james.goppert@gmail.com>
+ */
 
 #include "i2c.h"
 #include "stm32f4xx.h"
@@ -217,24 +226,22 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 		float ground_distance, float gyro_x_rate, float gyro_y_rate,
 		float gyro_z_rate, int16_t gyro_temp) {
 	static uint16_t frame_count = 0;
-	int i;
-	union {
-		i2c_frame f;
-		char c[I2C_FRAME_SIZE];
-	} u;
 
-	u.f.frame_count = frame_count;
-	u.f.pixel_flow_x_sum = pixel_flow_x * 10.0f;
-	u.f.pixel_flow_y_sum = pixel_flow_y * 10.0f;
-	u.f.flow_comp_m_x = flow_comp_m_x * 1000;
-	u.f.flow_comp_m_y = flow_comp_m_y * 1000;
-	u.f.qual = qual;
-	u.f.ground_distance = ground_distance * 1000;
+	i2c_frame f;
+	i2c_integral_frame f_integral;
 
-	u.f.gyro_x_rate = gyro_x_rate * getGyroScalingFactor();
-	u.f.gyro_y_rate = gyro_y_rate * getGyroScalingFactor();
-	u.f.gyro_z_rate = gyro_z_rate * getGyroScalingFactor();
-	u.f.gyro_range = getGyroRange();
+	f.frame_count = frame_count;
+	f.pixel_flow_x_sum = pixel_flow_x * 10.0f;
+	f.pixel_flow_y_sum = pixel_flow_y * 10.0f;
+	f.flow_comp_m_x = flow_comp_m_x * 1000;
+	f.flow_comp_m_y = flow_comp_m_y * 1000;
+	f.qual = qual;
+	f.ground_distance = ground_distance * 1000;
+
+	f.gyro_x_rate = gyro_x_rate * getGyroScalingFactor();
+	f.gyro_y_rate = gyro_y_rate * getGyroScalingFactor();
+	f.gyro_z_rate = gyro_z_rate * getGyroScalingFactor();
+	f.gyro_range = getGyroRange();
 
 	uint32_t time_since_last_sonar_update;
 
@@ -242,15 +249,10 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 			- get_sonar_measure_time());
 
 	if (time_since_last_sonar_update < 255 * 1000) {
-		u.f.sonar_timestamp = time_since_last_sonar_update / 1000; //convert to ms
+		f.sonar_timestamp = time_since_last_sonar_update / 1000; //convert to ms
 	} else {
-		u.f.sonar_timestamp = 255;
+		f.sonar_timestamp = 255;
 	}
-
-	union {
-		i2c_integral_frame f;
-		char c_integral[I2C_INTEGRAL_FRAME_SIZE];
-	} u_integral;
 
 	static float accumulated_flow_x = 0;
 	static float accumulated_flow_y = 0;
@@ -303,30 +305,29 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 	//update lasttime
 	lasttime = get_boot_time_us();
 
-	u_integral.f.frame_count_since_last_readout = accumulated_framecount;
-	u_integral.f.gyro_x_rate_integral = accumulated_gyro_x * 10.0f;	//mrad*10
-	u_integral.f.gyro_y_rate_integral = accumulated_gyro_y * 10.0f;	//mrad*10
-	u_integral.f.gyro_z_rate_integral = accumulated_gyro_z * 10.0f; //mrad*10
-	u_integral.f.pixel_flow_x_integral = accumulated_flow_x * 10.0f; //mrad*10
-	u_integral.f.pixel_flow_y_integral = accumulated_flow_y * 10.0f; //mrad*10
-	u_integral.f.integration_timespan = integration_timespan;     //microseconds
-	u_integral.f.ground_distance = ground_distance * 1000;		    //mmeters
-	u_integral.f.sonar_timestamp = time_since_last_sonar_update;  //microseconds
-	u_integral.f.qual =
+	f_integral.frame_count_since_last_readout = accumulated_framecount;
+	f_integral.gyro_x_rate_integral = accumulated_gyro_x * 10.0f;	//mrad*10
+	f_integral.gyro_y_rate_integral = accumulated_gyro_y * 10.0f;	//mrad*10
+	f_integral.gyro_z_rate_integral = accumulated_gyro_z * 10.0f; //mrad*10
+	f_integral.pixel_flow_x_integral = accumulated_flow_x * 10.0f; //mrad*10
+	f_integral.pixel_flow_y_integral = accumulated_flow_y * 10.0f; //mrad*10
+	f_integral.integration_timespan = integration_timespan;     //microseconds
+	f_integral.ground_distance = ground_distance * 1000;		    //mmeters
+	f_integral.sonar_timestamp = time_since_last_sonar_update;  //microseconds
+	f_integral.qual =
 			(uint8_t) (accumulated_quality / accumulated_framecount); //0-255 linear quality measurement 0=bad, 255=best
-	u_integral.f.gyro_temperature = gyro_temp;//Temperature * 100 in centi-degrees Celsius
+	f_integral.gyro_temperature = gyro_temp;//Temperature * 100 in centi-degrees Celsius
 
 	notpublishedIndexFrame1 = 1 - publishedIndexFrame1; // choose not the current published 1 buffer
 	notpublishedIndexFrame2 = 1 - publishedIndexFrame2; // choose not the current published 2 buffer
 
 	// fill I2C transmitbuffer1 with frame1 values
-	for (i = 0; i < I2C_FRAME_SIZE; i++) {
-		txDataFrame1[notpublishedIndexFrame1][i] = u.c[i];
-	}
+	memcpy(&(txDataFrame1[notpublishedIndexFrame1]),
+		&f, I2C_FRAME_SIZE);
 
 	// fill I2C transmitbuffer2 with frame2 values
-	for (i = 0; i < I2C_INTEGRAL_FRAME_SIZE; i++)
-	txDataFrame2[notpublishedIndexFrame2][i] = u_integral.c_integral[i];
+	memcpy(&(txDataFrame2[notpublishedIndexFrame2]),
+		&f_integral, I2C_INTEGRAL_FRAME_SIZE);
 
 	//swap buffers frame1 if I2C bus is idle
 	if (readout_done_frame1) {
