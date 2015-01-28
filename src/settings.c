@@ -127,6 +127,10 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_SONAR_FILTERED], "SONAR_FILTERED");
 	global_data.param_access[PARAM_SONAR_FILTERED] = READ_WRITE;
 
+	global_data.param[PARAM_SONAR_MODE_FLT] = 1;
+	strcpy(global_data.param_name[PARAM_SONAR_MODE_FLT], "SONAR_MODE_FLT");
+	global_data.param_access[PARAM_SONAR_MODE_FLT] = READ_WRITE;
+
 	global_data.param[PARAM_SONAR_KALMAN_L1] = 0.8461f;
 	strcpy(global_data.param_name[PARAM_SONAR_KALMAN_L1], "SONAR_KAL_L1");
 	global_data.param_access[PARAM_SONAR_KALMAN_L1] = READ_WRITE;

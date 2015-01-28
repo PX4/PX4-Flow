@@ -223,7 +223,8 @@ void I2C1_ER_IRQHandler(void) {
 
 void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 		float flow_comp_m_x, float flow_comp_m_y, uint8_t qual,
-		float ground_distance, float gyro_x_rate, float gyro_y_rate,
+		float ground_distance, uint8_t sonar_status,
+		float gyro_x_rate, float gyro_y_rate,
 		float gyro_z_rate, int16_t gyro_temp) {
 	static uint16_t frame_count = 0;
 
@@ -317,6 +318,7 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 	f_integral.qual =
 			(uint8_t) (accumulated_quality / accumulated_framecount); //0-255 linear quality measurement 0=bad, 255=best
 	f_integral.gyro_temperature = gyro_temp;//Temperature * 100 in centi-degrees Celsius
+	f_integral.sonar_status = sonar_status;
 
 	notpublishedIndexFrame1 = 1 - publishedIndexFrame1; // choose not the current published 1 buffer
 	notpublishedIndexFrame2 = 1 - publishedIndexFrame2; // choose not the current published 2 buffer

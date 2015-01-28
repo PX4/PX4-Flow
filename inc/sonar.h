@@ -58,7 +58,7 @@ void sonar_trigger(void);
   *
   * @return true if valid measurement values were obtained, false else
   */
-bool sonar_read(float* sonar_value_filtered, float* sonar_value_raw);
+uint8_t sonar_read(float* sonar_value_filtered, float* sonar_value_raw);
 
 /**
   * @brief Get the timestamp of the new sonar value when available to the main code
