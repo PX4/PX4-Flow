@@ -272,7 +272,7 @@ uint8_t global_data_save_params(){
     }
     /* (we could check if erasing is really necessary, but it won't safe much) */
     uint8_t flash_status;
-    flash_status = flash_erase_sector(ADDR_FLASH_GLOBAL_PARAMS);
+    flash_status = flash_erase_sector_address(ADDR_FLASH_GLOBAL_PARAMS);
     flash_status = flash_write_buffer_float(ADDR_FLASH_GLOBAL_PARAMS, global_data.param, ONBOARD_PARAM_COUNT);
 
     /* get checksum and write it also to internal flash */

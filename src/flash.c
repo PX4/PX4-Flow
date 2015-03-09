@@ -24,7 +24,7 @@
 
 
 /* private functions */
-uint32_t GetSector(uint32_t Address);
+uint32_t get_sector(uint32_t Address);
 
  /**
   * @brief  Reads an uint32 buffer from the internal flash at a given address
@@ -64,9 +64,8 @@ uint8_t flash_read_buffer_float(uint32_t address, float *buffer, uint16_t buffer
   *         we retry MAX_WRITE_TRIALS times and then abort
   * @param  address: Start address of the flash area to write
   * @param  buffer: Address of the buffer to write
-  * @param  buffer_size: Size of the buffer to write in bytes
-  * @retval FLASH Status: The returned value can be: FLASH_BUSY, FLASH_ERROR_PROGRAM,
-  *                       FLASH_ERROR_WRP, FLASH_ERROR_OPERATION or FLASH_COMPLETE.
+  * @param  buffer_size: Number of elements to write (not number of bytes)
+  * @retval FLASH Status: The returned value can be: FLASH_OK or FLASH_ERROR_WRITE.
   */ 
 uint8_t flash_write_buffer_uint32(uint32_t address, uint32_t *buffer, uint16_t buffer_size)
 {
@@ -91,10 +90,10 @@ uint8_t flash_write_buffer_uint32(uint32_t address, uint32_t *buffer, uint16_t b
             }
         }
         
-        /* if we tried to often, we return FLASH_ERROR_OPERATION */
+        /* if we tried too often, we return FLASH_ERROR_OPERATION */
         if(trials > MAX_WRITE_TRIALS)
         {
-            return status;
+            return FLASH_ERROR_WRITE;
         }
         
         /* if we had a write error, try again for same index */
@@ -106,7 +105,7 @@ uint8_t flash_write_buffer_uint32(uint32_t address, uint32_t *buffer, uint16_t b
         /* Read flash and compare */
         for(i = 0; i < buffer_size; i++)
         {
-            if(*(__IO float*)(address+i*4) != buffer[i])
+            if(*(__IO uint32_t*)(address+i*4) != buffer[i])
             {
                 write_error = 1;
                 break;
@@ -117,7 +116,7 @@ uint8_t flash_write_buffer_uint32(uint32_t address, uint32_t *buffer, uint16_t b
     /* we lock the flash to prevent accidental writing */
     FLASH_Lock();
     
-    return FLASH_COMPLETE;
+    return FLASH_OK;
 }
 
 
@@ -127,9 +126,8 @@ uint8_t flash_write_buffer_uint32(uint32_t address, uint32_t *buffer, uint16_t b
   * @note   This function requires a device voltage between 2.7V and 3.6V.
   * @param  address: Start address of the flash area to write
   * @param  buffer: Address of the buffer to write
-  * @param  buffer_size: Size of the buffer to write in bytes
-  * @retval FLASH Status: The returned value can be: FLASH_BUSY, FLASH_ERROR_PROGRAM,
-  *                       FLASH_ERROR_WRP, FLASH_ERROR_OPERATION or FLASH_COMPLETE.
+  * @param  buffer_size: Number of elements to write (not number of bytes)
+  * @retval FLASH Status: The returned value can be: FLASH_OK or FLASH_ERROR_WRITE.
   */ 
 uint8_t flash_write_buffer_float(uint32_t address, float *buffer, uint16_t buffer_size)
 {
@@ -139,18 +137,18 @@ uint8_t flash_write_buffer_float(uint32_t address, float *buffer, uint16_t buffe
 
 
   /**
-  * @brief  Erases one sector of the internal flash
+  * @brief  Erases the sector of the internal flash which contains the given address
   * @note   This function requires a device voltage between 2.7V and 3.6V.
   * @note   This function locks the flash after erasing
   * @param  address: an address in the sector to erase
-  * @retval FLASH Status: The returned value can be: FLASH_BUSY, FLASH_ERROR_PROGRAM,
-  *                       FLASH_ERROR_WRP, FLASH_ERROR_OPERATION or FLASH_COMPLETE.
+  * @retval FLASH Status: The returned value can be: FLASH_OK or FLASH_ERROR_ERASE.
   */ 
-uint8_t flash_erase_sector(uint32_t address)
+uint8_t flash_erase_sector_address(uint32_t address)
 {
     FLASH_Unlock();
-    return FLASH_EraseSector(GetSector(address), VoltageRange_3);
+    FLASH_Status status = FLASH_EraseSector(get_sector(address), VoltageRange_3);
     FLASH_Lock();
+    return status == FLASH_COMPLETE ? FLASH_OK : FLASH_ERROR_ERASE;
 }
 
 
@@ -159,7 +157,7 @@ uint8_t flash_erase_sector(uint32_t address)
   * @param  None
   * @retval The sector of a given address
   */
-uint32_t GetSector(uint32_t Address)
+uint32_t get_sector(uint32_t Address)
 {
   uint32_t sector = 0;
   

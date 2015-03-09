@@ -34,9 +34,11 @@
   * @brief  Writes a uint32 buffer to the internal flash at a given address
   *         (You need to erase before writing!)
   * @note   This function requires a device voltage between 2.7V and 3.6V.
+  * @note   The values are read back and compared, if problems are detected,
+  *         we retry MAX_WRITE_TRIALS times and then abort
   * @param  address: Start address of the flash area to write
   * @param  buffer: Address of the buffer to write
-  * @param  buffer_size: Size of the buffer to write in bytes
+  * @param  buffer_size: Number of elements to write (not number of bytes)
   * @retval FLASH Status: The returned value can be: FLASH_OK or FLASH_ERROR_WRITE.
   */ 
  uint8_t flash_write_buffer_uint32(uint32_t address, uint32_t *buffer, uint16_t buffer_size);
@@ -47,18 +49,18 @@
   * @note   This function requires a device voltage between 2.7V and 3.6V.
   * @param  address: Start address of the flash area to write
   * @param  buffer: Address of the buffer to write
-  * @param  buffer_size: Size of the buffer to write in bytes
+  * @param  buffer_size: Number of elements to write (not number of bytes)
   * @retval FLASH Status: The returned value can be: FLASH_OK or FLASH_ERROR_WRITE.
   */ 
  uint8_t flash_write_buffer_float(uint32_t address, float *buffer, uint16_t buffer_size);
 
 
   /**
-  * @brief  Erases one sector of the internal flash
+  * @brief  Erases the sector of the internal flash which contains the given address
   * @note   This function requires a device voltage between 2.7V and 3.6V.
   * @param  address: an address in the sector to erase
   * @retval FLASH Status: The returned value can be: FLASH_OK or FLASH_ERROR_ERASE.
   */ 
-uint8_t flash_erase_sector(uint32_t address);
+uint8_t flash_erase_sector_address(uint32_t address);
 
 #endif /* FLASH_H_ */
