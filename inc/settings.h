@@ -157,6 +157,13 @@ struct global_struct
 
 };
 
+#define PARAM_OK 0
+#define PARAM_CHANGED 0
+#define PARAM_UNCHANGED 1
+#define PARAM_ERROR 2
+#define PARAM_INVALID_ID 3
+#define PARAM_INVALID_VALUE 4
+
 /* global declarations */
 extern enum global_param_id_t global_param_id;
 extern struct global_struct global_data;
@@ -168,5 +175,37 @@ extern struct global_struct global_data;
 void global_data_reset_param_defaults(void);
 void global_data_reset(void);
 void set_sensor_position_settings(uint8_t sensor_position);
+
+  /**
+  * @brief  Reads values of global_data.param from the internal flash,
+  *         if read is unsuccessful, hard coded default values are used
+  * @retval status: PARAM_OK (=0): reading from flash was successful
+  *                 PARAM_ERROR (=2): reading from flash was successful, loaded hard coded values
+  */
+uint8_t global_data_load_params();
+
+
+  /**
+  * @brief  Writes values of global_data.param to the internal FLASH
+  *         (may erases Sector 11 without restoring it!)
+  * @note   Only writes parameters if they differ from values already stored in FLASH
+  * @note   This function requires a device voltage between 2.7V and 3.6V.
+  * @retval status:   PARAM_CHANGED (=0): parameters were succesfully written to internal FLASH
+  *                   PARAM_UNCHANGED (=1): no changes in parameters: parameters were not written
+  *                   PARAM_ERROR (=2): parameters could not be written to FLASH
+  */
+uint8_t global_data_save_params();
+
+/**
+  * @brief  Set the global parameter and send it through mavlink (does not save it to the internal flash);
+  * @note   To save the parameters to the internal flash, use global_data_save_params()
+  * @param  param_id: Id of the parameter to change
+  * @param  param_value: new value of the parameter
+  * @retval status: PARAM_CHANGED (=0): parameter changed succesfully
+  *                 PARAM_UNCHANGED (=1): parameter stayed the same
+  *                 PARAM_INVALID_ID (=3): parameter id is invalid
+  *                 PARAM_INVALID_ID (=4): parameter value is invalid value
+  */
+uint8_t set_global_data_param(int param_id, float param_value);
 
 #endif /* SETTINGS_H_ */

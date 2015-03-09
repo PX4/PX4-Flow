@@ -229,7 +229,7 @@ void buffer_reset(void) {
 int main(void)
 {
 	/* load settings and parameters */
-	global_data_reset_param_defaults();
+	global_data_load_params();
 	global_data_reset();
 
 	/* init led */

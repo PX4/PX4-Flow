@@ -32,13 +32,20 @@
  *
  ****************************************************************************/
 
+#include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "settings.h"
+#include "mt9v034.h"
+#include "dcmi.h"
+#include "gyro.h"
+#include "debug.h"
+#include "flash.h"
+#include "communication.h"
 
 enum global_param_id_t global_param_id;
 struct global_struct global_data;
-
-extern uint8_t debug_int_message_buffer(const char* string, int32_t num);
+extern void buffer_reset(void);
+uint32_t get_param_checksum();
 
 /**
  * @brief reset all parameters to default
@@ -202,8 +209,104 @@ void global_data_reset_param_defaults(void){
 	global_data.param[DEBUG_VARIABLE] = 1;
 	strcpy(global_data.param_name[DEBUG_VARIABLE], "DEBUG");
 	global_data.param_access[DEBUG_VARIABLE] = READ_WRITE;
-
 }
+
+/**
+  * @brief  Reads values of global_data.param from the internal flash,
+  *         if read is unsuccessful, hard coded default values are used
+  * @retval status: PARAM_OK (=0): reading from flash was successful
+  *                 PARAM_ERROR (=2): reading from flash was successful, loaded hard coded values
+  */
+uint8_t global_data_load_params(){
+    /* load default parameters to get the parameter names */
+    global_data_reset_param_defaults();
+
+    /* Load parameters from flash to global_data.param */
+    uint8_t status = flash_read_buffer_float(ADDR_FLASH_GLOBAL_PARAMS, global_data.param, ONBOARD_PARAM_COUNT);
+
+    if(status == FLASH_OK){
+        /* compute control sequence */
+        uint32_t checksum = get_param_checksum();
+        /* read control sequence at the end of global parameter flash */
+        uint32_t checksum_read = 0;
+        status = flash_read_buffer_uint32(ADDR_FLASH_GLOBAL_PARAMS + 4*ONBOARD_PARAM_COUNT, &checksum_read, 1);
+
+        /* reading was fine and control sequence was correct, we are done */
+        if(status == FLASH_OK && checksum == checksum_read){
+            return PARAM_OK;
+        }
+    }
+    /* if the read was not sucessful, we use default parameters */
+    global_data_reset_param_defaults();
+    return PARAM_ERROR;
+}
+
+
+  /**
+  * @brief  Writes values of global_data.param to the internal FLASH
+  *         (may erases Sector 11 without restoring it!)
+  * @note   Only writes parameters if they differ from values already stored in FLASH
+  * @note   This function requires a device voltage between 2.7V and 3.6V.
+  * @retval status:   PARAM_CHANGED (=0): parameters were succesfully written to internal FLASH
+  *                   PARAM_UNCHANGED (=1): no changes in parameters: parameters were not written
+  *                   PARAM_ERROR (=3): parameters could not be written to FLASH
+  */
+uint8_t global_data_save_params(){
+    /* check if any values have changed
+     * (could be done faster with the checksum, but this is safer */
+    uint8_t changed = 0;
+    float old_values[ONBOARD_PARAM_COUNT];
+    flash_read_buffer_float(ADDR_FLASH_GLOBAL_PARAMS, old_values, ONBOARD_PARAM_COUNT);
+    for(uint8_t i = 0; i < ONBOARD_PARAM_COUNT; i++)
+    {
+        if(global_data.param[i] != old_values[i])
+        {
+            changed = 1;
+            break;
+        }
+    }
+
+    if(changed == 0)
+    {
+        return PARAM_UNCHANGED;
+    }
+    /* (we could check if erasing is really necessary, but it won't safe much) */
+    uint8_t flash_status;
+    flash_status = flash_erase_sector(ADDR_FLASH_GLOBAL_PARAMS);
+    flash_status = flash_write_buffer_float(ADDR_FLASH_GLOBAL_PARAMS, global_data.param, ONBOARD_PARAM_COUNT);
+
+    /* get checksum and write it also to internal flash */
+    uint32_t checksum = get_param_checksum();
+    flash_status = flash_write_buffer_uint32(ADDR_FLASH_GLOBAL_PARAMS + 4*ONBOARD_PARAM_COUNT, &checksum, 1);
+
+    if(flash_status == FLASH_OK)
+    {
+        return PARAM_CHANGED;
+    }
+    else
+    {
+        return PARAM_ERROR;
+    }
+}
+
+
+
+/**
+ * @brief computes a parity checksum over all global parameters (xor of all parameters)
+ */
+uint32_t get_param_checksum()
+{
+    uint32_t checksum = 0;
+    uint32_t *param_ints = (uint32_t*)global_data.param;
+
+    for(uint8_t i = 0; i < ONBOARD_PARAM_COUNT; i++){
+        checksum = checksum ^ param_ints[i];
+    }
+    return checksum;
+}
+
+
+
 
 /**
  * @brief resets the global data struct to all-zero values
@@ -233,5 +336,94 @@ void set_sensor_position_settings(uint8_t sensor_position)
 
 	debug_int_message_buffer("Set sensor position:", sensor_position);
 	return;
+}
+
+/**
+  * @brief  Set the global parameter and send it through mavlink (does not save it to the internal flash);
+  * @note   To save the parameters to the internal flash, use global_data_save_params()
+  * @param  param_id: Id of the parameter to change
+  * @param  param_value: new value of the parameter
+  * @retval status: PARAM_CHANGED (=0): parameter changed succesfully
+  *                 PARAM_UNCHANGED (=1): parameter stayed the same
+  *                 PARAM_INVALID_ID (=3): parameter id is invalid
+  *                 PARAM_INVALID_ID (=4): parameter value is invalid value
+  */
+uint8_t set_global_data_param(int param_id, float param_value)
+{
+    /* Only write and emit changes if there is actually a difference
+     * AND only write if new value is NOT "not-a-number"
+     * AND is NOT infinity
+     */
+    if (param_id < 0 || param_id > ONBOARD_PARAM_COUNT){
+        return PARAM_INVALID_ID;
+    }
+    if (global_data.param[param_id] == param_value)
+    {
+        return PARAM_UNCHANGED;
+    }
+    if (isnan(param_value)
+        || isinf(param_value)
+        || global_data.param_access[param_id] != READ_WRITE)
+    {
+        return PARAM_INVALID_VALUE;
+    }
+
+    global_data.param[param_id] = param_value;
+
+    switch(param_id)
+    {
+        case PARAM_SENSOR_POSITION:
+        {
+            /* handle sensor position */
+            set_sensor_position_settings((uint8_t) param_value);
+            mt9v034_context_configuration();
+            dma_reconfigure();
+            buffer_reset();
+        }
+        break;
+        case PARAM_IMAGE_LOW_LIGHT:
+        case PARAM_IMAGE_ROW_NOISE_CORR:
+        case PARAM_IMAGE_TEST_PATTERN:
+        {
+            /* handle low light mode and noise correction */
+            mt9v034_context_configuration();
+            dma_reconfigure();
+            buffer_reset();
+        }
+        break;
+        case PARAM_VIDEO_ONLY:
+        {
+            /* handle calibration on/off */
+            mt9v034_set_context();
+            dma_reconfigure();
+            buffer_reset();
+
+            if(global_data.param[PARAM_VIDEO_ONLY])
+                debug_string_message_buffer("Calibration Mode On");
+            else
+                debug_string_message_buffer("Calibration Mode Off");
+        }
+        break;
+        case PARAM_GYRO_SENSITIVITY_DPS:
+        {
+            /* handle sensor position */
+            l3gd20_config();
+        }
+        break;
+        default:
+        {
+            debug_int_message_buffer("Parameter received, param id =", param_id);
+        }
+    }
+
+    /* report back new value */
+    mavlink_msg_param_value_send(MAVLINK_COMM_0,
+            global_data.param_name[param_id],
+            global_data.param[param_id], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, param_id);
+    mavlink_msg_param_value_send(MAVLINK_COMM_2,
+            global_data.param_name[param_id],
+            global_data.param[param_id], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, param_id);
+
+    return PARAM_CHANGED;
 }
 

@@ -165,6 +165,7 @@ set(PERIPH_SRC
     lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c
     lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma.c
     lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dcmi.c
+    lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_flash.c
     lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_i2c.c
     lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.c
     lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.c
@@ -185,6 +186,7 @@ set(PX4FLOW_HDRS
     inc/dcmi.h
     inc/debug.h
     inc/flow.h
+    inc/flash.h
     inc/gyro.h
     inc/i2c_frame.h
     inc/i2c.h
@@ -210,6 +212,7 @@ set(PX4FLOW_SRC
     src/dcmi.c
     src/debug.c
     src/flow.c
+    src/flash.c
     src/gyro.c
     src/i2c.c
     src/led.c

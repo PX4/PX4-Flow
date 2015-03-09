@@ -224,66 +224,11 @@ void handle_mavlink_message(mavlink_channel_t chan,
 					/* Check if matched */
 					if (match)
 					{
-						/* Only write and emit changes if there is actually a difference
-						 * AND only write if new value is NOT "not-a-number"
-						 * AND is NOT infinity
-						 */
-						if (global_data.param[i] != set.param_value
-								&& !isnan(set.param_value)
-								&& !isinf(set.param_value)
-								&& global_data.param_access[i])
-						{
-							global_data.param[i] = set.param_value;
-
-							/* handle sensor position */
-							if(i == PARAM_SENSOR_POSITION)
-							{
-								set_sensor_position_settings((uint8_t) set.param_value);
-								mt9v034_context_configuration();
-								dma_reconfigure();
-								buffer_reset();
-							}
-
-							/* handle low light mode and noise correction */
-							else if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR|| i == PARAM_IMAGE_TEST_PATTERN)
-							{
-								mt9v034_context_configuration();
-								dma_reconfigure();
-								buffer_reset();
-							}
-
-							/* handle calibration on/off */
-							else if(i == PARAM_VIDEO_ONLY)
-							{
-								mt9v034_set_context();
-								dma_reconfigure();
-								buffer_reset();
-
-								if(global_data.param[PARAM_VIDEO_ONLY])
-									debug_string_message_buffer("Calibration Mode On");
-								else
-									debug_string_message_buffer("Calibration Mode Off");
-							}
-
-							/* handle sensor position */
-							else if(i == PARAM_GYRO_SENSITIVITY_DPS)
-							{
-								l3gd20_config();
-							}
-
-							else
-							{
-								debug_int_message_buffer("Parameter received, param id =", i);
-							}
-
-							/* report back new value */
-							mavlink_msg_param_value_send(MAVLINK_COMM_0,
-									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
-							mavlink_msg_param_value_send(MAVLINK_COMM_2,
-									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
-
+						uint8_t status = set_global_data_param(i, set.param_value);
+                        /* if the values have changed, save all parameters to the internal flash */
+                        if(status == PARAM_CHANGED)
+                        {
+                            global_data_save_params();
 						}
 						else
 						{
