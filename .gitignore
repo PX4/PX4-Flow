@@ -10,3 +10,9 @@ px4flow.bin
 .settings
 *.sublime-workspace
 build*/
+
+CMakeCache.txt
+CMakeFiles/
+*.cmake
+libperiph.a
+px4flow
