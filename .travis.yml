@@ -49,6 +49,7 @@ env:
 script:
  - ccache -z
  - arm-none-eabi-gcc --version
+ - cmake .
  - make
  - ccache -s
  - zip Flow.zip px4flow.px4
