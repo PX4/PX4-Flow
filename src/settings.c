@@ -61,7 +61,7 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_SYSTEM_TYPE], "SYS_TYPE");
 	global_data.param_access[PARAM_SYSTEM_TYPE] = READ_WRITE;
 
-	global_data.param[PARAM_AUTOPILOT_TYPE] = MAV_AUTOPILOT_PX4;
+	global_data.param[PARAM_AUTOPILOT_TYPE] = MAV_AUTOPILOT_GENERIC;
 	strcpy(global_data.param_name[PARAM_AUTOPILOT_TYPE], "SYS_AP_TYPE");
 	global_data.param_access[PARAM_AUTOPILOT_TYPE] = READ_WRITE;
 
