@@ -320,10 +320,6 @@ int main(void)
 		/* calculate focal_length in pixel */
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
-		/* debug */
-		float x_rate_pixel = x_rate * (get_time_between_images() / 1000.0f) * focal_length_px;
-		float y_rate_pixel = y_rate * (get_time_between_images() / 1000.0f) * focal_length_px;
-
 		//FIXME for the old sensor PX4FLOW v1.2 uncomment this!!!!
 //		x_rate = x_rate_raw_sensor; // change x and y rates
 //		y_rate = y_rate_raw_sensor;
@@ -460,7 +456,7 @@ int main(void)
 
 					if (global_data.param[PARAM_USB_SEND_FLOW])
 						mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_ms() * 1000, global_data.param[PARAM_SENSOR_ID],
-							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
+							pixel_flow_x_sum * 100.0f, pixel_flow_y_sum * 100.0f,
 							flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 
                     update_TX_buffer(pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f, flow_comp_m_x, flow_comp_m_y, qual,

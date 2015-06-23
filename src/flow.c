@@ -135,49 +135,6 @@ float Jy[PATCH_SIZE*PATCH_SIZE];
 })
 
 /**
- * @brief Computes the Hessian at a pixel location
- *
- * The hessian (second order partial derivatives of the image) is
- * a measure of the salience of the image at the appropriate
- * box filter scale. It allows to judge wether a pixel
- * location is suitable for optical flow calculation.
- *
- * @param image the array holding pixel data
- * @param x location of the pixel in x
- * @param y location of the pixel in y
- *
- * @return gradient magnitude
- */
-static inline uint32_t compute_hessian_4x6(uint8_t *image, uint16_t x, uint16_t y, uint16_t row_size)
-{
-	// candidate for hessian calculation:
-	uint16_t off1 = y*row_size + x;   	// First row of ones
-	uint16_t off2 = (y+1)*row_size + x;   // Second row of ones
-	uint16_t off3 = (y+2)*row_size + x;   // Third row of minus twos
-	uint16_t off4 = (y+3)*row_size + x;   // Third row of minus twos
-	uint16_t off5 = (y+4)*row_size + x;   // Third row of minus twos
-	uint16_t off6 = (y+5)*row_size + x;   // Third row of minus twos
-	uint32_t magnitude;
-
-	// Uncentered for max. performance:
-	// center pixel is in brackets ()
-
-	//  1   1   1   1
-	//  1   1   1   1
-	// -2 (-2) -2  -2
-	// -2  -2  -2  -2
-	//  1   1   1   1
-	//  1   1   1   1
-
-	magnitude = __UADD8(*((uint32_t*) &image[off1 - 1]), *((uint32_t*) &image[off2 - 1]));
-	magnitude -= 2*__UADD8(*((uint32_t*) &image[off3 - 1]), *((uint32_t*) &image[off4 - 1]));
-	magnitude += __UADD8(*((uint32_t*) &image[off5 - 1]), *((uint32_t*) &image[off6 - 1]));
-
-	return magnitude;
-}
-
-
-/**
  * @brief Compute the average pixel gradient of all horizontal and vertical steps
  *
  * TODO compute_diff is not appropriate for low-light mode images
@@ -341,50 +298,6 @@ static inline uint32_t compute_subpixel(uint8_t *image1, uint8_t *image2, uint16
 	}
 
 	return 0;
-}
-
-/**
- * @brief Compute SAD of two 8x8 pixel windows.
- *
- * @param image1 ...
- * @param image2 ...
- * @param off1X x coordinate of upper left corner of pattern in image1
- * @param off1Y y coordinate of upper left corner of pattern in image1
- * @param off2X x coordinate of upper left corner of pattern in image2
- * @param off2Y y coordinate of upper left corner of pattern in image2
- */
-static inline uint32_t compute_sad_8x8(uint8_t *image1, uint8_t *image2, uint16_t off1X, uint16_t off1Y, uint16_t off2X, uint16_t off2Y, uint16_t row_size)
-{
-	/* calculate position in image buffer */
-	uint16_t off1 = off1Y * row_size + off1X; // image1
-	uint16_t off2 = off2Y * row_size + off2X; // image2
-
-	uint32_t acc;
-	acc = __USAD8 (*((uint32_t*) &image1[off1 + 0 + 0 * row_size]), *((uint32_t*) &image2[off2 + 0 + 0 * row_size]));
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 4 + 0 * row_size]), *((uint32_t*) &image2[off2 + 4 + 0 * row_size]), acc);
-
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 0 + 1 * row_size]), *((uint32_t*) &image2[off2 + 0 + 1 * row_size]), acc);
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 4 + 1 * row_size]), *((uint32_t*) &image2[off2 + 4 + 1 * row_size]), acc);
-
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 0 + 2 * row_size]), *((uint32_t*) &image2[off2 + 0 + 2 * row_size]), acc);
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 4 + 2 * row_size]), *((uint32_t*) &image2[off2 + 4 + 2 * row_size]), acc);
-
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 0 + 3 * row_size]), *((uint32_t*) &image2[off2 + 0 + 3 * row_size]), acc);
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 4 + 3 * row_size]), *((uint32_t*) &image2[off2 + 4 + 3 * row_size]), acc);
-
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 0 + 4 * row_size]), *((uint32_t*) &image2[off2 + 0 + 4 * row_size]), acc);
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 4 + 4 * row_size]), *((uint32_t*) &image2[off2 + 4 + 4 * row_size]), acc);
-
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 0 + 5 * row_size]), *((uint32_t*) &image2[off2 + 0 + 5 * row_size]), acc);
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 4 + 5 * row_size]), *((uint32_t*) &image2[off2 + 4 + 5 * row_size]), acc);
-
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 0 + 6 * row_size]), *((uint32_t*) &image2[off2 + 0 + 6 * row_size]), acc);
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 4 + 6 * row_size]), *((uint32_t*) &image2[off2 + 4 + 6 * row_size]), acc);
-
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 0 + 7 * row_size]), *((uint32_t*) &image2[off2 + 0 + 7 * row_size]), acc);
-	acc = __USADA8(*((uint32_t*) &image1[off1 + 4 + 7 * row_size]), *((uint32_t*) &image2[off2 + 4 + 7 * row_size]), acc);
-
-	return acc;
 }
 
 /**
@@ -788,152 +701,152 @@ uint8_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate
     //iterate over all patterns
     for (int k = 0; k < NUM_BLOCKS*NUM_BLOCKS; k++)
     {
-        uint16_t i = is[k] >> l;  //reference pixel for the current level
-        uint16_t j = js[k] >> l;
+      uint16_t i = is[k] >> l;  //reference pixel for the current level
+      uint16_t j = js[k] >> l;
 
-        uint16_t iwidth = FRAME_SIZE >> l;
-        uint8_t *base1 = image1 + lvl_off[l] + j * iwidth + i;
+      uint16_t iwidth = FRAME_SIZE >> l;
+      uint8_t *base1 = image1 + lvl_off[l] + j * iwidth + i;
 
-        float JTJ[4];   //the 2x2 Hessian
-        JTJ[0] = 0;
-        JTJ[1] = 0;
-        JTJ[2] = 0;
-        JTJ[3] = 0;
+      float JTJ[4];   //the 2x2 Hessian
+      JTJ[0] = 0;
+      JTJ[1] = 0;
+      JTJ[2] = 0;
+      JTJ[3] = 0;
+      int c = 0;
+
+      //compute jacobians and the hessian for the patch at the current location
+      for (int8_t jj = -HALF_PATCH_SIZE; jj <= HALF_PATCH_SIZE; jj++)
+      {
+        uint8_t *left = base1 + jj*iwidth;
+        for (int8_t ii = -HALF_PATCH_SIZE; ii <= HALF_PATCH_SIZE; ii++)
+        {
+          const float jx = ((uint16_t)left[ii+1] - (uint16_t)left[ii-1]) * 0.5f;
+          const float jy = ((uint16_t)left[ii+iwidth] - (uint16_t)left[ii-iwidth]) * 0.5f;
+          Jx[c] = jx;
+          Jy[c] = jy;
+          JTJ[0] += jx*jx;
+          JTJ[1] += jx*jy;
+          JTJ[2] += jx*jy;
+          JTJ[3] += jy*jy;
+          c++;
+        }
+      }
+
+      // us and vs store the sample position in level 0 pixel coordinates
+      float u = (us[k] / (1<<l));
+      float v = (vs[k] / (1<<l));
+
+      float chi_sq_previous = 0.f;
+
+      //Now do some Gauss-Newton iterations for flow
+      for (int iters = 0; iters < 5; iters++)
+      {
+        float JTe_x = 0;  //accumulators for Jac transposed times error
+        float JTe_y = 0;
+
+        uint8_t *base2 = image2 + lvl_off[l] + (uint16_t)v * iwidth + (uint16_t)u;
+
+        //extract bilinearly filtered pixel values for the current location in image2
+        float dX = u - floorf(u);
+        float dY = v - floorf(v);
+        float fMixTL = (1.f - dX) * (1.f - dY);
+        float fMixTR = (dX) * (1.f - dY);
+        float fMixBL = (1.f - dX) * (dY);
+        float fMixBR = (dX) * (dY);
+
+        float chi_sq = 0.f;
         int c = 0;
-
-        //compute jacobians and the hessian for the patch at the current location
         for (int8_t jj = -HALF_PATCH_SIZE; jj <= HALF_PATCH_SIZE; jj++)
         {
-          uint8_t *left = base1 + jj*iwidth;
+          uint8_t *left1 = base1 + jj*iwidth;
+          uint8_t *left2 = base2 + jj*iwidth;
+
           for (int8_t ii = -HALF_PATCH_SIZE; ii <= HALF_PATCH_SIZE; ii++)
           {
-            const float jx = ((uint16_t)left[ii+1] - (uint16_t)left[ii-1]) * 0.5f;
-            const float jy = ((uint16_t)left[ii+iwidth] - (uint16_t)left[ii-iwidth]) * 0.5f;
-            Jx[c] = jx;
-            Jy[c] = jy;
-            JTJ[0] += jx*jx;
-            JTJ[1] += jx*jy;
-            JTJ[2] += jx*jy;
-            JTJ[3] += jy*jy;
+            float fPixel = fMixTL * left2[ii] + fMixTR * left2[ii+1] + fMixBL * left2[ii+iwidth] + fMixBR * left2[ii+iwidth+1];
+            float fDiff = fPixel - left1[ii];
+            JTe_x += fDiff * Jx[c];
+            JTe_y += fDiff * Jy[c];
+            chi_sq += fDiff*fDiff;
             c++;
           }
         }
 
-        // us and vs store the sample position in level 0 pixel coordinates
-        float u = (us[k] / (1<<l));
-        float v = (vs[k] / (1<<l));
-
-        float chi_sq_previous = 0.f;
-
-        //Now do some Gauss-Newton iterations for flow
-        for (int iters = 0; iters < 5; iters++)
+        //only update if the error got smaller
+        if (iters == 0 || chi_sq_previous > chi_sq)
         {
-          float JTe_x = 0;  //accumulators for Jac transposed times error
-          float JTe_y = 0;
-
-          uint8_t *base2 = image2 + lvl_off[l] + (uint16_t)v * iwidth + (uint16_t)u;
-
-          //extract bilinearly filtered pixel values for the current location in image2
-          float dX = u - floorf(u);
-          float dY = v - floorf(v);
-          float fMixTL = (1.f - dX) * (1.f - dY);
-          float fMixTR = (dX) * (1.f - dY);
-          float fMixBL = (1.f - dX) * (dY);
-          float fMixBR = (dX) * (dY);
-
-          float chi_sq = 0.f;
-          int c = 0;
-          for (int8_t jj = -HALF_PATCH_SIZE; jj <= HALF_PATCH_SIZE; jj++)
+          //compute inverse of hessian
+          float det = (JTJ[0]*JTJ[3]-JTJ[1]*JTJ[2]);
+          if (det != 0.f)
           {
-            uint8_t *left1 = base1 + jj*iwidth;
-            uint8_t *left2 = base2 + jj*iwidth;
+            float detinv = 1.f / det;
+            float JTJinv[4];
+            JTJinv[0] = detinv * JTJ[3];
+            JTJinv[1] = detinv * -JTJ[1];
+            JTJinv[2] = detinv * -JTJ[2];
+            JTJinv[3] = detinv * JTJ[0];
 
-            for (int8_t ii = -HALF_PATCH_SIZE; ii <= HALF_PATCH_SIZE; ii++)
+            //compute update and shift current position accordingly
+            float updx = JTJinv[0]*JTe_x + JTJinv[1]*JTe_y;
+            float updy = JTJinv[2]*JTe_x + JTJinv[3]*JTe_y;
+            float new_u = u-updx;
+            float new_v = v-updy;
+
+            //check if we drifted outside the image
+            if (((int16_t)new_u < HALF_PATCH_SIZE) || (int16_t)new_u > (iwidth-HALF_PATCH_SIZE-1) || ((int16_t)new_v < HALF_PATCH_SIZE) || (int16_t)new_v > (iwidth-HALF_PATCH_SIZE-1))
             {
-              float fPixel = fMixTL * left2[ii] + fMixTR * left2[ii+1] + fMixBL * left2[ii+iwidth] + fMixBR * left2[ii+iwidth+1];
-              float fDiff = fPixel - left1[ii];
-              JTe_x += fDiff * Jx[c];
-              JTe_y += fDiff * Jy[c];
-              chi_sq += fDiff*fDiff;
-              c++;
-            }
-          }
-
-          //only update if the error got smaller
-          if (iters == 0 || chi_sq_previous > chi_sq)
-          {
-            //compute inverse of hessian
-            float det = (JTJ[0]*JTJ[3]-JTJ[1]*JTJ[2]);
-            if (det != 0.f)
-            {
-              float detinv = 1.f / det;
-              float JTJinv[4];
-              JTJinv[0] = detinv * JTJ[3];
-              JTJinv[1] = detinv * -JTJ[1];
-              JTJinv[2] = detinv * -JTJ[2];
-              JTJinv[3] = detinv * JTJ[0];
-
-              //compute update and shift current position accordingly
-              float updx = JTJinv[0]*JTe_x + JTJinv[1]*JTe_y;
-              float updy = JTJinv[2]*JTe_x + JTJinv[3]*JTe_y;
-              float new_u = u-updx;
-              float new_v = v-updy;
-
-              //check if we drifted outside the image
-              if (((int16_t)new_u < HALF_PATCH_SIZE) || (int16_t)new_u > (iwidth-HALF_PATCH_SIZE-1) || ((int16_t)new_v < HALF_PATCH_SIZE) || (int16_t)new_v > (iwidth-HALF_PATCH_SIZE-1))
-              {
-                break;
-              }
-              else
-              {
-                u = new_u;
-                v = new_v;
-              }
+              break;
             }
             else
-              break;
+            {
+              u = new_u;
+              v = new_v;
+            }
           }
           else
             break;
-
-          chi_sq_previous = chi_sq;
         }
+        else
+          break;
 
-        if (l > 0)
+        chi_sq_previous = chi_sq;
+      }
+
+      if (l > 0)
+      {
+        us[k] = u * (1<<l);
+        vs[k] = v * (1<<l);
+      }
+      else  //for the last, level compute the actual flow in pixels
+      {
+        float nx = i-u;
+        float ny = j-v;
+        //TODO: check if patch drifted too far - take number of pyramid levels in to account for that
         {
-          us[k] = u * (1<<l);
-          vs[k] = v * (1<<l);
+          meanflowx += nx;
+          meanflowy += ny;
+          meancount++;
         }
-        else  //for the last, level compute the actual flow in pixels
-        {
-          float nx = i-u;
-          float ny = j-v;
-          //TODO: check if patch drifted too far - take number of pyramid levels in to account for that
-          {
-            meanflowx += nx;
-            meanflowy += ny;
-            meancount++;
-          }
       }
     }
   }
 
-  /* evaluate flow calculation */
+  /* compute mean flow */
   if (meancount > 0)
   {
     meanflowx /= meancount;
     meanflowy /= meancount;
 
-  *pixel_flow_x = meanflowx;
-  *pixel_flow_y = meanflowy;
-}
-else
-{
-  *pixel_flow_x = 0.0f;
-  *pixel_flow_y = 0.0f;
-  return 0;
-}
+    *pixel_flow_x = meanflowx;
+    *pixel_flow_y = meanflowy;
+  }
+  else
+  {
+    *pixel_flow_x = 0.0f;
+    *pixel_flow_y = 0.0f;
+    return 0;
+  }
 
-/* return quality */
-return (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
+  /* return quality */
+  return (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
 }
