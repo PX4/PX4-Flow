@@ -42,4 +42,10 @@
 uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
 		float *histflowx, float *histflowy);
 
+/**
+ * @brief Computes pixel flow from image1 to image2 with KLT method
+ */
+uint8_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
+    float *pixel_flow_x, float *pixel_flow_y);
+
 #endif /* FLOW_H_ */

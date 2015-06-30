@@ -52,6 +52,15 @@
 #define SEARCH_SIZE	global_data.param[PARAM_MAX_FLOW_PIXEL] // maximum offset to search: 4 + 1/2 pixels
 #define TILE_SIZE	8               						// x & y tile size
 #define NUM_BLOCKS	5 // x & y number of tiles to check
+#define NUM_BLOCK_KLT 3 
+
+//this are the settings for KLT based flow
+#define PYR_LVLS 2
+#define HALF_PATCH_SIZE 4       //this is half the wanted patch size minus 1
+#define PATCH_SIZE (HALF_PATCH_SIZE*2+1)
+
+float Jx[PATCH_SIZE*PATCH_SIZE];
+float Jy[PATCH_SIZE*PATCH_SIZE];
 
 #define sign(x) (( x > 0 ) - ( x < 0 ))
 
@@ -745,4 +754,250 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	uint8_t qual = (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
 
 	return qual;
+}
+
+
+/**
+ * @brief Computes pixel flow from image1 to image2
+ *
+ * Searches the corresponding position in the new image (image2) of max. 64 pixels from the old image (image1)
+ * with the KLT method and outputs the average value of all flow vectors
+ *
+ * @param image1 previous image buffer
+ * @param image2 current image buffer (new)
+ * @param x_rate gyro x rate
+ * @param y_rate gyro y rate
+ * @param z_rate gyro z rate
+ *
+ * @return quality of flow calculation
+ */
+uint8_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate, float *pixel_flow_x, float *pixel_flow_y)
+{
+  /* variables */
+  uint16_t i, j;
+
+  float meanflowx = 0.0f;
+  float meanflowy = 0.0f;
+  uint16_t meancount = 0;
+
+  /*
+   * compute image pyramid for current frame
+   * there is 188*120 bytes per buffer, we are only using 64*64 per buffer,
+   * so just add the pyramid levels after the image
+   */
+  //first compute the offsets in the memory for the pyramid levels
+  uint16_t lvl_off[PYR_LVLS];
+  uint16_t frame_size = (uint16_t)(FRAME_SIZE+0.5);
+  uint16_t s = frame_size;
+  uint16_t off = 0;
+  for (int l = 0; l < PYR_LVLS; l++)
+  {
+    lvl_off[l] = off;
+    off += s*s;
+    s /= 2;
+  }
+  
+  //then subsample the images consecutively, no blurring is done before the subsampling (if someone volunteers, please go ahead...)
+  for (int l = 1; l < PYR_LVLS; l++)
+  {
+    uint16_t src_size = frame_size >> (l-1);
+    uint16_t tar_size = frame_size >> l;
+    uint8_t *source = &image2[lvl_off[l-1]]; //pointer to the beginning of the previous level
+    uint8_t *target = &image2[lvl_off[l]];   //pointer to the beginning of the current level
+    for (j = 0; j < tar_size; j++)
+      for (i = 0; i < tar_size; i+=2)
+      {
+        //subsample the image by 2, use the halving-add instruction to do so
+        uint32_t l1 = (__UHADD8(*((uint32_t*) &source[(j*2+0)*src_size + i*2]), *((uint32_t*) &source[(j*2+0)*src_size + i*2+1])));
+        uint32_t l2 = (__UHADD8(*((uint32_t*) &source[(j*2+1)*src_size + i*2]), *((uint32_t*) &source[(j*2+1)*src_size + i*2+1])));
+        uint32_t r = __UHADD8(l1, l2);
+
+        //the first and the third byte are the values we want to have
+        target[j*tar_size + i+0] = (uint8_t) r;
+        target[j*tar_size + i+1] = (uint8_t) (r>>16);
+      }
+  }
+
+  //need to store the flow values between pyramid level changes
+  float us[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
+  float vs[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
+  uint16_t is[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
+  uint16_t js[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
+
+
+  //initialize flow values with the pixel value of the previous image
+  uint16_t pixLo = frame_size / (NUM_BLOCK_KLT + 1);
+  if (pixLo < PATCH_SIZE) pixLo = PYR_LVLS * PATCH_SIZE;
+  uint16_t pixHi = (uint16_t)frame_size * NUM_BLOCK_KLT / (NUM_BLOCK_KLT + 1);
+  if (pixHi > (frame_size - PATCH_SIZE)) pixHi = frame_size - (PYR_LVLS * PATCH_SIZE);
+  uint16_t pixStep = (pixHi - pixLo) / (NUM_BLOCK_KLT-1);
+
+  j = pixLo;
+  for (int y = 0; y < NUM_BLOCK_KLT; y++, j += pixStep)
+  {
+    i = pixLo;
+    for (int x = 0; x < NUM_BLOCK_KLT; x++, i += pixStep)
+    {
+      //TODO: for proper rotation compensation, insert gyro values here and then substract at the end
+      us[y*NUM_BLOCK_KLT+x] = i; //position in new image at level 0
+      vs[y*NUM_BLOCK_KLT+x] = j;
+      is[y*NUM_BLOCK_KLT+x] = i; //position in previous image  at level 0
+      js[y*NUM_BLOCK_KLT+x] = j;
+    }
+  }
+
+  //for all pyramid levels, start from the smallest level
+  for (int l = PYR_LVLS-1; l >= 0; l--)
+  {
+    //iterate over all patterns
+    for (int k = 0; k < NUM_BLOCK_KLT*NUM_BLOCK_KLT; k++)
+    {
+      uint16_t i = is[k] >> l;  //reference pixel for the current level
+      uint16_t j = js[k] >> l;
+
+      uint16_t iwidth = frame_size >> l;
+      uint8_t *base1 = image1 + lvl_off[l] + j * iwidth + i;
+
+      float JTJ[4];   //the 2x2 Hessian
+      JTJ[0] = 0;
+      JTJ[1] = 0;
+      JTJ[2] = 0;
+      JTJ[3] = 0;
+      int c = 0;
+
+      //compute jacobians and the hessian for the patch at the current location
+      for (int8_t jj = -HALF_PATCH_SIZE; jj <= HALF_PATCH_SIZE; jj++)
+      {
+        uint8_t *left = base1 + jj*iwidth;
+        for (int8_t ii = -HALF_PATCH_SIZE; ii <= HALF_PATCH_SIZE; ii++)
+        {
+          const float jx = ((uint16_t)left[ii+1] - (uint16_t)left[ii-1]) * 0.5f;
+          const float jy = ((uint16_t)left[ii+iwidth] - (uint16_t)left[ii-iwidth]) * 0.5f;
+          Jx[c] = jx;
+          Jy[c] = jy;
+          JTJ[0] += jx*jx;
+          JTJ[1] += jx*jy;
+          JTJ[2] += jx*jy;
+          JTJ[3] += jy*jy;
+          c++;
+        }
+      }
+
+      // us and vs store the sample position in level 0 pixel coordinates
+      float u = (us[k] / (1<<l));
+      float v = (vs[k] / (1<<l));
+
+      float chi_sq_previous = 0.f;
+
+      //Now do some Gauss-Newton iterations for flow
+      for (int iters = 0; iters < 5; iters++)
+      {
+        float JTe_x = 0;  //accumulators for Jac transposed times error
+        float JTe_y = 0;
+
+        uint8_t *base2 = image2 + lvl_off[l] + (uint16_t)v * iwidth + (uint16_t)u;
+
+        //extract bilinearly filtered pixel values for the current location in image2
+        float dX = u - floorf(u);
+        float dY = v - floorf(v);
+        float fMixTL = (1.f - dX) * (1.f - dY);
+        float fMixTR = (dX) * (1.f - dY);
+        float fMixBL = (1.f - dX) * (dY);
+        float fMixBR = (dX) * (dY);
+
+        float chi_sq = 0.f;
+        int c = 0;
+        for (int8_t jj = -HALF_PATCH_SIZE; jj <= HALF_PATCH_SIZE; jj++)
+        {
+          uint8_t *left1 = base1 + jj*iwidth;
+          uint8_t *left2 = base2 + jj*iwidth;
+
+          for (int8_t ii = -HALF_PATCH_SIZE; ii <= HALF_PATCH_SIZE; ii++)
+          {
+            float fPixel = fMixTL * left2[ii] + fMixTR * left2[ii+1] + fMixBL * left2[ii+iwidth] + fMixBR * left2[ii+iwidth+1];
+            float fDiff = fPixel - left1[ii];
+            JTe_x += fDiff * Jx[c];
+            JTe_y += fDiff * Jy[c];
+            chi_sq += fDiff*fDiff;
+            c++;
+          }
+        }
+
+        //only update if the error got smaller
+        if (iters == 0 || chi_sq_previous > chi_sq)
+        {
+          //compute inverse of hessian
+          float det = (JTJ[0]*JTJ[3]-JTJ[1]*JTJ[2]);
+          if (det != 0.f)
+          {
+            float detinv = 1.f / det;
+            float JTJinv[4];
+            JTJinv[0] = detinv * JTJ[3];
+            JTJinv[1] = detinv * -JTJ[1];
+            JTJinv[2] = detinv * -JTJ[2];
+            JTJinv[3] = detinv * JTJ[0];
+
+            //compute update and shift current position accordingly
+            float updx = JTJinv[0]*JTe_x + JTJinv[1]*JTe_y;
+            float updy = JTJinv[2]*JTe_x + JTJinv[3]*JTe_y;
+            float new_u = u-updx;
+            float new_v = v-updy;
+
+            //check if we drifted outside the image
+            if (((int16_t)new_u < HALF_PATCH_SIZE) || (int16_t)new_u > (iwidth-HALF_PATCH_SIZE-1) || ((int16_t)new_v < HALF_PATCH_SIZE) || (int16_t)new_v > (iwidth-HALF_PATCH_SIZE-1))
+            {
+              break;
+            }
+            else
+            {
+              u = new_u;
+              v = new_v;
+            }
+          }
+          else
+            break;
+        }
+        else
+          break;
+
+        chi_sq_previous = chi_sq;
+      }
+
+      if (l > 0)
+      {
+        us[k] = u * (1<<l);
+        vs[k] = v * (1<<l);
+      }
+      else  //for the last, level compute the actual flow in pixels
+      {
+        float nx = i-u;
+        float ny = j-v;
+        //TODO: check if patch drifted too far - take number of pyramid levels in to account for that
+        {
+          meanflowx += nx;
+          meanflowy += ny;
+          meancount++;
+        }
+      }
+    }
+  }
+
+  /* compute mean flow */
+  if (meancount > 0)
+  {
+    meanflowx /= meancount;
+    meanflowy /= meancount;
+
+    *pixel_flow_x = meanflowx;
+    *pixel_flow_y = meanflowy;
+  }
+  else
+  {
+    *pixel_flow_x = 0.0f;
+    *pixel_flow_y = 0.0f;
+    return 0;
+  }
+
+  /* return quality */
+  return (uint8_t)(meancount * 255 / (NUM_BLOCK_KLT*NUM_BLOCK_KLT));
 }
