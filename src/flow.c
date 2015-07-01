@@ -457,8 +457,8 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 
 				for (ii = winmin; ii <= winmax; ii++)
 				{
-//					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
-					uint32_t temp_dist = ABSDIFF(base1, base2 + ii);
+					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+//					uint32_t temp_dist = ABSDIFF(base1, base2 + ii);
 					if (temp_dist < dist)
 					{
 						sumx = ii;
@@ -509,23 +509,23 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	/* create flow image if needed (image1 is not needed anymore)
 	 * -> can be used for debugging purpose
 	 */
-//	if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
-//	{
-//
-//		for (j = pixLo; j < pixHi; j += pixStep)
-//		{
-//			for (i = pixLo; i < pixHi; i += pixStep)
-//			{
-//
-//				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
-//				if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
-//				{
-//					image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
-//				}
-//
-//			}
-//		}
-//	}
+	if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
+	{
+
+		for (j = pixLo; j < pixHi; j += pixStep)
+		{
+			for (i = pixLo; i < pixHi; i += pixStep)
+			{
+
+				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+				if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
+				{
+					image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
+				}
+
+			}
+		}
+	}
 
 	/* evaluate flow calculation */
 	if (meancount > 10)
@@ -982,22 +982,110 @@ uint8_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate
     }
   }
 
-  /* compute mean flow */
-  if (meancount > 0)
-  {
-    meanflowx /= meancount;
-    meanflowy /= meancount;
+/* create flow image if needed (image1 is not needed anymore)
+ * -> can be used for debugging purpose
+ */
+if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
+{
 
-    *pixel_flow_x = meanflowx;
-    *pixel_flow_y = meanflowy;
-  }
-  else
-  {
-    *pixel_flow_x = 0.0f;
-    *pixel_flow_y = 0.0f;
-    return 0;
-  }
+	for (j = pixLo; j < pixHi; j += pixStep)
+	{
+		for (i = pixLo; i < pixHi; i += pixStep)
+		{
 
-  /* return quality */
-  return (uint8_t)(meancount * 255 / (NUM_BLOCK_KLT*NUM_BLOCK_KLT));
+			uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+			if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
+			{
+				image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
+			}
+
+		}
+	}
+}
+
+/* compute mean flow */
+if (meancount > 0)
+{
+	meanflowx /= meancount;
+	meanflowy /= meancount;
+
+ 
+
+	/* compensate rotation */
+	/* calculate focal_length in pixel */
+	const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
+
+	/*
+	 * gyro compensation
+	 * the compensated value is clamped to
+	 * the maximum measurable flow value (param BFLOW_MAX_PIX) +0.5
+	 * (sub pixel flow can add half pixel to the value)
+	 *
+	 * -y_rate gives x flow
+	 * x_rates gives y_flow
+	 */
+	if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION])
+	{
+		if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+		{
+			/* calc pixel of gyro */
+			float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
+			float comp_x = meanflowx + y_rate_pixel;
+
+			/* clamp value to maximum search window size plus half pixel from subpixel search */
+			if (comp_x < (-SEARCH_SIZE - 0.5f))
+				*pixel_flow_x = (-SEARCH_SIZE - 0.5f);
+			else if (comp_x > (SEARCH_SIZE + 0.5f))
+				*pixel_flow_x = (SEARCH_SIZE + 0.5f);
+			else
+				*pixel_flow_x = comp_x;
+		}
+		else
+		{
+			*pixel_flow_x = meanflowx;
+		}	
+
+		if(fabsf(x_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+		{
+			/* calc pixel of gyro */
+			float x_rate_pixel = x_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
+			float comp_y = meanflowy - x_rate_pixel;
+			/* clamp value to maximum search window size plus/minus half pixel from subpixel search */
+			if (comp_y < (-SEARCH_SIZE - 0.5f))
+				*pixel_flow_y = (-SEARCH_SIZE - 0.5f);
+			else if (comp_y > (SEARCH_SIZE + 0.5f))
+				*pixel_flow_y = (SEARCH_SIZE + 0.5f);
+			else
+				*pixel_flow_y = comp_y;
+		}
+		else
+		{
+			*pixel_flow_y = meanflowy;
+		}
+
+		/* alternative compensation */
+		//				/* compensate y rotation */
+		//				*pixel_flow_x = meanflowx + y_rate_pixel;
+		//
+		//				/* compensate x rotation */
+		//				*pixel_flow_y = meanflowy - x_rate_pixel;
+
+	} 
+	else
+	{
+		/* without gyro compensation */
+	    *pixel_flow_x = meanflowx;
+	    *pixel_flow_y = meanflowy;
+	}
+
+}
+else
+{
+	*pixel_flow_x = 0.0f;
+	*pixel_flow_y = 0.0f;
+	return 0;
+}
+
+/* return quality */
+return (uint8_t)(meancount * 255 / (NUM_BLOCK_KLT*NUM_BLOCK_KLT));
 }
