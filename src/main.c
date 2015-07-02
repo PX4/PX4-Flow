@@ -391,9 +391,11 @@ int main(void)
 		float y_rate = - x_rate_sensor;
 		float z_rate = z_rate_sensor; // z is correct
 
+
+
 		/* calculate focal_length in pixel */
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
-
+		float x_rate_pixel = x_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
 		/* get sonar data */
 		distance_valid = sonar_read(&sonar_distance_filtered, &sonar_distance_raw);
 
@@ -439,6 +441,7 @@ int main(void)
 
 					uint32_t deltatime = (get_boot_time_us() - lasttime);
 					integration_timespan += deltatime;
+					//TODO -> right to swap?
 					accumulated_flow_x += pixel_flow_y  / focal_length_px * 1.0f; //rad axis swapped to align x flow around y axis
 					accumulated_flow_y += pixel_flow_x  / focal_length_px * -1.0f;//rad
 					accumulated_gyro_x += x_rate * deltatime / 1000000.0f;	//rad
@@ -582,7 +585,7 @@ int main(void)
 
 				if(global_data.param[PARAM_USB_SEND_GYRO])
 				{
-					mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_us(), x_rate, y_rate, z_rate);
+					mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_us(), pixel_flow_x, y_rate, z_rate);
 				}
 
 				integration_timespan = 0;

@@ -511,7 +511,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	 */
 	if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
 	{
-
+		int pixel_ind = 0;
 		for (j = pixLo; j < pixHi; j += pixStep)
 		{
 			for (i = pixLo; i < pixHi; i += pixStep)
@@ -521,6 +521,23 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
 				{
 					image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
+					if(subdirs[pixel_ind] == 0)
+						image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i+1] = 200;
+					if(subdirs[pixel_ind] == 1)
+						image1[(j+1) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i+1] = 200;
+					if(subdirs[pixel_ind] == 2)
+						image1[(j+1) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 200;
+					if (subdirs[pixel_ind] == 3)
+						image1[(j+1) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i-1] = 200;
+					if(subdirs[pixel_ind] == 4)
+						image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i-1] = 200;
+					if(subdirs[pixel_ind] == 5) 
+						image1[(j-1) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i-1] = 200;
+					if(subdirs[pixel_ind] == 6)
+						image1[(j-1) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 200;
+					if(subdirs[pixel_ind] == 7) 
+						image1[(j-1) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i + 1] = 200;					
+					pixel_ind++;
 				}
 
 			}
@@ -528,7 +545,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	}
 
 	/* evaluate flow calculation */
-	if (meancount > 10)
+	if (meancount > 5)
 	{
 		meanflowx /= meancount;
 		meanflowy /= meancount;
@@ -689,13 +706,13 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 					float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
 					float comp_x = histflowx + y_rate_pixel;
 
-                    /* clamp value to maximum search window size plus half pixel from subpixel search */
-                    if (comp_x < (-SEARCH_SIZE - 0.5f))
-                    	*pixel_flow_x = (-SEARCH_SIZE - 0.5f);
-                    else if (comp_x > (SEARCH_SIZE + 0.5f))
-                    	*pixel_flow_x = (SEARCH_SIZE + 0.5f);
-                    else
-                    	*pixel_flow_x = comp_x;
+		                    /* clamp value to maximum search window size plus half pixel from subpixel search */
+		                    if (comp_x < (-SEARCH_SIZE - 0.5f))
+		                    	*pixel_flow_x = (-SEARCH_SIZE - 0.5f);
+		                    else if (comp_x > (SEARCH_SIZE + 0.5f))
+		                    	*pixel_flow_x = (SEARCH_SIZE + 0.5f);
+		                    else
+		                    	*pixel_flow_x = comp_x;
 				}
 				else
 				{
@@ -773,12 +790,23 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
  */
 uint8_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate, float *pixel_flow_x, float *pixel_flow_y)
 {
-  /* variables */
-  uint16_t i, j;
+/* variables */
+uint16_t i, j;
 
-  float meanflowx = 0.0f;
-  float meanflowy = 0.0f;
-  uint16_t meancount = 0;
+float meanflowx = 0.0f;
+float meanflowy = 0.0f;
+uint16_t meancount = 0;
+
+const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f;
+float x_rate_pixel = x_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
+float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
+if(fabs(x_rate_pixel)>3)
+	x_rate_pixel = 0;
+if(fabs(y_rate_pixel)>3)
+	y_rate_pixel = 0;
+
+int x_rate_px_round = round(x_rate_pixel);
+int y_rate_px_round = round(y_rate_pixel);
 
   /*
    * compute image pyramid for current frame
@@ -839,8 +867,9 @@ uint8_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate
     for (int x = 0; x < NUM_BLOCK_KLT; x++, i += pixStep)
     {
       //TODO: for proper rotation compensation, insert gyro values here and then substract at the end
-      us[y*NUM_BLOCK_KLT+x] = i; //position in new image at level 0
-      vs[y*NUM_BLOCK_KLT+x] = j;
+
+      us[y*NUM_BLOCK_KLT+x] = i - y_rate_pixel; //position in new image at level 0
+      vs[y*NUM_BLOCK_KLT+x] = j + x_rate_pixel;
       is[y*NUM_BLOCK_KLT+x] = i; //position in previous image  at level 0
       js[y*NUM_BLOCK_KLT+x] = j;
     }
@@ -982,93 +1011,24 @@ uint8_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate
     }
   }
 
-/* create flow image if needed (image1 is not needed anymore)
- * -> can be used for debugging purpose
- */
-if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
-{
-
-	for (j = pixLo; j < pixHi; j += pixStep)
-	{
-		for (i = pixLo; i < pixHi; i += pixStep)
-		{
-
-			uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
-			if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
-			{
-				image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
-			}
-
-		}
-	}
-}
-
 /* compute mean flow */
 if (meancount > 0)
 {
 	meanflowx /= meancount;
 	meanflowy /= meancount;
 
- 
-
-	/* compensate rotation */
-	/* calculate focal_length in pixel */
-	const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
-
-	/*
-	 * gyro compensation
-	 * the compensated value is clamped to
-	 * the maximum measurable flow value (param BFLOW_MAX_PIX) +0.5
-	 * (sub pixel flow can add half pixel to the value)
-	 *
-	 * -y_rate gives x flow
-	 * x_rates gives y_flow
-	 */
 	if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION])
 	{
-		if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
-		{
-			/* calc pixel of gyro */
-			float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
-			float comp_x = meanflowx + y_rate_pixel;
-
-			/* clamp value to maximum search window size plus half pixel from subpixel search */
-			if (comp_x < (-SEARCH_SIZE - 0.5f))
-				*pixel_flow_x = (-SEARCH_SIZE - 0.5f);
-			else if (comp_x > (SEARCH_SIZE + 0.5f))
-				*pixel_flow_x = (SEARCH_SIZE + 0.5f);
-			else
-				*pixel_flow_x = comp_x;
-		}
-		else
-		{
-			*pixel_flow_x = meanflowx;
-		}	
-
 		if(fabsf(x_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
-		{
-			/* calc pixel of gyro */
-			float x_rate_pixel = x_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
-			float comp_y = meanflowy - x_rate_pixel;
-			/* clamp value to maximum search window size plus/minus half pixel from subpixel search */
-			if (comp_y < (-SEARCH_SIZE - 0.5f))
-				*pixel_flow_y = (-SEARCH_SIZE - 0.5f);
-			else if (comp_y > (SEARCH_SIZE + 0.5f))
-				*pixel_flow_y = (SEARCH_SIZE + 0.5f);
-			else
-				*pixel_flow_y = comp_y;
-		}
+			*pixel_flow_x = meanflowx - y_rate_pixel; // + (x_rate_px_round - x_rate_pixel);
 		else
-		{
-			*pixel_flow_y = meanflowy;
-		}
+			*pixel_flow_x = meanflowx;
 
-		/* alternative compensation */
-		//				/* compensate y rotation */
-		//				*pixel_flow_x = meanflowx + y_rate_pixel;
-		//
-		//				/* compensate x rotation */
-		//				*pixel_flow_y = meanflowy - x_rate_pixel;
+		if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+			*pixel_flow_y = meanflowy + x_rate_pixel; // + (y_rate_px_round - y_rate_pixel);
+		else
+			*pixel_flow_y = meanflowy;
+
 
 	} 
 	else
@@ -1084,6 +1044,28 @@ else
 	*pixel_flow_x = 0.0f;
 	*pixel_flow_y = 0.0f;
 	return 0;
+}
+
+/* create flow image if needed (image1 is not needed anymore)
+ * -> can be used for debugging purpose
+ */
+if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
+{
+
+	for (j = pixLo; j < pixHi; j += pixStep)
+	{
+		for (i = pixLo; i < pixHi; i += pixStep)
+		{
+
+
+			image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
+			int pixel = (j - (int)(meanflowx*4+0.5f)) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + (i - (int)(meanflowy*4+0.5f));
+			if(pixel >= 0 && pixel < global_data.param[PARAM_IMAGE_WIDTH]*global_data.param[PARAM_IMAGE_WIDTH])
+				image1[pixel] = 200;
+
+
+		}
+	}
 }
 
 /* return quality */
