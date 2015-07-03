@@ -22,6 +22,7 @@ SRCS = 		src/main.c \
 			src/led.c \
 			src/settings.c \
 			src/communication.c \
+			src/filter.c \
 			src/flow.c \
 			src/dcmi.c \
 			src/mt9v034.c \

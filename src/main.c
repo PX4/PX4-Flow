@@ -48,6 +48,7 @@
 #include "settings.h"
 #include "utils.h"
 #include "led.h"
+#include "filter.h"
 #include "flow.h"
 #include "dcmi.h"
 #include "mt9v034.h"
@@ -411,6 +412,8 @@ int main(void)
 			/* copy recent image to faster ram */
 			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
 
+			/* filter the new image */
+			filter_image(current_image, global_data.param[PARAM_IMAGE_WIDTH]);
 			/* compute optical flow */
 			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
 //			qual = compute_klt(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
