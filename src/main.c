@@ -412,8 +412,8 @@ int main(void)
 			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
 
 			/* compute optical flow */
-//			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
-			qual = compute_klt(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+//			qual = compute_klt(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
 
 
 			/*
@@ -441,7 +441,6 @@ int main(void)
 
 					uint32_t deltatime = (get_boot_time_us() - lasttime);
 					integration_timespan += deltatime;
-					//TODO -> right to swap?
 					accumulated_flow_x += pixel_flow_y  / focal_length_px * 1.0f; //rad axis swapped to align x flow around y axis
 					accumulated_flow_y += pixel_flow_x  / focal_length_px * -1.0f;//rad
 					accumulated_gyro_x += x_rate * deltatime / 1000000.0f;	//rad

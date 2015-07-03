@@ -457,8 +457,8 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 
 				for (ii = winmin; ii <= winmax; ii++)
 				{
-					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
-//					uint32_t temp_dist = ABSDIFF(base1, base2 + ii);
+//					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+					uint32_t temp_dist = ABSDIFF(base1, base2 + ii);
 					if (temp_dist < dist)
 					{
 						sumx = ii;
@@ -797,13 +797,13 @@ float meanflowx = 0.0f;
 float meanflowy = 0.0f;
 uint16_t meancount = 0;
 
+float chi_sum = 0.0f;
+uint8_t chicount = 0;
+
 const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f;
 float x_rate_pixel = x_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
 float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
-if(fabs(x_rate_pixel)>3)
-	x_rate_pixel = 0;
-if(fabs(y_rate_pixel)>3)
-	y_rate_pixel = 0;
+
 
 int x_rate_px_round = round(x_rate_pixel);
 int y_rate_px_round = round(y_rate_pixel);
@@ -988,7 +988,8 @@ int y_rate_px_round = round(y_rate_pixel);
         }
         else
           break;
-
+  	chi_sum += chi_sq;
+  	chicount++;
         chi_sq_previous = chi_sq;
       }
 
@@ -1069,5 +1070,6 @@ if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_
 }
 
 /* return quality */
-return (uint8_t)(meancount * 255 / (NUM_BLOCK_KLT*NUM_BLOCK_KLT));
+//return (uint8_t)(meancount * 255 / (NUM_BLOCK_KLT*NUM_BLOCK_KLT));
+return chi_sum/chicount;
 }
