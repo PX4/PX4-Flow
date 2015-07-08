@@ -199,9 +199,23 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR], "BFLOW_THROTT");
 	global_data.param_access[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = READ_WRITE;
 
+	global_data.param[PARAM_QUALITY_FILTER] = 1;
+	strcpy(global_data.param_name[PARAM_QUALITY_FILTER], "QUALITY_FILTER");
+	global_data.param_access[PARAM_QUALITY_FILTER] = READ_WRITE;
+
+	global_data.param[PARAM_ALGO_CHOICE] = 1;
+	strcpy(global_data.param_name[PARAM_ALGO_CHOICE], "ALGO_CHOICE");
+	global_data.param_access[PARAM_ALGO_CHOICE] = READ_WRITE;
+
+	global_data.param[PARAM_USE_MEDIAN] = 1;
+	strcpy(global_data.param_name[PARAM_USE_MEDIAN], "USE_MEDIAN");
+	global_data.param_access[PARAM_USE_MEDIAN] = READ_WRITE;
+
 	global_data.param[DEBUG_VARIABLE] = 1;
 	strcpy(global_data.param_name[DEBUG_VARIABLE], "DEBUG");
 	global_data.param_access[DEBUG_VARIABLE] = READ_WRITE;
+
+
 
 }
 

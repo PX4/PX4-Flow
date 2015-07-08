@@ -23,6 +23,7 @@ SRCS = 		src/main.c \
 			src/settings.c \
 			src/communication.c \
 			src/filter.c \
+			src/quality_measurement.c \
 			src/flow.c \
 			src/dcmi.c \
 			src/mt9v034.c \

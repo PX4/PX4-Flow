@@ -31,20 +31,25 @@
  *
  ****************************************************************************/
 
-#ifndef FLOW_H_
-#define FLOW_H_
+#ifndef QUALITY_H_
+#define QUALITY_H_
 
 #include <stdint.h>
+typedef struct _qual_output {
+	uint8_t qual;
+	float mean_x;
+	float mean_y;
+	float median_x;
+	float median_y;
+	float var;
+	float covar;
+	float qual_iqr;
+} qual_output;
 
 /**
- * @brief Computes pixel flow from image1 to image2
+ * @brief Computes the quality of the flow algorithm using the calculated pixel flow
+ * @note  It uses the space after the image in the image buffer to work on the image.
  */
-uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
-		float *histflowx, float *histflowy);
+qual_output quality_new_measurement(float pixel_flow_x, float pixel_flow_y, float dt, float qual_iqr);
 
-/**
- * @brief Computes pixel flow from image1 to image2 with KLT method
- */
-uint8_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate, float *pixel_flow_x, float *pixel_flow_y);
-
-#endif /* FLOW_H_ */
+#endif /* QUALITY_H_ */

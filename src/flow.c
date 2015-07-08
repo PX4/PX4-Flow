@@ -768,11 +768,60 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	}
 
 	/* calc quality */
-	uint8_t qual = (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
+	int direct_count[8];
+	for(int i = 0; i < 64; i++){
+		if(subdirs[i] == 0)
+		{
+			direct_count[0]++;
+		}
+		if(subdirs[i] == 1)
+		{
+			direct_count[1]++;
+		}
+		if(subdirs[i] == 2)
+		{
+			direct_count[2]++;
+		}
+		if(subdirs[i] == 3)
+		{
+			direct_count[3]++;
+		}
+		if(subdirs[i] == 4)
+		{
+			direct_count[4]++;
+		}
+		if(subdirs[i] == 5)
+		{
+			direct_count[5]++;
+		}
+		if(subdirs[i] == 6)
+		{
+			direct_count[6]++;
+		}
+		if(subdirs[i] == 7)
+		{
+			direct_count[7]++;
+		}
+	}
+	int direct_max  = 0;
+	for(int i = 0; i < 8; i++){
+		if(direct_count[i]>direct_max)
+		{
+			direct_max = direct_count[i];
+		}
+	}
+	uint8_t qual = (int)direct_max/64*255;
+	//uint8_t qual = (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
 
 	return qual;
 }
 
+int floatcomp(const void* elem1, const void* elem2)
+{
+    if(*(const float*)elem1 < *(const float*)elem2)
+        return -1;
+    return *(const float*)elem1 > *(const float*)elem2;
+}
 
 /**
  * @brief Computes pixel flow from image1 to image2
@@ -795,6 +844,10 @@ uint16_t i, j;
 
 float meanflowx = 0.0f;
 float meanflowy = 0.0f;
+float medianflowx = 0.0f;
+float medianflowy = 0.0f;
+float flow_x[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
+float flow_y[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
 uint16_t meancount = 0;
 
 float chi_sum = 0.0f;
@@ -852,6 +905,10 @@ int y_rate_px_round = round(y_rate_pixel);
   uint16_t is[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
   uint16_t js[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
 
+  //new reference pixel values after flow for debug
+  float ref_pixel_new_x[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
+  float ref_pixel_new_y[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
+
 
   //initialize flow values with the pixel value of the previous image
   uint16_t pixLo = frame_size / (NUM_BLOCK_KLT + 1);
@@ -872,6 +929,8 @@ int y_rate_px_round = round(y_rate_pixel);
       vs[y*NUM_BLOCK_KLT+x] = j + x_rate_pixel;
       is[y*NUM_BLOCK_KLT+x] = i; //position in previous image  at level 0
       js[y*NUM_BLOCK_KLT+x] = j;
+      ref_pixel_new_x[y*NUM_BLOCK_KLT+x] = i+1;
+      ref_pixel_new_y[y*NUM_BLOCK_KLT+x] = j+1;
     }
   }
 
@@ -1002,43 +1061,91 @@ int y_rate_px_round = round(y_rate_pixel);
       {
         float nx = i-u;
         float ny = j-v;
+        ref_pixel_new_x[k] = u;
+        ref_pixel_new_y[k] = v;
+        flow_x[k] = nx;
+        flow_y[k] = ny;
         //TODO: check if patch drifted too far - take number of pyramid levels in to account for that
         {
           meanflowx += nx;
           meanflowy += ny;
           meancount++;
+
         }
       }
     }
   }
 
-/* compute mean flow */
+
+
+
+/*compute flow */
 if (meancount > 0)
 {
+	/* compute median flow */
+	if(meancount == NUM_BLOCK_KLT*NUM_BLOCK_KLT)
+	{
+		qsort(flow_x, 8, sizeof (float), floatcomp);
+		qsort(flow_y, 8, sizeof (float), floatcomp);
+
+		medianflowx = (flow_x[3]+flow_x[4])/2;
+		medianflowy = (flow_y[3]+flow_y[4])/2;
+	}
+	else
+	{
+		medianflowx = meanflowx / meancount;
+		medianflowy = meanflowy / meancount;
+	}
+
+	/* compute mean flow */
 	meanflowx /= meancount;
 	meanflowy /= meancount;
 
-	if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION])
+	if(global_data.param[PARAM_USE_MEDIAN] == 0)
 	{
-		if(fabsf(x_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
-			*pixel_flow_x = meanflowx - y_rate_pixel; // + (x_rate_px_round - x_rate_pixel);
+		if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION])
+		{
+			if(fabsf(x_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+				*pixel_flow_x = meanflowx - y_rate_pixel; // + (x_rate_px_round - x_rate_pixel);
+			else
+				*pixel_flow_x = meanflowx;
+
+			if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+				*pixel_flow_y = meanflowy + x_rate_pixel; // + (y_rate_px_round - y_rate_pixel);
+			else
+				*pixel_flow_y = meanflowy;
+
+
+		} 
 		else
-			*pixel_flow_x = meanflowx;
-
-		if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
-			*pixel_flow_y = meanflowy + x_rate_pixel; // + (y_rate_px_round - y_rate_pixel);
-		else
-			*pixel_flow_y = meanflowy;
-
-
-	} 
-	else
-	{
-		/* without gyro compensation */
-	    *pixel_flow_x = meanflowx;
-	    *pixel_flow_y = meanflowy;
+		{
+			/* without gyro compensation */
+		    *pixel_flow_x = meanflowx;
+		    *pixel_flow_y = meanflowy;
+		}
 	}
+	else{
+		if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION])
+		{
+			if(fabsf(x_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+				*pixel_flow_x = medianflowx - y_rate_pixel; // + (x_rate_px_round - x_rate_pixel);
+			else
+				*pixel_flow_x = medianflowx;
 
+			if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+				*pixel_flow_y = medianflowy + x_rate_pixel; // + (y_rate_px_round - y_rate_pixel);
+			else
+				*pixel_flow_y = medianflowy;
+
+
+		} 
+		else
+		{
+			/* without gyro compensation */
+		    *pixel_flow_x = medianflowx;
+		    *pixel_flow_y = medianflowy;
+		}
+	}
 }
 else
 {
@@ -1052,24 +1159,39 @@ else
  */
 if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
 {
-
-	for (j = pixLo; j < pixHi; j += pixStep)
+	for (j = pixLo; j <= pixHi; j += pixStep)
 	{
-		for (i = pixLo; i < pixHi; i += pixStep)
+		for (i = pixLo; i <= pixHi; i += pixStep)
 		{
 
 
 			image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
-			int pixel = (j - (int)(meanflowx*4+0.5f)) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + (i - (int)(meanflowy*4+0.5f));
-			if(pixel >= 0 && pixel < global_data.param[PARAM_IMAGE_WIDTH]*global_data.param[PARAM_IMAGE_WIDTH])
-				image1[pixel] = 200;
-
 
 		}
+	}
+
+
+	for(i = 0; i < NUM_BLOCK_KLT*NUM_BLOCK_KLT; i++){
+		int pixel = ((int)ref_pixel_new_x[i]) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + (int)ref_pixel_new_y[i];
+		if(pixel >= 0 && pixel < global_data.param[PARAM_IMAGE_WIDTH]*global_data.param[PARAM_IMAGE_WIDTH])
+			image1[pixel] = 200;
 	}
 }
 
 /* return quality */
 //return (uint8_t)(meancount * 255 / (NUM_BLOCK_KLT*NUM_BLOCK_KLT));
-return chi_sum/chicount;
+if(meancount == NUM_BLOCK_KLT*NUM_BLOCK_KLT)
+{
+
+	float iqr_x = flow_x[5] - flow_x[2];
+	float iqr_y = flow_y[5] - flow_y[2];
+	float qual = sqrt((iqr_y * iqr_y) + (iqr_x * iqr_x)) / sqrt(2 * (PATCH_SIZE*PATCH_SIZE));
+	return qual;
 }
+else
+{
+	return 0;
+}
+
+}
+

@@ -49,6 +49,7 @@
 #include "utils.h"
 #include "led.h"
 #include "filter.h"
+#include "quality_measurement.h"
 #include "flow.h"
 #include "dcmi.h"
 #include "mt9v034.h"
@@ -300,14 +301,18 @@ int main(void)
 	/* variables */
 	uint32_t counter = 0;
 	uint8_t qual = 0;
-	uint8_t qual1 = 0;
-	uint8_t qual2 = 0;
+	float qual_iqr = 0.0f;
+	float accumulated_iqr = 0.0f;
+	float accumulated_var = 0.0f;
+	float accumulated_mean_y = 0.0f;
+
+	static qual_output qual_output_point = {};
+	float qual_time = 0.0f;
+
 
 	/* bottom flow variables */
 	float pixel_flow_x = 0.0f;
 	float pixel_flow_y = 0.0f;
-	float pixel_flow_klt_x = 0.0f;
-	float pixel_flow_klt_y = 0.0f;
 
 	float pixel_flow_x_sum = 0.0f;
 	float pixel_flow_y_sum = 0.0f;
@@ -410,14 +415,28 @@ int main(void)
 		if(global_data.param[PARAM_SENSOR_POSITION] == BOTTOM)
 		{
 			/* copy recent image to faster ram */
-			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
+			dma_copy_image_buffers(&current_image, &previous_image, image_size, 2);
 
 			/* filter the new image */
-			filter_image(current_image, global_data.param[PARAM_IMAGE_WIDTH]);
+			//filter_image(current_image, global_data.param[PARAM_IMAGE_WIDTH]);
 			/* compute optical flow */
-			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
-//			qual = compute_klt(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
 
+			if(global_data.param[PARAM_ALGO_CHOICE] == 0)
+			{
+				qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+			}else
+			{
+				qual_iqr = compute_klt(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+			}
+
+			accumulated_iqr += qual_iqr;
+
+			qual_time = get_boot_time_us();
+			qual_output_point = quality_new_measurement(pixel_flow_x, pixel_flow_y, get_time_between_images(), qual_iqr);
+			qual_time = qual_time - get_boot_time_us();
+
+			accumulated_var += qual_output_point.var;
+			accumulated_mean_y += qual_output_point.mean_y;
 
 			/*
 			 * real point P (X,Y,Z), image plane projection p (x,y,z), focal-length f, distance-to-scene Z
@@ -582,6 +601,8 @@ int main(void)
 							accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,
 							gyro_temp, accumulated_quality/accumulated_framecount,
 							time_since_last_sonar_update,ground_distance);
+
+					mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "QUALITY", get_boot_time_us(), accumulated_mean_y, accumulated_iqr, accumulated_var);
 				}
 
 
@@ -598,6 +619,10 @@ int main(void)
 				accumulated_gyro_x = 0;
 				accumulated_gyro_y = 0;
 				accumulated_gyro_z = 0;
+
+				accumulated_iqr = 0;
+				accumulated_var = 0;
+				accumulated_mean_y = 0;
 
 				velocity_x_sum = 0.0f;
 				velocity_y_sum = 0.0f;
