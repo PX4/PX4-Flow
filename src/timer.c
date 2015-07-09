@@ -89,6 +89,8 @@ void timer_update(void)
 				timer[i].countdown = timer[i].period - 1;
 				/* set the flag: */
 				timer[i].flags |= TIMER_FLAG_TRIGGERED;
+				/* force a fail of the flags access instructions: */
+				__CLREX();
 			}
 		}
 	}
@@ -97,10 +99,14 @@ void timer_update(void)
 void timer_check(void) {
 	for (unsigned i = 0; i < NTIMERS; i++) {
 		bool triggered = false;
-		triggered = (timer[i].flags & TIMER_FLAG_TRIGGERED);
-		if (triggered) {
-			timer[i].flags &= ~TIMER_FLAG_TRIGGERED;
-		}
+		uint8_t tmp;
+		do {
+			tmp = __LDREXB(&timer[i].flags);
+			triggered = (tmp & TIMER_FLAG_TRIGGERED);
+			if (triggered) {
+				tmp &= ~TIMER_FLAG_TRIGGERED;
+			}
+		} while (__STREXB(tmp, &timer[i].flags));
 		if (triggered) {
 			timer[i].timer_fn();
 		}
