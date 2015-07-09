@@ -46,8 +46,8 @@
 #include "gyro.h"
 #include "debug.h"
 #include "communication.h"
+#include "timer.h"
 
-extern uint32_t get_boot_time_us(void);
 extern void buffer_reset(void);
 extern void systemreset(bool to_bootloader);
 

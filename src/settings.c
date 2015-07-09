@@ -77,6 +77,20 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_SYSTEM_SEND_LPOS], "SYS_SEND_LPOS");
 	global_data.param_access[PARAM_SYSTEM_SEND_LPOS] = READ_WRITE;
 
+
+	global_data.param[PARAM_ALGORITHM_CHOICE] = 0;
+	strcpy(global_data.param_name[PARAM_ALGORITHM_CHOICE], "ALGORITHM_CHOICE");
+	global_data.param_access[PARAM_ALGORITHM_CHOICE] = READ_WRITE;
+
+	global_data.param[PARAM_USE_IMAGE_FILTER] = 0;
+	strcpy(global_data.param_name[PARAM_USE_IMAGE_FILTER], "USE_IMAGE_FILTER");
+	global_data.param_access[PARAM_USE_IMAGE_FILTER] = READ_WRITE;
+
+	global_data.param[PARAM_CAMERA_FRAME_INTERVAL] = 2;
+	strcpy(global_data.param_name[PARAM_CAMERA_FRAME_INTERVAL], "CAMERA_FRAME_INTERVAL");
+	global_data.param_access[PARAM_CAMERA_FRAME_INTERVAL] = READ_WRITE;
+
+
 	global_data.param[PARAM_SENSOR_POSITION] = 0; // BOTTOM
 	strcpy(global_data.param_name[PARAM_SENSOR_POSITION], "POSITION");
 	global_data.param_access[PARAM_SENSOR_POSITION] = READ_WRITE;

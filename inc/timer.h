@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,27 +31,52 @@
  *
  ****************************************************************************/
 
-/**
- * @file i2c.h
- * I2C communication functions.
- * @author Thomas Boehm <thomas.boehm@fortiss.org>
+#ifndef TIMER_H_
+#define TIMER_H_
+
+#include <stdint.h>
+
+#define NTIMERS         	16
+
+/**	Initializes the timer module.
  */
+void timer_init(void);
 
-
-#ifndef I2C_H_
-#define I2C_H_
-#include <inttypes.h>
-#include <stdbool.h>
-
-#define I2C1_OWNADDRESS_1_BASE 0x42 //7bit base address
-/**
- * @brief  Configures I2C1 for communication as a slave (default behaviour for STM32F)
+/**	Registers a new timer with a corresponding function.
+ *	@note: The function will be called from within the timer_check function.
+ *  @param timer_fn  The timer function to call when the timer rolls over.
+ *					 This function is NOT called from the interrupt handler.
+ * 	@param period_ms The period of the timer in milliseconds.
  */
+void timer_register(void (*timer_fn)(void), uint32_t period_ms);
 
-void i2c_init(void);
-void update_TX_buffer(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
-					  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
-					  bool distance_valid, float ground_distance, uint32_t distance_age);
-char i2c_get_ownaddress1(void);
-#endif /* I2C_H_ */
+/**	Checks any pending timers and calls the respective timer functions.
+ */
+void timer_check(void);
 
+void delay(uint16_t ms);
+
+/** Returns the number of milliseconds since booting.
+ */
+uint32_t get_boot_time_ms(void);
+
+/** Returns the number of microseconds since booting.
+ */
+uint32_t get_boot_time_us(void);
+
+/** Computes the time delta in microseconds while taking the roll-over into account.
+ */
+uint32_t calculate_time_delta_us(uint32_t end, uint32_t start);
+
+/** Computes the time delta in microseconds while taking the roll-over into account.
+ */
+uint32_t get_time_delta_us(uint32_t start);
+
+/**
+  * @brief  Triggered by systen timer interrupt every millisecond.
+  * @param  None
+  * @retval None
+  */
+void timer_update(void);
+
+#endif /* TIMER_H_ */

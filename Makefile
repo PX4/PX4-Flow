@@ -18,6 +18,8 @@ CC =		arm-none-eabi-gcc
 OBJCOPY =	arm-none-eabi-objcopy
 
 SRCS = 		src/main.c \
+			src/timer.c \
+			src/result_accumulator.c \
 			src/utils.c \
 			src/led.c \
 			src/settings.c \

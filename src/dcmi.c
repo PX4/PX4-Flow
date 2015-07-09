@@ -39,6 +39,7 @@
 #include <mavlink.h>
 #include "utils.h"
 #include "dcmi.h"
+#include "timer.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_rcc.h"
 #include "stm32f4xx_i2c.h"
@@ -71,10 +72,6 @@ uint8_t dcmi_image_buffer_8bit_2[FULL_IMAGE_SIZE];
 uint8_t dcmi_image_buffer_8bit_3[FULL_IMAGE_SIZE];
 
 uint32_t time_between_images;
-
-/* extern functions */
-extern uint32_t get_boot_time_us(void);
-extern void delay(unsigned msec);
 
 /**
  * @brief Initialize DCMI DMA and enable image capturing
@@ -202,8 +199,8 @@ void dma_swap_buffers(void)
 	}
 
 	/* set next time_between_images */
-	cycle_time = get_boot_time_us() - time_last_frame;
-	time_last_frame = get_boot_time_us();
+	cycle_time = get_time_delta_us(time_last_frame);
+	time_last_frame += cycle_time;
 
 	if(image_counter) // image was not fetched jet
 	{
