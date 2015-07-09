@@ -618,6 +618,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			}
 
 			//compute inverse of hessian
+			// TODO: evaluate using condition of this matrix to decide whether we should continue
 			float det = (JTJ[0]*JTJ[3]-JTJ[1]*JTJ[2]);
 			if (det != 0.f)
 			{
@@ -701,6 +702,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				}
 				if (l > 0)
 				{
+					// TODO: evaluate recording failure at each level to calculate a final quality value
 					us[k] = u * (1<<l);
 					vs[k] = v * (1<<l);
 				}
