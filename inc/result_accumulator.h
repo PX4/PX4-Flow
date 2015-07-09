@@ -61,8 +61,8 @@ typedef struct _result_accumulator_ctx {
 	float rad_flow_y_accu;
 	uint8_t min_quality;
 	uint16_t valid_data_count;
-	uint32_t valid_time;
-	uint32_t full_time;
+	float valid_time;
+	float full_time;
 	float gyro_x_accu;
 	float gyro_y_accu;
 	float gyro_z_accu;

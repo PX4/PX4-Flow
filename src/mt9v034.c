@@ -96,7 +96,7 @@ void mt9v034_context_configuration(void)
 	 *
 	 */
 	uint16_t new_readmode_context_a = 0x30A ; // row + col bin 4 enable, (9:8) default
-	uint16_t new_readmode_context_b = 0x305 ; // row bin 2 col bin 4 enable, (9:8) default
+	uint16_t new_readmode_context_b = 0x305 ; // row bin 2 col bin 2 enable, (9:8) default
 
 	/*
 	 * Settings for both context:

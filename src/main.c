@@ -268,7 +268,7 @@ int main(void)
 	result_accumulator_ctx mavlink_accumulator;
 
 	result_accumulator_init(&mavlink_accumulator);
-
+	
 	/* main loop */
 	while (1)
 	{
