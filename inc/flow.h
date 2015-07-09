@@ -36,16 +36,45 @@
 
 #include <stdint.h>
 
-/**
- * @brief Computes pixel flow from image1 to image2
- */
-uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
-		float *histflowx, float *histflowy);
+typedef struct _flow_raw_result {
+	float x;		///< The flow in x direction
+	float y;		///< The flow in y direction
+	float quality;	///< The quality of this result. 0 = bad
+	uint8_t at_x;	///< The mid-position of the patch that was used to calculate the flow.
+	uint8_t at_y;	///< The mid-position of the patch that was used to calculate the flow.
+} flow_raw_result;
 
 /**
- * @brief Computes pixel flow from image1 to image2 with KLT method
+ *  @brief Computes pixel flow from image1 to image2
+ *  Searches the corresponding position in the new image (image2) of max. 64 pixels from the old image (image1).
+ *	@param image1 The older image
+ *	@param image2 The new image
+ *	@param x_rate The gyro x-rate during the frame interval in pixels. (In the image x direction)
+ *	@param y_rate The gyro y-rate during the frame interval in pixels. (In the image y direction)
+ *	@param z_rate The gyro z-rate during the frame interval in radians.
+ *	@param out    Array which receives the raw result vectors computed for the blocks in the image.
+ *	@param result_count The available space in the out buffer.
+ *	@return The number of results written to the out buffer.
  */
-uint8_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
-    float *pixel_flow_x, float *pixel_flow_y);
+uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
+					  flow_raw_result *out, uint16_t max_out);
+
+/**
+ *  @brief Computes pixel flow from image1 to image2
+ *  Searches the corresponding position in the new image (image2) of max. 64 pixels from the old image (image1)
+ *  with the KLT method and outputs the value of all flow vectors.
+ *	@param image1 The older image
+ *	@param image2 The new image
+ *	@param x_rate The gyro x-rate during the frame interval in pixels. (In the image x direction)
+ *	@param y_rate The gyro y-rate during the frame interval in pixels. (In the image y direction)
+ *	@param z_rate The gyro z-rate during the frame interval in radians.
+ *	@param out    Array which receives the raw result vectors computed for the blocks in the image.
+ *	@param result_count The available space in the out buffer.
+ *	@return The number of results written to the out buffer.
+ */
+uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
+					 flow_raw_result *out, uint16_t max_out);
+
+uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *px_flow_x, float *px_flow_y);
 
 #endif /* FLOW_H_ */

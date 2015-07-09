@@ -319,10 +319,10 @@ int main(void)
 		dma_copy_image_buffers(&current_image, &previous_image, image_size, (int)(global_data.param[PARAM_CAMERA_FRAME_INTERVAL] + 0.5));
 		float frame_dt = get_time_between_images() * 0.000001f;
 
-		/* compute gyro rate in pixels */
-		float x_rate_px = x_rate * (focal_length_px * frame_dt);
-		float y_rate_px = y_rate * (focal_length_px * frame_dt);
-		float z_rate_px = z_rate * (focal_length_px * frame_dt);
+		/* compute gyro rate in pixels and change to image coordinates */
+		float x_rate_px =   y_rate * (focal_length_px * frame_dt);
+		float y_rate_px = - x_rate * (focal_length_px * frame_dt);
+		float z_rate_fr =   z_rate * frame_dt;
 
 		/* filter the new image */
 		if (global_data.param[PARAM_USE_IMAGE_FILTER]) {
@@ -330,13 +330,34 @@ int main(void)
 		}
 
 		/* compute optical flow in pixels */
-		float pixel_flow_x = 0.0f;
-		float pixel_flow_y = 0.0f;
-		uint8_t qual = 0;
+		flow_raw_result flow_rslt[32];
+		uint16_t flow_rslt_count = 0;
 		if (global_data.param[PARAM_ALGORITHM_CHOICE] == 0) {
-			qual = compute_flow(previous_image, current_image, x_rate_px, y_rate_px, z_rate_px, &pixel_flow_x, &pixel_flow_y);
+			flow_rslt_count = compute_flow(previous_image, current_image, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
 		} else {
-			qual =  compute_klt(previous_image, current_image, x_rate_px, y_rate_px, z_rate_px, &pixel_flow_x, &pixel_flow_y);
+			flow_rslt_count =  compute_klt(previous_image, current_image, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
+		}
+
+		/* calculate flow value from the raw results */
+		float pixel_flow_x;
+		float pixel_flow_y;
+		uint8_t qual = flow_extract_result(flow_rslt, flow_rslt_count, &pixel_flow_x, &pixel_flow_y);
+
+		/* create flow image if needed (previous_image is not needed anymore)
+		 * -> can be used for debugging purpose
+		 */
+		if (global_data.param[PARAM_USB_SEND_VIDEO])
+		{
+			uint16_t frame_size = global_data.param[PARAM_IMAGE_WIDTH];
+			for (int i = 0; i < flow_rslt_count; i++) {
+				if (flow_rslt[i].quality > 0) {
+					previous_image[flow_rslt[i].at_y * frame_size + flow_rslt[i].at_x] = 255;
+					int ofs = (int)floor(flow_rslt[i].at_y + flow_rslt[i].y * 2 + 0.5f) * frame_size + (int)floor(flow_rslt[i].at_x + flow_rslt[i].x * 2 + 0.5f);
+					if (ofs >= 0 && ofs < frame_size * frame_size) {
+						previous_image[ofs] = 200;
+					}
+				}
+			}
 		}
 
 		/* decide which distance to use */

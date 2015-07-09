@@ -47,9 +47,6 @@
 #define __ASM asm
 #include "core_cmInstr.h"
 
-
-#define MS_TIMER_COUNT		100 /* steps in 10 microseconds ticks */
-
 /* boot time in milliseconds ticks */
 volatile uint32_t boot_time_ms = 0;
 volatile uint32_t boot_time_us_base = 0;
