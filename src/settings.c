@@ -77,6 +77,29 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_SYSTEM_SEND_LPOS], "SYS_SEND_LPOS");
 	global_data.param_access[PARAM_SYSTEM_SEND_LPOS] = READ_WRITE;
 
+
+	global_data.param[PARAM_ALGORITHM_CHOICE] = 0;
+	strcpy(global_data.param_name[PARAM_ALGORITHM_CHOICE], "ALGORITHM_CHOICE");
+	global_data.param_access[PARAM_ALGORITHM_CHOICE] = READ_WRITE;
+
+	global_data.param[PARAM_USE_IMAGE_FILTER] = 0;
+	strcpy(global_data.param_name[PARAM_USE_IMAGE_FILTER], "USE_IMAGE_FILTER");
+	global_data.param_access[PARAM_USE_IMAGE_FILTER] = READ_WRITE;
+
+	global_data.param[PARAM_FRAME_INTERVAL] = 2;
+	strcpy(global_data.param_name[PARAM_FRAME_INTERVAL], "FRAME_INTERVAL");
+	global_data.param_access[PARAM_FRAME_INTERVAL] = READ_WRITE;
+
+	global_data.param[PARAM_QUALITY_FILTER] = 1;
+	strcpy(global_data.param_name[PARAM_QUALITY_FILTER], "QUALITY_FILTER");
+	global_data.param_access[PARAM_QUALITY_FILTER] = READ_WRITE;
+
+	global_data.param[PARAM_USE_MEDIAN] = 1;
+	strcpy(global_data.param_name[PARAM_USE_MEDIAN], "USE_MEDIAN");
+	global_data.param_access[PARAM_USE_MEDIAN] = READ_WRITE;
+
+
+
 	global_data.param[PARAM_SENSOR_POSITION] = 0; // BOTTOM
 	strcpy(global_data.param_name[PARAM_SENSOR_POSITION], "POSITION");
 	global_data.param_access[PARAM_SENSOR_POSITION] = READ_WRITE;
@@ -198,18 +221,6 @@ void global_data_reset_param_defaults(void){
 	global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = 10.0f;
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR], "BFLOW_THROTT");
 	global_data.param_access[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = READ_WRITE;
-
-	global_data.param[PARAM_QUALITY_FILTER] = 1;
-	strcpy(global_data.param_name[PARAM_QUALITY_FILTER], "QUALITY_FILTER");
-	global_data.param_access[PARAM_QUALITY_FILTER] = READ_WRITE;
-
-	global_data.param[PARAM_ALGO_CHOICE] = 1;
-	strcpy(global_data.param_name[PARAM_ALGO_CHOICE], "ALGO_CHOICE");
-	global_data.param_access[PARAM_ALGO_CHOICE] = READ_WRITE;
-
-	global_data.param[PARAM_USE_MEDIAN] = 1;
-	strcpy(global_data.param_name[PARAM_USE_MEDIAN], "USE_MEDIAN");
-	global_data.param_access[PARAM_USE_MEDIAN] = READ_WRITE;
 
 	global_data.param[DEBUG_VARIABLE] = 1;
 	strcpy(global_data.param_name[DEBUG_VARIABLE], "DEBUG");
