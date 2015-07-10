@@ -51,6 +51,8 @@ typedef struct _result_accumulator_ctx {
 		float pixel_flow_y;			///< The measured y-flow in the current image in pixel. Sensor linear motion along the positive Y axis induces a negative flow.
 		float flow_x_rad;			///< Flow in radians around X axis (Sensor RH rotation about the X axis induces a positive flow. Sensor linear motion along the positive Y axis induces a negative flow.)
 		float flow_y_rad;			///< Flow in radians around Y axis (Sensor RH rotation about the Y axis induces a positive flow. Sensor linear motion along the positive X axis induces a positive flow.)
+		float flow_x_m;				///< The measured x-flow in the current image in meters.
+		float flow_y_m;				///< The measured x-flow in the current image in meters.
 		float ground_distance;		///< The measured distance to the ground in meter.
 		uint32_t distance_age;		///< Age of the distance measurement in us.
 	} last;
@@ -59,9 +61,12 @@ typedef struct _result_accumulator_ctx {
 	float px_flow_y_accu;
 	float rad_flow_x_accu;
 	float rad_flow_y_accu;
+	float m_flow_x_accu;
+	float m_flow_y_accu;
 	uint8_t min_quality;
 	uint16_t data_count;
 	uint16_t valid_data_count;
+	float valid_dist_time;
 	float valid_time;
 	float full_time;
 	float gyro_x_accu;

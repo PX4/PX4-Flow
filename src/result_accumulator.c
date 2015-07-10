@@ -66,12 +66,20 @@ void result_accumulator_feed(result_accumulator_ctx *ctx, float dt, float x_rate
 	ctx->last.flow_y_rad   = - pixel_flow_x * rad_per_pixel;
 	ctx->last.ground_distance = distance_valid ? ground_distance : -1;
 	ctx->last.distance_age    = distance_age;
+	if(ctx->last.ground_distance >= 0) {
+		ctx->last.flow_x_m = ctx->last.flow_x_rad * ctx->last.ground_distance;
+		ctx->last.flow_y_m = ctx->last.flow_y_rad * ctx->last.ground_distance;
+	}else{
+		ctx->last.flow_x_m = 0;
+		ctx->last.flow_y_m = 0;
+	}
 	/* accumulate the values */
 	if (qual > 0) {
 		ctx->px_flow_x_accu += ctx->last.pixel_flow_x;
 		ctx->px_flow_y_accu += ctx->last.pixel_flow_y;
 		ctx->rad_flow_x_accu += ctx->last.flow_x_rad;
 		ctx->rad_flow_y_accu += ctx->last.flow_y_rad;
+
 		ctx->gyro_x_accu += x_rate * dt;
 		ctx->gyro_y_accu += y_rate * dt;
 		ctx->gyro_z_accu += z_rate * dt;
@@ -81,6 +89,11 @@ void result_accumulator_feed(result_accumulator_ctx *ctx, float dt, float x_rate
 		}
 		ctx->valid_data_count++;
 		ctx->valid_time += dt;
+		if(ctx->last.ground_distance >= 0){
+			ctx->m_flow_x_accu += ctx->last.flow_x_m; 
+			ctx->m_flow_y_accu += ctx->last.flow_y_m; 
+			ctx->valid_dist_time += dt;
+		}
 	}
 	ctx->data_count++;
 	ctx->frame_count++;
@@ -97,8 +110,14 @@ void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint1
 		float time_scaling_f = ctx->full_time / ctx->valid_time;
 		out->flow_x = floor(ctx->px_flow_x_accu * time_scaling_f * 10.0f + 0.5f);
 		out->flow_y = floor(ctx->px_flow_y_accu * time_scaling_f * 10.0f + 0.5f);
-		out->flow_comp_m_x = 0;
-		out->flow_comp_m_y = 0;
+		if(ctx->valid_dist_time > 0){
+			float time_scaling_dist = ctx->full_time / ctx->valid_dist_time;
+			out->flow_comp_m_x = ctx->m_flow_x_accu * time_scaling_dist;
+			out->flow_comp_m_y = ctx->m_flow_y_accu * time_scaling_dist;
+		}else{
+			out->flow_comp_m_x = 0;
+			out->flow_comp_m_y = 0;
+		}
 		out->quality = ctx->min_quality;
 		/* averaging the distance is no use */
 		out->ground_distance = ctx->last.ground_distance;
@@ -194,6 +213,9 @@ void result_accumulator_reset(result_accumulator_ctx *ctx)
 	ctx->rad_flow_x_accu = 0;
 	ctx->rad_flow_y_accu = 0;
 
+	ctx->m_flow_x_accu = 0;
+	ctx->m_flow_y_accu = 0;
+
 	ctx->gyro_x_accu = 0;
 	ctx->gyro_y_accu = 0;
 	ctx->gyro_z_accu = 0;
@@ -204,6 +226,7 @@ void result_accumulator_reset(result_accumulator_ctx *ctx)
 	ctx->data_count = 0;
 	ctx->valid_time = 0;
 	ctx->full_time  = 0;
+	ctx->valid_dist_time = 0;
 }
 
 #if 0
