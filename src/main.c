@@ -343,7 +343,14 @@ int main(void)
 		float pixel_flow_x;
 		float pixel_flow_y;
 		float outlier_threshold = global_data.param[PARAM_OUTLIER_THRESHOLD];
-		float min_outlier_threshold = global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD];
+		float min_outlier_threshold = 0;
+		if(global_data.param[PARAM_ALGORITHM_CHOICE] == 0)
+		{
+			min_outlier_threshold = global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0];
+		}else
+		{
+			min_outlier_threshold = global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1];
+		}
 		uint8_t qual = flow_extract_result(flow_rslt, flow_rslt_count, &pixel_flow_x, &pixel_flow_y, 
 							outlier_threshold,  min_outlier_threshold);
 

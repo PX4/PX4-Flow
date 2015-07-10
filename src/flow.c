@@ -763,7 +763,7 @@ uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *p
 			valid_c++;
 		}
 	}
-	if (valid_c < (result_count + 4) / 4 || valid_c < 2) {
+	if (valid_c < (result_count + 4) / 4 || valid_c < 3) {
 		*px_flow_x = 0;
 		*px_flow_y = 0;
 		return 0;

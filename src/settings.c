@@ -222,12 +222,16 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR], "BFLOW_THROTT");
 	global_data.param_access[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = READ_WRITE;
 
-	global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD] = 0.1f;
-	strcpy(global_data.param_name[PARAM_MINIMUM_OUTLIER_THRESHOLD], "MIN_OUT_THRSH");
-	global_data.param_access[PARAM_MINIMUM_OUTLIER_THRESHOLD] = READ_WRITE;
+	global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0] = 1.0f;
+	strcpy(global_data.param_name[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0], "MIN_OUT_THR_A0");
+	global_data.param_access[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0] = READ_WRITE;
+
+	global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1] = 0.1f;
+	strcpy(global_data.param_name[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1], "MIN_OUT_THR_A1");
+	global_data.param_access[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1] = READ_WRITE;
 
 	global_data.param[PARAM_OUTLIER_THRESHOLD] = 0.2f;
-	strcpy(global_data.param_name[PARAM_OUTLIER_THRESHOLD], "OUTLIER_THRSH");
+	strcpy(global_data.param_name[PARAM_OUTLIER_THRESHOLD], "OUTLIER_THR");
 	global_data.param_access[PARAM_OUTLIER_THRESHOLD] = READ_WRITE;
 
 	global_data.param[PARAM_MIN_VALID_RATIO] = 50;
