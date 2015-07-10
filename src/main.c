@@ -398,7 +398,7 @@ int main(void)
 		counter++;
 
         /* serial mavlink  + usb mavlink output throttled */
-		if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
+		if (counter % (uint32_t)global_data.param[PARAM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
 		{
 			/* recalculate the output values */
 			result_accumulator_output_flow output_flow;

@@ -428,7 +428,7 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 
 			/* test pixel if it is suitable for flow tracking */
 			uint32_t diff = compute_diff(image1, i, j, frame_size);
-			if (diff < global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
+			if (diff < global_data.param[PARAM_FLOW_FEATURE_THRESHOLD])
 			{
 				continue;
 			}
@@ -458,7 +458,7 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 			}
 
 			/* acceptance SAD distance threshhold */
-			if (dist < global_data.param[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD])
+			if (dist < global_data.param[PARAM_FLOW_VALUE_THRESHOLD])
 			{
 				compute_subpixel(image1, image2, i, j, i + sumx, j + sumy, acc, frame_size);
 				uint32_t mindist = dist; // best SAD until now
@@ -479,7 +479,7 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 				if (mindir == 3 || mindir == 4 || mindir == 5) result->x -= 0.5f;
 				if (mindir == 5 || mindir == 6 || mindir == 7) result->y -= 0.5f;
 				if (mindir == 1 || mindir == 2 || mindir == 3) result->y += 0.5f;
-				if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION]) {
+				if (global_data.param[PARAM_FLOW_GYRO_COMPENSATION]) {
 					/* gyro compensation */
 					result->x -= x_rate;
 					result->y -= y_rate;
@@ -562,7 +562,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		for (int x = 0; x < NUM_BLOCK_KLT; x++, i += pixStep)
 		{
 			uint16_t idx = y*NUM_BLOCK_KLT+x;
-			if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION]) {
+			if (global_data.param[PARAM_FLOW_GYRO_COMPENSATION]) {
 				/* use the gyro measurement to guess the initial position in the new image */
 				us[idx] = i + x_rate; //position in new image at level 0
 				vs[idx] = j + y_rate;
@@ -716,7 +716,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				else  //for the last level compute the actual flow in pixels
 				{
 					if (result_good && k < max_out) {
-						if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION]) {
+						if (global_data.param[PARAM_FLOW_GYRO_COMPENSATION]) {
 							/* compute flow and compensate gyro */
 							out[k].x = u - i - x_rate;
 							out[k].y = v - j - y_rate;

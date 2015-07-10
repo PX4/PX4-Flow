@@ -256,23 +256,23 @@ void result_accumulator_reset(result_accumulator_ctx *ctx)
 					accumulated_quality += qual;
 
 					/* lowpass velocity output */
-					velocity_x_lp = global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW] * new_velocity_x +
-							(1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_x_lp;
-					velocity_y_lp = global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW] * new_velocity_y +
-							(1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_y_lp;
+					velocity_x_lp = global_data.param[PARAM_FLOW_WEIGHT_NEW] * new_velocity_x +
+							(1.0f - global_data.param[PARAM_FLOW_WEIGHT_NEW]) * velocity_x_lp;
+					velocity_y_lp = global_data.param[PARAM_FLOW_WEIGHT_NEW] * new_velocity_y +
+							(1.0f - global_data.param[PARAM_FLOW_WEIGHT_NEW]) * velocity_y_lp;
 				}
 				else
 				{
 					/* taking flow as zero */
-					velocity_x_lp = (1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_x_lp;
-					velocity_y_lp = (1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_y_lp;
+					velocity_x_lp = (1.0f - global_data.param[PARAM_FLOW_WEIGHT_NEW]) * velocity_x_lp;
+					velocity_y_lp = (1.0f - global_data.param[PARAM_FLOW_WEIGHT_NEW]) * velocity_y_lp;
 				}
 			}
 			else
 			{
 				/* taking flow as zero */
-				velocity_x_lp = (1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_x_lp;
-				velocity_y_lp = (1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_y_lp;
+				velocity_x_lp = (1.0f - global_data.param[PARAM_FLOW_WEIGHT_NEW]) * velocity_x_lp;
+				velocity_y_lp = (1.0f - global_data.param[PARAM_FLOW_WEIGHT_NEW]) * velocity_y_lp;
 			}
 			//update lasttime
 			lasttime = get_boot_time_us();
@@ -286,7 +286,7 @@ void result_accumulator_reset(result_accumulator_ctx *ctx)
 			float flow_comp_m_x = 0.0f;
 			float flow_comp_m_y = 0.0f;
 
-			if(global_data.param[PARAM_BOTTOM_FLOW_LP_FILTERED])
+			if(global_data.param[PARAM_FLOW_LP_FILTERED])
 			{
 				flow_comp_m_x = velocity_x_lp;
 				flow_comp_m_y = velocity_y_lp;
