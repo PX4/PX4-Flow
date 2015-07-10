@@ -547,12 +547,12 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	uint16_t js[NUM_BLOCK_KLT*NUM_BLOCK_KLT];
 
 	//initialize flow values with the pixel value of the previous image
-	uint16_t pixBaseStep = 1 << (PYR_LVLS - 1);
+	uint16_t topPyrStep = 1 << (PYR_LVLS - 1);
 	uint16_t pixStep = frame_size / (NUM_BLOCK_KLT + 1);
 	uint16_t pixLo = pixStep;
-	/* align with pixBaseStep */
-	pixStep = ((uint16_t)(pixStep                  )) & ~((uint16_t)(pixBaseStep - 1));	// round down
-	pixLo   = ((uint16_t)(pixLo + (pixBaseStep - 1))) & ~((uint16_t)(pixBaseStep - 1));	// round up
+	/* align with topPyrStep */
+	pixStep = ((uint16_t)(pixStep                 )) & ~((uint16_t)(topPyrStep - 1));	// round down
+	pixLo   = ((uint16_t)(pixLo + (topPyrStep - 1))) & ~((uint16_t)(topPyrStep - 1));	// round up
 	//uint16_t pixHi = pixLo + pixStep * (NUM_BLOCK_KLT - 1);
 
 	j = pixLo;
@@ -724,7 +724,15 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 							out[k].x = u - i;
 							out[k].y = v - j;
 						}
-						out[k].quality = 1.0f;
+						if (fabs(out[k].x) < (float)(2 * topPyrStep) &&
+						    fabs(out[k].y) < (float)(2 * topPyrStep)) {
+							out[k].quality = 1.0f;
+						} else {
+							/* drifted too far */
+							out[k].x = 0;
+							out[k].y = 0;
+							out[k].quality = 0;
+						}
 					}
 				}
 			}

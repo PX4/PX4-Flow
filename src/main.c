@@ -420,7 +420,7 @@ int main(void)
 					output_flow_rad.temperature, output_flow_rad.quality,
 					output_flow_rad.time_delta_distance_us,output_flow_rad.ground_distance);
 
-			if (global_data.param[PARAM_USB_SEND_FLOW])
+			if (global_data.param[PARAM_USB_SEND_FLOW] && (qual > 0 || global_data.param[PARAM_USB_SEND_QUAL_0]))
 			{
 				mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 						output_flow.flow_x, output_flow.flow_y,

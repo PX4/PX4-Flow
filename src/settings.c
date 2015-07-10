@@ -234,6 +234,10 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_OUTLIER_THRESHOLD], "OUTLIER_THR");
 	global_data.param_access[PARAM_OUTLIER_THRESHOLD] = READ_WRITE;
 
+	global_data.param[PARAM_USB_SEND_QUAL_0] = 1;
+	strcpy(global_data.param_name[PARAM_USB_SEND_QUAL_0], "SEND_QUAL_0");
+	global_data.param_access[PARAM_USB_SEND_QUAL_0] = READ_WRITE;
+
 	global_data.param[PARAM_MIN_VALID_RATIO] = 50;
 	strcpy(global_data.param_name[PARAM_MIN_VALID_RATIO], "MIN_VALID_RATIO");
 	global_data.param_access[PARAM_MIN_VALID_RATIO] = READ_WRITE;
