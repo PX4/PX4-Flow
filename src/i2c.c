@@ -246,8 +246,9 @@ void update_TX_buffer(float dt, float x_rate, float y_rate, float z_rate, int16_
 
 	result_accumulator_output_flow output_flow;
 	result_accumulator_output_flow_i2c output_i2c;
-	result_accumulator_calculate_output_flow(&accumulator, 1, &output_flow);
-	result_accumulator_calculate_output_flow_i2c(&accumulator, 1, &output_i2c);
+	int min_valid_ratio = global_data.param[PARAM_MIN_VALID_RATIO];
+	result_accumulator_calculate_output_flow(&accumulator, min_valid_ratio, &output_flow);
+	result_accumulator_calculate_output_flow_i2c(&accumulator, min_valid_ratio, &output_i2c);
 
 	i2c_frame f;
 	i2c_integral_frame f_integral;

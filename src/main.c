@@ -321,9 +321,9 @@ int main(void)
 		float frame_dt = get_time_between_images() * 0.000001f;
 
 		/* compute gyro rate in pixels and change to image coordinates */
-		float x_rate_px =   y_rate * (focal_length_px * frame_dt);
-		float y_rate_px = - x_rate * (focal_length_px * frame_dt);
-		float z_rate_fr =   z_rate * frame_dt;
+		float x_rate_px = - y_rate * (focal_length_px * frame_dt);
+		float y_rate_px =   x_rate * (focal_length_px * frame_dt);
+		float z_rate_fr = - z_rate * frame_dt;
 
 		/* filter the new image */
 		if (global_data.param[PARAM_USE_IMAGE_FILTER]) {
@@ -342,7 +342,10 @@ int main(void)
 		/* calculate flow value from the raw results */
 		float pixel_flow_x;
 		float pixel_flow_y;
-		uint8_t qual = flow_extract_result(flow_rslt, flow_rslt_count, &pixel_flow_x, &pixel_flow_y);
+		float outlier_threshold = global_data.param[PARAM_OUTLIER_THRESHOLD];
+		float min_outlier_threshold = global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD];
+		uint8_t qual = flow_extract_result(flow_rslt, flow_rslt_count, &pixel_flow_x, &pixel_flow_y, 
+							outlier_threshold,  min_outlier_threshold);
 
 		/* create flow image if needed (previous_image is not needed anymore)
 		 * -> can be used for debugging purpose
@@ -393,8 +396,9 @@ int main(void)
 			/* recalculate the output values */
 			result_accumulator_output_flow output_flow;
 			result_accumulator_output_flow_rad output_flow_rad;
-			result_accumulator_calculate_output_flow(&mavlink_accumulator, 1, &output_flow);
-			result_accumulator_calculate_output_flow_rad(&mavlink_accumulator, 1, &output_flow_rad);
+			int min_valid_ratio = global_data.param[PARAM_MIN_VALID_RATIO];
+			result_accumulator_calculate_output_flow(&mavlink_accumulator, min_valid_ratio, &output_flow);
+			result_accumulator_calculate_output_flow_rad(&mavlink_accumulator, min_valid_ratio, &output_flow_rad);
 
 			// send flow
 			mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],

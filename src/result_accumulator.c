@@ -82,20 +82,21 @@ void result_accumulator_feed(result_accumulator_ctx *ctx, float dt, float x_rate
 		ctx->valid_data_count++;
 		ctx->valid_time += dt;
 	}
+	ctx->data_count++;
 	ctx->frame_count++;
 	ctx->full_time += dt;
 
 	ctx->last.frame_count = ctx->frame_count;
 }
 
-void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint16_t min_valid_data_count, result_accumulator_output_flow *out)
+void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow *out)
 {
-	if (ctx->valid_data_count >= min_valid_data_count) {
+	if (ctx->valid_data_count * 100u >= ctx->data_count * min_valid_data_count_percent && ctx->valid_data_count > 0) {
 		/*** calculate the output values for the flow mavlink message ***/
 		/* scale the averaged values from valid time to full time (we extrapolate the invalid data sets) */
 		float time_scaling_f = ctx->full_time / ctx->valid_time;
-		out->flow_x = floor(ctx->px_flow_x_accu * time_scaling_f + 0.5f);
-		out->flow_y = floor(ctx->px_flow_y_accu * time_scaling_f + 0.5f);
+		out->flow_x = floor(ctx->px_flow_x_accu * time_scaling_f * 10.0f + 0.5f);
+		out->flow_y = floor(ctx->px_flow_y_accu * time_scaling_f * 10.0f + 0.5f);
 		out->flow_comp_m_x = 0;
 		out->flow_comp_m_y = 0;
 		out->quality = ctx->min_quality;
@@ -112,9 +113,9 @@ void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint1
 	}
 }
 
-void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, uint16_t min_valid_data_count, result_accumulator_output_flow_rad *out)
+void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow_rad *out)
 {
-	if (ctx->valid_data_count >= min_valid_data_count) {
+	if (ctx->valid_data_count * 100u >= ctx->data_count * min_valid_data_count_percent && ctx->valid_data_count > 0) {
 		/*** calculate the output values for the flow_rad mavlink message ***/
 		out->integration_time = ctx->valid_time * 1000000.0f;
 		out->integrated_x = ctx->rad_flow_x_accu;
@@ -135,15 +136,16 @@ void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, u
 		out->integrated_xgyro = 0;
 		out->integrated_ygyro = 0;
 		out->integrated_zgyro = 0;
+		out->quality = 0;
 		out->temperature = ctx->last.temperature;
 		out->time_delta_distance_us = 0;
 		out->ground_distance = -1;
 	}
 }
 
-void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, uint16_t min_valid_data_count, result_accumulator_output_flow_i2c *out)
+void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow_i2c *out)
 {
-	if (ctx->valid_data_count >= min_valid_data_count) {
+	if (ctx->valid_data_count * 100u >= ctx->data_count * min_valid_data_count_percent && ctx->valid_data_count > 0) {
 		/*** calculate the output values for the i2c message ***/
 		out->frame_count = ctx->frame_count;
 		out->valid_frames = ctx->valid_data_count;
@@ -171,13 +173,16 @@ void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, u
 		out->integration_time = 0;
 		out->rad_flow_x = 0;
 		out->rad_flow_y = 0;
+		out->integrated_gyro_x = 0;
+		out->integrated_gyro_y = 0;
+		out->integrated_gyro_z = 0;
 		out->gyro_x = 0;
 		out->gyro_y = 0;
 		out->gyro_z = 0;
 		out->quality = 0;
 		out->temperature = ctx->last.temperature;
 		out->time_delta_distance_us = 0;
-		out->ground_distance = -1;
+		out->ground_distance = 0;
 	}
 }
 
@@ -196,6 +201,7 @@ void result_accumulator_reset(result_accumulator_ctx *ctx)
 	ctx->min_quality = 255;
 
 	ctx->valid_data_count = 0;
+	ctx->data_count = 0;
 	ctx->valid_time = 0;
 	ctx->full_time  = 0;
 }

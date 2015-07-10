@@ -479,9 +479,11 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 				if (mindir == 3 || mindir == 4 || mindir == 5) result->x -= 0.5f;
 				if (mindir == 5 || mindir == 6 || mindir == 7) result->y -= 0.5f;
 				if (mindir == 1 || mindir == 2 || mindir == 3) result->y += 0.5f;
-				/* gyro compensation */
-				result->x -= x_rate;
-				result->y -= y_rate;
+				if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION]) {
+					/* gyro compensation */
+					result->x -= x_rate;
+					result->y -= y_rate;
+				}
 				result->quality = 1.0;
 			}
 		}
@@ -560,13 +562,18 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		for (int x = 0; x < NUM_BLOCK_KLT; x++, i += pixStep)
 		{
 			uint16_t idx = y*NUM_BLOCK_KLT+x;
-			/* use the gyro measurement to guess the initial position in the new image */
-			us[idx] = i + x_rate; //position in new image at level 0
-			vs[idx] = j + y_rate;
-			if ((int16_t)us[idx] < HALF_PATCH_SIZE) 				 us[idx] = HALF_PATCH_SIZE;
-			if ((int16_t)us[idx] > frame_size - HALF_PATCH_SIZE - 1) us[idx] = frame_size - HALF_PATCH_SIZE - 1;
-			if ((int16_t)vs[idx] < HALF_PATCH_SIZE) 				 vs[idx] = HALF_PATCH_SIZE;
-			if ((int16_t)vs[idx] > frame_size - HALF_PATCH_SIZE - 1) vs[idx] = frame_size - HALF_PATCH_SIZE - 1;
+			if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION]) {
+				/* use the gyro measurement to guess the initial position in the new image */
+				us[idx] = i + x_rate; //position in new image at level 0
+				vs[idx] = j + y_rate;
+				if ((int16_t)us[idx] < HALF_PATCH_SIZE) 				 us[idx] = HALF_PATCH_SIZE;
+				if ((int16_t)us[idx] > frame_size - HALF_PATCH_SIZE - 1) us[idx] = frame_size - HALF_PATCH_SIZE - 1;
+				if ((int16_t)vs[idx] < HALF_PATCH_SIZE) 				 vs[idx] = HALF_PATCH_SIZE;
+				if ((int16_t)vs[idx] > frame_size - HALF_PATCH_SIZE - 1) vs[idx] = frame_size - HALF_PATCH_SIZE - 1;
+			} else {
+				us[idx] = i; //position in new image at level 0
+				vs[idx] = j;
+			}
 			is[idx] = i;	//position in previous image at level 0
 			js[idx] = j;
 			/* init output vector */
@@ -709,9 +716,14 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				else  //for the last level compute the actual flow in pixels
 				{
 					if (result_good && k < max_out) {
-						/* compute flow and compensate gyro */
-						out[k].x = u - i - x_rate;
-						out[k].y = v - j - y_rate;
+						if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION]) {
+							/* compute flow and compensate gyro */
+							out[k].x = u - i - x_rate;
+							out[k].y = v - j - y_rate;
+						} else {
+							out[k].x = u - i;
+							out[k].y = v - j;
+						}
 						out[k].quality = 1.0f;
 					}
 				}
@@ -735,7 +747,8 @@ int flow_res_dim_value_compare(const void* elem1, const void* elem2)
     return v1 > v2;
 }
 
-uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *px_flow_x, float *px_flow_y)
+uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *px_flow_x, float *px_flow_y,
+				float accuracy_p, float accuracy_px)
 {
 	/* extract all valid results: */
 	struct flow_res_dim_value xvalues[result_count];
@@ -757,13 +770,14 @@ uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *p
 	}
 	struct flow_res_dim_value *axes[2] = {xvalues, yvalues};
 	float *output[2] = {px_flow_x, px_flow_y};
-	const float accuracy_p   = 0.1f;	///< accuracy in percent (0 - 1)
-	const float accuracy_rad = 0.2e-3f;	///< minimal absolute accuracy
+	float max_spread_val[2] = {};
+	float spread_val[2] = {};
 	uint16_t total_avg_c = 0;
 	for (int i = 0; i < 2; ++i) {
 		struct flow_res_dim_value *axis = axes[i];
 		/* sort them */
 		qsort(axis, valid_c, sizeof(struct flow_res_dim_value), flow_res_dim_value_compare);
+		spread_val[i] = axis[valid_c * 3 / 4].value - axis[valid_c / 4].value;
 		/* start with one element */
 		uint16_t s = valid_c / 2;
 		uint16_t e = valid_c / 2 + 1;
@@ -778,7 +792,8 @@ uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *p
 			/* calculate average and maximum spread to throw away outliers */
 			avg = avg_sum / avg_c;
 			float max_spread = fabs(avg) * accuracy_p;
-			max_spread = accuracy_rad * accuracy_rad / (accuracy_rad + max_spread) + max_spread;
+			max_spread = accuracy_px * accuracy_px / (accuracy_px + max_spread) + max_spread;
+			max_spread_val[i] = max_spread;
 			/* decide on which side to add new data-point (to remain centered in the sorted set) */
 			if (s > valid_c - e && s > 0) {
 				s--;
@@ -794,10 +809,22 @@ uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *p
 			if (axis[e - 1].value - axis[s].value > max_spread) break;
 			/* its good. continue .. */
 		}
-		/* we have a result */
-		*output[i] = avg;
-		total_avg_c += e_res - s_res;
+		if (e_res - s_res > 1) {
+			/* we have a result */
+			*output[i] = avg;
+			total_avg_c += e_res - s_res;
+		} else {
+			*px_flow_x = 0;
+			*px_flow_y = 0;
+			return 0;
+		}
 	}
+	static int ctr = 0;
+	if (ctr++ % 10 == 0) {
+		mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "SPREAD_X", get_boot_time_us(), spread_val[0], max_spread_val[0], *output[0]);
+		mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "SPREAD_Y", get_boot_time_us(), spread_val[1], max_spread_val[1], *output[1]);
+	}
+	total_avg_c = total_avg_c / 2;
 	return (total_avg_c * 255) / result_count;
 }
 

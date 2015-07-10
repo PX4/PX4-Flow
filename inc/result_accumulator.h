@@ -60,6 +60,7 @@ typedef struct _result_accumulator_ctx {
 	float rad_flow_x_accu;
 	float rad_flow_y_accu;
 	uint8_t min_quality;
+	uint16_t data_count;
 	uint16_t valid_data_count;
 	float valid_time;
 	float full_time;
@@ -135,9 +136,9 @@ void result_accumulator_feed(result_accumulator_ctx *ctx, float dt, float x_rate
 
 /**	Recalculates the output values of the result_accumulator. Call this before using any of the output values.
  */
-void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint16_t min_valid_data_count, result_accumulator_output_flow *out);
-void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, uint16_t min_valid_data_count, result_accumulator_output_flow_rad *out);
-void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, uint16_t min_valid_data_count, result_accumulator_output_flow_i2c *out);
+void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow *out);
+void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow_rad *out);
+void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow_i2c *out);
 
 /**	Resets the accumulator to prepare it for the next accumulation phase.
  */

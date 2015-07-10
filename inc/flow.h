@@ -75,6 +75,17 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
 					 flow_raw_result *out, uint16_t max_out);
 
-uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *px_flow_x, float *px_flow_y);
+/**
+* 
+*	@brief Extracts pixel flow from the result vector
+*	@param in Raw result vector from flow calculation.
+*	@param result_count Number of results in flow_raw_result.
+*	@param px_flow_x Receives the pixel flow in x direction.
+*	@param px_flow_y Receives the pixel flow in y direction.
+*	@param accuracy_p Outlier detection threshold in percent. (0 - 1).
+*	@param accuracy_px Minimum outlier detection threshold in absolute pixel flow values.
+*/
+uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *px_flow_x, float *px_flow_y,
+				float accuracy_p, float accuracy_px);
 
 #endif /* FLOW_H_ */

@@ -78,15 +78,15 @@ void global_data_reset_param_defaults(void){
 	global_data.param_access[PARAM_SYSTEM_SEND_LPOS] = READ_WRITE;
 
 
-	global_data.param[PARAM_ALGORITHM_CHOICE] = 0;
-	strcpy(global_data.param_name[PARAM_ALGORITHM_CHOICE], "ALGORITHM_CHOICE");
+	global_data.param[PARAM_ALGORITHM_CHOICE] = 1;
+	strcpy(global_data.param_name[PARAM_ALGORITHM_CHOICE], "ALGO_CHOICE");
 	global_data.param_access[PARAM_ALGORITHM_CHOICE] = READ_WRITE;
 
 	global_data.param[PARAM_USE_IMAGE_FILTER] = 0;
-	strcpy(global_data.param_name[PARAM_USE_IMAGE_FILTER], "USE_IMAGE_FILTER");
+	strcpy(global_data.param_name[PARAM_USE_IMAGE_FILTER], "USE_IMAGE_FILT");
 	global_data.param_access[PARAM_USE_IMAGE_FILTER] = READ_WRITE;
 
-	global_data.param[PARAM_FRAME_INTERVAL] = 2;
+	global_data.param[PARAM_FRAME_INTERVAL] = 1;
 	strcpy(global_data.param_name[PARAM_FRAME_INTERVAL], "FRAME_INTERVAL");
 	global_data.param_access[PARAM_FRAME_INTERVAL] = READ_WRITE;
 
@@ -221,6 +221,18 @@ void global_data_reset_param_defaults(void){
 	global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = 10.0f;
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR], "BFLOW_THROTT");
 	global_data.param_access[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = READ_WRITE;
+
+	global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD] = 0.1f;
+	strcpy(global_data.param_name[PARAM_MINIMUM_OUTLIER_THRESHOLD], "MIN_OUT_THRSH");
+	global_data.param_access[PARAM_MINIMUM_OUTLIER_THRESHOLD] = READ_WRITE;
+
+	global_data.param[PARAM_OUTLIER_THRESHOLD] = 0.2f;
+	strcpy(global_data.param_name[PARAM_OUTLIER_THRESHOLD], "OUTLIER_THRSH");
+	global_data.param_access[PARAM_OUTLIER_THRESHOLD] = READ_WRITE;
+
+	global_data.param[PARAM_MIN_VALID_RATIO] = 50;
+	strcpy(global_data.param_name[PARAM_MIN_VALID_RATIO], "MIN_VALID_RATIO");
+	global_data.param_access[PARAM_MIN_VALID_RATIO] = READ_WRITE;
 
 	global_data.param[DEBUG_VARIABLE] = 1;
 	strcpy(global_data.param_name[DEBUG_VARIABLE], "DEBUG");
