@@ -38,9 +38,9 @@
 #include <stdint.h>
 
 #define ONBOARD_PARAM_NAME_LENGTH 		15
-#define BOTTOM_FLOW_IMAGE_HEIGHT		64
-#define BOTTOM_FLOW_IMAGE_WIDTH			64
-#define BOTTOM_FLOW_SEARCH_WINDOW_SIZE 	4
+#define FLOW_IMAGE_HEIGHT		64
+#define FLOW_IMAGE_WIDTH			64
+#define FLOW_SEARCH_WINDOW_SIZE 	4
 
 /******************************************************************
   * ALL TYPE DEFINITIONS
@@ -55,18 +55,6 @@ typedef enum
   READ_WRITE  = 1,
 } ParameterAccess_TypeDef;
 
-/**
-  * @brief  sensor position enumeration
-  */
-typedef enum
-{
-  BOTTOM = 0x00, 	/*!< at bottom position */
-  FRONT  = 0x01, 	/*!< at front position */
-  TOP    = 0x02, 	/*!< at top position */
-  BACK   = 0x03,  	/*!< at back position */
-  RIGHT  = 0x04,  	/*!< at right position */
-  LEFT   = 0x05  	/*!< at left position */
-} SensorPosition_TypeDef;
 
 /**
   * @brief  sensor position enumeration
@@ -140,21 +128,20 @@ enum global_param_id_t
 	PARAM_VIDEO_ONLY,
 	PARAM_VIDEO_RATE,
 
-	PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD,
-	PARAM_BOTTOM_FLOW_VALUE_THRESHOLD,
-	PARAM_BOTTOM_FLOW_HIST_FILTER,
-	PARAM_BOTTOM_FLOW_GYRO_COMPENSATION,
-	PARAM_BOTTOM_FLOW_LP_FILTERED,
-	PARAM_BOTTOM_FLOW_WEIGHT_NEW,
-	PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR,
+	PARAM_FLOW_FEATURE_THRESHOLD,
+	PARAM_FLOW_VALUE_THRESHOLD,
+	PARAM_FLOW_HIST_FILTER,
+	PARAM_FLOW_GYRO_COMPENSATION,
+	PARAM_FLOW_LP_FILTERED,
+	PARAM_FLOW_WEIGHT_NEW,
+	PARAM_FLOW_SERIAL_THROTTLE_FACTOR,
 
-	PARAM_SENSOR_POSITION,
 	DEBUG_VARIABLE,
 
 	PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0,
 	PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1,
 	PARAM_USB_SEND_QUAL_0,
-	
+
 	PARAM_OUTLIER_THRESHOLD,
 	PARAM_MIN_VALID_RATIO,
 
