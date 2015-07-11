@@ -48,9 +48,10 @@
 
 /* boot time in milliseconds ticks */
 volatile uint32_t boot_time_ms = 0;
-volatile uint32_t boot_time_us_base = 0;
+volatile uint32_t boot_time_us_base = 999;
 
 static uint32_t ticks_per_ms;
+static uint32_t ticks_per_us;
 
 #define TIMER_FLAG_ENABLED 0x01
 #define TIMER_FLAG_TRIGGERED 0x02
@@ -133,7 +134,8 @@ void timer_register(void (*timer_fn)(void), uint32_t period_ms) {
 void timer_init(void)
 {
 	/* init clock */
-	ticks_per_ms = SystemCoreClock / 1000;
+	ticks_per_ms = SystemCoreClock / 1000u;
+	ticks_per_us = ticks_per_ms / 1000u;
 	/* init all timers */
 	for (int idx = 0; idx < NTIMERS; idx++) {
 		/* disable it: */
@@ -174,7 +176,7 @@ uint32_t get_boot_time_us(void)
 		// make sure it did not roll over in the mean-time:
 	} while(SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk);
 	// return the calculated value:
-	return ((val_tick & SysTick_VAL_CURRENT_Msk) / ticks_per_ms) + val_us_base;
+	return val_us_base - ((val_tick & SysTick_VAL_CURRENT_Msk) / ticks_per_us);
 }
 
 uint32_t calculate_time_delta_us(uint32_t end, uint32_t start) {
