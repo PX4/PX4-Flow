@@ -53,7 +53,7 @@
 #define SEARCH_SIZE	global_data.param[PARAM_MAX_FLOW_PIXEL] // maximum offset to search: 4 + 1/2 pixels
 #define TILE_SIZE	8               						// x & y tile size
 #define NUM_BLOCKS	5 // x & y number of tiles to check
-#define NUM_BLOCK_KLT 3 
+#define NUM_BLOCK_KLT 4 
 
 //this are the settings for KLT based flow
 #define PYR_LVLS 2
@@ -446,8 +446,8 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 
 				for (ii = winmin; ii <= winmax; ii++)
 				{
-//					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, frame_size);
-					uint32_t temp_dist = ABSDIFF(base1, base2 + ii);
+					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, frame_size);
+//					uint32_t temp_dist = ABSDIFF(base1, base2 + ii);
 					if (temp_dist < dist)
 					{
 						sumx = ii;
@@ -627,7 +627,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			//compute inverse of hessian
 			// TODO: evaluate using condition of this matrix to decide whether we should continue
 			float det = (JTJ[0]*JTJ[3]-JTJ[1]*JTJ[2]);
-			if (det != 0.f)
+			if (fabs(det) > global_data.param[PARAM_KLT_DET_VALUE_MIN])
 			{
 				float detinv = 1.f / det;
 				float JTJinv[4];
@@ -645,7 +645,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				bool result_good = true;
 
 				//Now do some Gauss-Newton iterations for flow
-				for (int iters = 0; iters < 5; iters++)
+				for (int iters = 0; iters < 3; iters++)
 				{
 					float JTe_x = 0;  //accumulators for Jac transposed times error
 					float JTe_y = 0;

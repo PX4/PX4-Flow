@@ -98,6 +98,10 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_USE_MEDIAN], "USE_MEDIAN");
 	global_data.param_access[PARAM_USE_MEDIAN] = READ_WRITE;
 
+	global_data.param[PARAM_KLT_DET_VALUE_MIN] = 0.1f;
+	strcpy(global_data.param_name[PARAM_KLT_DET_VALUE_MIN], "DET_VALUE_MIN");
+	global_data.param_access[PARAM_KLT_DET_VALUE_MIN] = READ_WRITE;
+
 
 
 	global_data.param[PARAM_SENSOR_POSITION] = 0; // BOTTOM
