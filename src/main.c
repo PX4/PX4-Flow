@@ -123,9 +123,9 @@ void system_receive_fn(void) {
 void send_video_fn(void) {
 	/* update the rate */
 	timer_update(send_video_fn, global_data.param[PARAM_VIDEO_RATE]);
-	
+
 	/*  transmit raw 8-bit image */
-	if (global_data.param[PARAM_USB_SEND_VIDEO])
+	if (global_data.param[PARAM_USB_SEND_VIDEO] && !global_data.param[PARAM_VIDEO_ONLY])
 	{
 		/* get size of image to send */
 		uint16_t image_size_send;
@@ -285,9 +285,11 @@ int main(void)
 		if(buffer_reset_needed)
 		{
 			buffer_reset_needed = 0;
-			/* get two new fresh (full) images: (or 8 small images ..) */
-			dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 4);
-			dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 4);
+			if(!global_data.param[PARAM_VIDEO_ONLY]) {
+				/* get two new fresh images: */
+				dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 1);
+				dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 1);
+			}
 			continue;
 		}
 
