@@ -39,6 +39,7 @@
 #include <mavlink.h>
 #include "utils.h"
 #include "dcmi.h"
+#include "timer.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_rcc.h"
 #include "stm32f4xx_i2c.h"
@@ -71,10 +72,6 @@ uint8_t dcmi_image_buffer_8bit_2[FULL_IMAGE_SIZE];
 uint8_t dcmi_image_buffer_8bit_3[FULL_IMAGE_SIZE];
 
 uint32_t time_between_images;
-
-/* extern functions */
-extern uint32_t get_boot_time_us(void);
-extern void delay(unsigned msec);
 
 /**
  * @brief Initialize DCMI DMA and enable image capturing
@@ -202,8 +199,8 @@ void dma_swap_buffers(void)
 	}
 
 	/* set next time_between_images */
-	cycle_time = get_boot_time_us() - time_last_frame;
-	time_last_frame = get_boot_time_us();
+	cycle_time = get_time_delta_us(time_last_frame);
+	time_last_frame += cycle_time;
 
 	if(image_counter) // image was not fetched jet
 	{
@@ -235,8 +232,9 @@ uint32_t get_frame_counter(void){
  * @param previous_image Previous image buffer
  * @param image_size Image size of the image to copy
  * @param image_step Image to wait for (if 1 no waiting)
+ * @return the number of skipped images.
  */
-void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image, uint16_t image_size, uint8_t image_step){
+int dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image, uint16_t image_size, uint8_t image_step){
 
 	/* swap image buffers */
 	uint8_t * tmp_image = *current_image;
@@ -245,7 +243,8 @@ void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image,
 
 	/* wait for new image if needed */
 	while(image_counter < image_step) {}
-	image_counter = 0;
+	int img_ctr_val = image_counter;
+	image_counter -= img_ctr_val;
 
 	/* time between images */
 	time_between_images = time_between_next_images;
@@ -266,6 +265,7 @@ void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image,
 		for (uint16_t pixel = 0; pixel < image_size; pixel++)
 			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_3[pixel]);
 	}
+	return img_ctr_val - image_step;
 }
 
 /**

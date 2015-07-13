@@ -41,6 +41,7 @@
 #ifndef I2C_H_
 #define I2C_H_
 #include <inttypes.h>
+#include <stdbool.h>
 
 #define I2C1_OWNADDRESS_1_BASE 0x42 //7bit base address
 /**
@@ -48,8 +49,9 @@
  */
 
 void i2c_init(void);
-void update_TX_buffer(float pixel_flow_x, float pixel_flow_y, float flow_comp_m_x, float flow_comp_m_y, uint8_t qual,
-        float ground_distance, float x_rate, float y_rate, float z_rate, int16_t gyro_temp);
+void update_TX_buffer(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
+					  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
+					  bool distance_valid, float ground_distance, uint32_t distance_age);
 char i2c_get_ownaddress1(void);
 #endif /* I2C_H_ */
 

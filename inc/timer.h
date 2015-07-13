@@ -31,48 +31,58 @@
  *
  ****************************************************************************/
 
-#ifndef DCMI_H_
-#define DCMI_H_
+#ifndef TIMER_H_
+#define TIMER_H_
 
 #include <stdint.h>
-#include "mt9v034.h"
 
-#define DCMI_DR_ADDRESS       0x50050028
+#define NTIMERS         	16
+
+/**	Initializes the timer module.
+ */
+void timer_init(void);
+
+/**	Registers a new timer with a corresponding function.
+ *	@note: The function will be called from within the timer_check function.
+ *  @param timer_fn  The timer function to call when the timer rolls over.
+ *					 This function is NOT called from the interrupt handler.
+ * 	@param period_ms The period of the timer in milliseconds.
+ */
+void timer_register(void (*timer_fn)(void), uint32_t period_ms);
+
+/**	Updates the period of an timer that has already been registered.
+ *  @param timer_fn  The timer function that has been registered.
+ * 	@param period_ms The new period of the timer in milliseconds.
+ */
+int timer_update(void (*timer_fn)(void), uint32_t period_ms);
+
+/**	Checks any pending timers and calls the respective timer functions.
+ */
+void timer_check(void);
+
+void delay(uint16_t ms);
+
+/** Returns the number of milliseconds since booting.
+ */
+uint32_t get_boot_time_ms(void);
+
+/** Returns the number of microseconds since booting.
+ */
+uint32_t get_boot_time_us(void);
+
+/** Computes the time delta in microseconds while taking the roll-over into account.
+ */
+uint32_t calculate_time_delta_us(uint32_t end, uint32_t start);
+
+/** Computes the time delta in microseconds while taking the roll-over into account.
+ */
+uint32_t get_time_delta_us(uint32_t start);
 
 /**
- * @brief Copy image to fast RAM address
- */
-int dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image, uint16_t buffer_size, uint8_t image_step);
+  * @brief  Triggered by systen timer interrupt every millisecond.
+  * @param  None
+  * @retval None
+  */
+void timer_interrupt_fn(void);
 
-/**
- * @brief Send calibration image with MAVLINK over USB
- */
-void send_calibration_image(uint8_t ** image_buffer_fast_1, uint8_t ** image_buffer_fast_2);
-
-/**
- * @brief Initialize DCMI DMA and enable image capturing
- */
-void enable_image_capture(void);
-
-/* Init Functions */
-void dcmi_clock_init(void);
-void dcmi_hw_init(void);
-void dcmi_dma_init(uint16_t buffer_size);
-void dcmi_it_init(void);
-void dma_it_init(void);
-
-/* Interrupt Handlers */
-void DCMI_IRQHandler(void);
-void DMA2_Stream1_IRQHandler(void);
-
-void dcmi_dma_enable(void);
-void dcmi_dma_disable(void);
-void dma_reconfigure(void);
-void dcmi_restart_calibration_routine(void);
-void dma_swap_buffers(void);
-
-uint32_t get_time_between_images(void);
-uint32_t get_frame_counter(void);
-void reset_frame_counter(void);
-
-#endif /* DCMI_H_ */
+#endif /* TIMER_H_ */

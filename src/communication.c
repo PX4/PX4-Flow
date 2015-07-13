@@ -46,8 +46,8 @@
 #include "gyro.h"
 #include "debug.h"
 #include "communication.h"
+#include "timer.h"
 
-extern uint32_t get_boot_time_us(void);
 extern void buffer_reset(void);
 extern void systemreset(bool to_bootloader);
 
@@ -235,17 +235,9 @@ void handle_mavlink_message(mavlink_channel_t chan,
 						{
 							global_data.param[i] = set.param_value;
 
-							/* handle sensor position */
-							if(i == PARAM_SENSOR_POSITION)
-							{
-								set_sensor_position_settings((uint8_t) set.param_value);
-								mt9v034_context_configuration();
-								dma_reconfigure();
-								buffer_reset();
-							}
 
 							/* handle low light mode and noise correction */
-							else if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR|| i == PARAM_IMAGE_TEST_PATTERN)
+							if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR || i == PARAM_IMAGE_TEST_PATTERN)
 							{
 								mt9v034_context_configuration();
 								dma_reconfigure();

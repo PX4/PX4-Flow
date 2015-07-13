@@ -31,48 +31,15 @@
  *
  ****************************************************************************/
 
-#ifndef DCMI_H_
-#define DCMI_H_
+#ifndef FILTER_H_
+#define FILTER_H_
 
 #include <stdint.h>
-#include "mt9v034.h"
-
-#define DCMI_DR_ADDRESS       0x50050028
 
 /**
- * @brief Copy image to fast RAM address
+ * @brief Filters the image to improve the flow processing
+ * @note  It uses the space after the image in the image buffer to work on the image.
  */
-int dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image, uint16_t buffer_size, uint8_t image_step);
+void filter_image(uint8_t *image, uint16_t width);
 
-/**
- * @brief Send calibration image with MAVLINK over USB
- */
-void send_calibration_image(uint8_t ** image_buffer_fast_1, uint8_t ** image_buffer_fast_2);
-
-/**
- * @brief Initialize DCMI DMA and enable image capturing
- */
-void enable_image_capture(void);
-
-/* Init Functions */
-void dcmi_clock_init(void);
-void dcmi_hw_init(void);
-void dcmi_dma_init(uint16_t buffer_size);
-void dcmi_it_init(void);
-void dma_it_init(void);
-
-/* Interrupt Handlers */
-void DCMI_IRQHandler(void);
-void DMA2_Stream1_IRQHandler(void);
-
-void dcmi_dma_enable(void);
-void dcmi_dma_disable(void);
-void dma_reconfigure(void);
-void dcmi_restart_calibration_routine(void);
-void dma_swap_buffers(void);
-
-uint32_t get_time_between_images(void);
-uint32_t get_frame_counter(void);
-void reset_frame_counter(void);
-
-#endif /* DCMI_H_ */
+#endif /* FILTER_H_ */
