@@ -50,7 +50,6 @@
 #include "led.h"
 #include "filter.h"
 #include "result_accumulator.h"
-#include "quality_measurement.h"
 #include "flow.h"
 #include "timer.h"
 #include "dcmi.h"
