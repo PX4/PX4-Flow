@@ -272,6 +272,7 @@ int main(void)
 	
 	uint32_t fps_timing_start = get_boot_time_us();
 	uint16_t fps_counter = 0;
+	uint16_t fps_skipped_counter = 0;
 	/* main loop */
 	while (1)
 	{
@@ -318,26 +319,42 @@ int main(void)
 			sonar_distance_raw = 0.0f;
 		}
 
-		/* copy recent image to faster ram */
-		dma_copy_image_buffers(&current_image, &previous_image, image_size, (int)(global_data.param[PARAM_FRAME_INTERVAL] + 0.5));
-		float frame_dt = get_time_between_images() * 0.000001f;
+		bool use_klt = global_data.param[PARAM_ALGORITHM_CHOICE] != 0;
 
-		uint32_t start_computations = get_boot_time_us();
+		uint32_t start_computations = 0;
+
+		/* copy recent image to faster ram */
+		int skipped_frames = 0;
+		int loop_count = 0;		//< make sure that we dont end up in an infinite loop inside here ..
+		do { 
+			skipped_frames = dma_copy_image_buffers(&current_image, &previous_image, image_size, (int)(global_data.param[PARAM_FRAME_INTERVAL] + 0.5));
+
+			start_computations = get_boot_time_us();
+
+			/* filter the new image */
+			if (global_data.param[PARAM_USE_IMAGE_FILTER]) {
+				filter_image(current_image, global_data.param[PARAM_IMAGE_WIDTH]);
+			}
+
+			/* Preprocessing needed by the klt algorithm: */
+			if (use_klt) {
+				klt_preprocess_image(current_image);
+			}
+			/* make sure no frames have been skipped. request a new image if a frame was skipped to ensure minimal time delta between images */
+			fps_skipped_counter += skipped_frames;
+			loop_count++;
+		} while (skipped_frames > 0 && loop_count < 2);
+		float frame_dt = get_time_between_images() * 0.000001f;
 
 		/* compute gyro rate in pixels and change to image coordinates */
 		float x_rate_px = - y_rate * (focal_length_px * frame_dt);
 		float y_rate_px =   x_rate * (focal_length_px * frame_dt);
 		float z_rate_fr = - z_rate * frame_dt;
 
-		/* filter the new image */
-		if (global_data.param[PARAM_USE_IMAGE_FILTER]) {
-			filter_image(current_image, global_data.param[PARAM_IMAGE_WIDTH]);
-		}
-
 		/* compute optical flow in pixels */
 		flow_raw_result flow_rslt[32];
 		uint16_t flow_rslt_count = 0;
-		if (global_data.param[PARAM_ALGORITHM_CHOICE] == 0) {
+		if (!use_klt) {
 			flow_rslt_count = compute_flow(previous_image, current_image, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
 		} else {
 			flow_rslt_count =  compute_klt(previous_image, current_image, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
@@ -399,22 +416,26 @@ int main(void)
 								qual, pixel_flow_x, pixel_flow_y, 1.0f / focal_length_px, 
 								distance_valid, ground_distance, get_time_delta_us(get_sonar_measure_time()));
 
+		uint32_t computaiton_time_us = get_time_delta_us(start_computations);
+
 		counter++;
 		fps_counter++;
-
-		uint32_t computaiton_time_us = get_time_delta_us(start_computations);
 
         /* serial mavlink  + usb mavlink output throttled */
 		if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
 		{
 			float fps = 0;
-			if (fps_counter > 0) {
+			float fps_skip = 0;
+			if (fps_counter + fps_skipped_counter > 100) {
 				uint32_t dt = get_time_delta_us(fps_timing_start);
 				fps_timing_start += dt;
 				fps = (float)fps_counter / ((float)dt * 1e-6f);
+				fps_skip = (float)fps_skipped_counter / ((float)dt * 1e-6f);
 				fps_counter = 0;
+				fps_skipped_counter = 0;
+
+				mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "TIMING", get_boot_time_us(), computaiton_time_us, fps, fps_skip);
 			}
-			mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "TIMING", get_boot_time_us(), computaiton_time_us, fps, 0);
 			
 			/* recalculate the output values */
 			result_accumulator_output_flow output_flow;

@@ -492,23 +492,14 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 	return result_count;
 }
 
-
-uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
-					 flow_raw_result *out, uint16_t max_out)
-{
-	/* variables */
+void klt_preprocess_image(uint8_t *image) {
 	uint16_t i, j;
 
-	float chi_sum = 0.0f;
-	uint8_t chicount = 0;
-
-	uint16_t max_iters = global_data.param[PARAM_KLT_MAX_ITERS];
-
 	/*
-	* compute image pyramid for current frame
-	* there is 188*120 bytes per buffer, we are only using 64*64 per buffer,
-	* so just add the pyramid levels after the image
-	*/
+	 * compute image pyramid for current frame
+	 * there is 188*120 bytes per buffer, we are only using 64*64 per buffer,
+	 * so just add the pyramid levels after the image
+	 */
 	//first compute the offsets in the memory for the pyramid levels
 	uint16_t lvl_ofs[PYR_LVLS];
 	uint16_t frame_size = (uint16_t)(FRAME_SIZE+0.5);
@@ -526,20 +517,50 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	{
 		uint16_t src_size = frame_size >> (l-1);
 		uint16_t tar_size = frame_size >> l;
-		uint8_t *source = &image2[lvl_ofs[l-1]]; //pointer to the beginning of the previous level
-		uint8_t *target = &image2[lvl_ofs[l]];   //pointer to the beginning of the current level
-		for (j = 0; j < tar_size; j++)
-		for (i = 0; i < tar_size; i+=2)
-		{
-			//subsample the image by 2, use the halving-add instruction to do so
-			uint32_t l1 = (__UHADD8(*((uint32_t*) &source[(j*2+0)*src_size + i*2]), *((uint32_t*) &source[(j*2+0)*src_size + i*2+1])));
-			uint32_t l2 = (__UHADD8(*((uint32_t*) &source[(j*2+1)*src_size + i*2]), *((uint32_t*) &source[(j*2+1)*src_size + i*2+1])));
-			uint32_t r = __UHADD8(l1, l2);
+		uint8_t *source = &image[lvl_ofs[l-1]]; //pointer to the beginning of the previous level
+		uint8_t *target = &image[lvl_ofs[l]];   //pointer to the beginning of the current level
+		for (j = 0; j < tar_size; j++) {
+			for (i = 0; i < tar_size; i+=2)
+			{
+				//subsample the image by 2, use the halving-add instruction to do so
+				uint32_t l1 = (__UHADD8(*((uint32_t*) &source[(j*2+0)*src_size + i*2]), *((uint32_t*) &source[(j*2+0)*src_size + i*2+1])));
+				uint32_t l2 = (__UHADD8(*((uint32_t*) &source[(j*2+1)*src_size + i*2]), *((uint32_t*) &source[(j*2+1)*src_size + i*2+1])));
+				uint32_t r = __UHADD8(l1, l2);
 
-			//the first and the third byte are the values we want to have
-			target[j*tar_size + i+0] = (uint8_t) r;
-			target[j*tar_size + i+1] = (uint8_t) (r>>16);
+				//the first and the third byte are the values we want to have
+				target[j*tar_size + i+0] = (uint8_t) r;
+				target[j*tar_size + i+1] = (uint8_t) (r>>16);
+			}
 		}
+	}
+}
+
+uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
+					 flow_raw_result *out, uint16_t max_out)
+{
+	/* variables */
+	uint16_t i, j;
+
+	float chi_sum = 0.0f;
+	uint8_t chicount = 0;
+
+	uint16_t max_iters = global_data.param[PARAM_KLT_MAX_ITERS];
+
+	/*
+	 * compute image pyramid for current frame
+	 * there is 188*120 bytes per buffer, we are only using 64*64 per buffer,
+	 * so just add the pyramid levels after the image
+	 */
+	//first compute the offsets in the memory for the pyramid levels
+	uint16_t lvl_ofs[PYR_LVLS];
+	uint16_t frame_size = (uint16_t)(FRAME_SIZE+0.5);
+	uint16_t s = frame_size;
+	uint16_t off = 0;
+	for (int l = 0; l < PYR_LVLS; l++)
+	{
+		lvl_ofs[l] = off;
+		off += s*s;
+		s /= 2;
 	}
 
 	//need to store the flow values between pyramid level changes
@@ -780,7 +801,7 @@ uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *p
 			valid_c++;
 		}
 	}
-	if (valid_c < (result_count + 4) / 4 || valid_c < 3) {
+	if (valid_c < (result_count + 2) / 3 || valid_c < 3) {
 		*px_flow_x = 0;
 		*px_flow_y = 0;
 		return 0;
@@ -836,10 +857,12 @@ uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *p
 			return 0;
 		}
 	}
-	static int ctr = 0;
-	if (ctr++ % 10 == 0) {
-		mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "SPREAD_X", get_boot_time_us(), spread_val[0], max_spread_val[0], *output[0]);
-		mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "SPREAD_Y", get_boot_time_us(), spread_val[1], max_spread_val[1], *output[1]);
+	if (global_data.param[PARAM_USB_SEND_FLOW_OUTL]) {
+		static int ctr = 0;
+		if (ctr++ % 20 == 0) {
+			mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "SPREAD_X", get_boot_time_us(), spread_val[0], max_spread_val[0], *output[0]);
+			mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "SPREAD_Y", get_boot_time_us(), spread_val[1], max_spread_val[1], *output[1]);
+		}
 	}
 	total_avg_c = total_avg_c / 2;
 	return (total_avg_c * 255) / result_count;

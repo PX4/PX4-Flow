@@ -42,7 +42,7 @@
 /**
  * @brief Copy image to fast RAM address
  */
-void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image, uint16_t buffer_size, uint8_t image_step);
+int dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image, uint16_t buffer_size, uint8_t image_step);
 
 /**
  * @brief Send calibration image with MAVLINK over USB

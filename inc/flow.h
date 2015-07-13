@@ -60,9 +60,17 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 					  flow_raw_result *out, uint16_t max_out);
 
 /**
+ *	Preprocesses the image for use with compute_klt. 
+ *	This will add the pyramid levels.
+ *	@note Image buffer needs to be at least twice as big as the original image.
+ */
+void klt_preprocess_image(uint8_t *image);
+
+/**
  *  @brief Computes pixel flow from image1 to image2
  *  Searches the corresponding position in the new image (image2) of max. 64 pixels from the old image (image1)
  *  with the KLT method and outputs the value of all flow vectors.
+ *	@NOTE call klt_preprocess_image on the images first! (No need to call it on the previous image again if it has been treated already)
  *	@param image1 The older image
  *	@param image2 The new image
  *	@param x_rate The gyro x-rate during the frame interval in pixels. (In the image x direction)
