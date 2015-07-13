@@ -400,7 +400,7 @@ int main(void)
         /* serial mavlink  + usb mavlink output throttled */
 		if (counter % (uint32_t)global_data.param[PARAM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
 		{
-			/* recalculate the output values */
+			/* calculate the output values */
 			result_accumulator_output_flow output_flow;
 			result_accumulator_output_flow_rad output_flow_rad;
 			int min_valid_ratio = global_data.param[PARAM_MIN_VALID_RATIO];
@@ -437,7 +437,7 @@ int main(void)
 
 			if(global_data.param[PARAM_USB_SEND_GYRO])
 			{
-				mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_us(), pixel_flow_x, y_rate, z_rate);
+				mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_us(), x_rate, y_rate, z_rate);
 			}
 
 			result_accumulator_reset(&mavlink_accumulator);
