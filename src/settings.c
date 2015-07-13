@@ -98,6 +98,19 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_USE_MEDIAN], "USE_MEDIAN");
 	global_data.param_access[PARAM_USE_MEDIAN] = READ_WRITE;
 
+	global_data.param[PARAM_KLT_MAX_ITERS] = 5;
+	strcpy(global_data.param_name[PARAM_KLT_MAX_ITERS], "KLT_MAX_ITERS");
+	global_data.param_access[PARAM_KLT_MAX_ITERS] = READ_WRITE;
+
+	global_data.param[PARAM_KLT_DET_VALUE_MIN] = 90;
+	strcpy(global_data.param_name[PARAM_KLT_DET_VALUE_MIN], "DET_VALUE_MIN");
+	global_data.param_access[PARAM_KLT_DET_VALUE_MIN] = READ_WRITE;
+
+	global_data.param[PARAM_CORNER_KAPPA] = 0.06;
+	strcpy(global_data.param_name[PARAM_CORNER_KAPPA], "CORNER_KAPPA");
+	global_data.param_access[PARAM_CORNER_KAPPA] = READ_WRITE;
+
+
 	global_data.param[PARAM_USART2_BAUD] = 115200;
 	strcpy(global_data.param_name[PARAM_USART2_BAUD], "USART_2_BAUD");
 	global_data.param_access[PARAM_USART2_BAUD] = READ_ONLY;
@@ -172,6 +185,11 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_USB_SEND_DEBUG], "USB_SEND_DEBUG");
 	global_data.param_access[PARAM_USB_SEND_DEBUG] = READ_WRITE;
 
+	global_data.param[PARAM_USB_SEND_FLOW_OUTL] = 1; // send flow outlier debug
+	strcpy(global_data.param_name[PARAM_USB_SEND_FLOW_OUTL], "USB_SEND_FLOW_O");
+	global_data.param_access[PARAM_USB_SEND_FLOW_OUTL] = READ_WRITE;
+
+
 	global_data.param[PARAM_VIDEO_ONLY] = 0;
 	strcpy(global_data.param_name[PARAM_VIDEO_ONLY], "VIDEO_ONLY");
 	global_data.param_access[PARAM_VIDEO_ONLY] = READ_WRITE;
@@ -220,11 +238,11 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0], "MIN_OUT_THR_A0");
 	global_data.param_access[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0] = READ_WRITE;
 
-	global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1] = 0.1f;
+	global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1] = 0.2f;
 	strcpy(global_data.param_name[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1], "MIN_OUT_THR_A1");
 	global_data.param_access[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1] = READ_WRITE;
 
-	global_data.param[PARAM_OUTLIER_THRESHOLD] = 0.2f;
+	global_data.param[PARAM_OUTLIER_THRESHOLD] = 0.15f;
 	strcpy(global_data.param_name[PARAM_OUTLIER_THRESHOLD], "OUTLIER_THR");
 	global_data.param_access[PARAM_OUTLIER_THRESHOLD] = READ_WRITE;
 

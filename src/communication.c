@@ -237,7 +237,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 
 
 							/* handle low light mode and noise correction */
-							if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR|| i == PARAM_IMAGE_TEST_PATTERN)
+							if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR || i == PARAM_IMAGE_TEST_PATTERN)
 							{
 								mt9v034_context_configuration();
 								dma_reconfigure();
