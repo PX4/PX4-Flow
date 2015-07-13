@@ -270,6 +270,8 @@ int main(void)
 
 	result_accumulator_init(&mavlink_accumulator);
 	
+	uint32_t fps_timing_start = get_boot_time_us();
+	uint16_t fps_counter = 0;
 	/* main loop */
 	while (1)
 	{
@@ -398,13 +400,21 @@ int main(void)
 								distance_valid, ground_distance, get_time_delta_us(get_sonar_measure_time()));
 
 		counter++;
+		fps_counter++;
 
 		uint32_t computaiton_time_us = get_time_delta_us(start_computations);
 
         /* serial mavlink  + usb mavlink output throttled */
 		if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
 		{
-			mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "TIMING", get_boot_time_us(), computaiton_time_us, 0, 0);
+			float fps = 0;
+			if (fps_counter > 0) {
+				uint32_t dt = get_time_delta_us(fps_timing_start);
+				fps_timing_start += dt;
+				fps = (float)fps_counter / ((float)dt * 1e-6f);
+				fps_counter = 0;
+			}
+			mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "TIMING", get_boot_time_us(), computaiton_time_us, fps, 0);
 			
 			/* recalculate the output values */
 			result_accumulator_output_flow output_flow;
@@ -426,7 +436,7 @@ int main(void)
 					output_flow_rad.temperature, output_flow_rad.quality,
 					output_flow_rad.time_delta_distance_us,output_flow_rad.ground_distance);
 
-			if (global_data.param[PARAM_USB_SEND_FLOW] && (qual > 0 || global_data.param[PARAM_USB_SEND_QUAL_0]))
+			if (global_data.param[PARAM_USB_SEND_FLOW] && (output_flow.quality > 0 || global_data.param[PARAM_USB_SEND_QUAL_0]))
 			{
 				mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 						output_flow.flow_x, output_flow.flow_y,

@@ -98,10 +98,17 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_USE_MEDIAN], "USE_MEDIAN");
 	global_data.param_access[PARAM_USE_MEDIAN] = READ_WRITE;
 
-	global_data.param[PARAM_KLT_DET_VALUE_MIN] = 0.1f;
+	global_data.param[PARAM_KLT_MAX_ITERS] = 5;
+	strcpy(global_data.param_name[PARAM_KLT_MAX_ITERS], "KLT_MAX_ITERS");
+	global_data.param_access[PARAM_KLT_MAX_ITERS] = READ_WRITE;
+
+	global_data.param[PARAM_KLT_DET_VALUE_MIN] = 90;
 	strcpy(global_data.param_name[PARAM_KLT_DET_VALUE_MIN], "DET_VALUE_MIN");
 	global_data.param_access[PARAM_KLT_DET_VALUE_MIN] = READ_WRITE;
 
+	global_data.param[PARAM_CORNER_KAPPA] = 0.06;
+	strcpy(global_data.param_name[PARAM_CORNER_KAPPA], "CORNER_KAPPA");
+	global_data.param_access[PARAM_CORNER_KAPPA] = READ_WRITE;
 
 
 	global_data.param[PARAM_SENSOR_POSITION] = 0; // BOTTOM

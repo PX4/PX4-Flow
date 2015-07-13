@@ -53,11 +53,11 @@
 #define SEARCH_SIZE	global_data.param[PARAM_MAX_FLOW_PIXEL] // maximum offset to search: 4 + 1/2 pixels
 #define TILE_SIZE	8               						// x & y tile size
 #define NUM_BLOCKS	5 // x & y number of tiles to check
-#define NUM_BLOCK_KLT 4 
+#define NUM_BLOCK_KLT 4
 
 //this are the settings for KLT based flow
 #define PYR_LVLS 2
-#define HALF_PATCH_SIZE 4       //this is half the wanted patch size minus 1
+#define HALF_PATCH_SIZE 3       //this is half the wanted patch size minus 1
 #define PATCH_SIZE (HALF_PATCH_SIZE*2+1)
 
 float Jx[PATCH_SIZE*PATCH_SIZE];
@@ -502,6 +502,8 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	float chi_sum = 0.0f;
 	uint8_t chicount = 0;
 
+	uint16_t max_iters = global_data.param[PARAM_KLT_MAX_ITERS];
+
 	/*
 	* compute image pyramid for current frame
 	* there is 188*120 bytes per buffer, we are only using 64*64 per buffer,
@@ -607,11 +609,16 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			int c = 0;
 
 			//compute jacobians and the hessian for the patch at the current location
+			uint8_t min_val = 255;
+			uint8_t max_val = 0;
 			for (int8_t jj = -HALF_PATCH_SIZE; jj <= HALF_PATCH_SIZE; jj++)
 			{
 				uint8_t *left = base1 + jj*iwidth;
 				for (int8_t ii = -HALF_PATCH_SIZE; ii <= HALF_PATCH_SIZE; ii++)
 				{
+					uint8_t val = left[ii];
+					if (val > max_val) max_val = val;
+					if (val < min_val) min_val = val;
 					const float jx = ((uint16_t)left[ii+1] - (uint16_t)left[ii-1]) * 0.5f;
 					const float jy = ((uint16_t)left[ii+iwidth] - (uint16_t)left[ii-iwidth]) * 0.5f;
 					Jx[c] = jx;
@@ -625,9 +632,11 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			}
 
 			//compute inverse of hessian
-			// TODO: evaluate using condition of this matrix to decide whether we should continue
 			float det = (JTJ[0]*JTJ[3]-JTJ[1]*JTJ[2]);
-			if (fabs(det) > global_data.param[PARAM_KLT_DET_VALUE_MIN])
+			float dyn_range = (float)(max_val - min_val) + 1;
+			float trace = (JTJ[0] + JTJ[3]);
+			float M_c = det - global_data.param[PARAM_CORNER_KAPPA] * trace * trace;
+			if (fabs(det) > global_data.param[PARAM_KLT_DET_VALUE_MIN] * dyn_range && M_c > 0.0f)
 			{
 				float detinv = 1.f / det;
 				float JTJinv[4];
@@ -645,7 +654,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				bool result_good = true;
 
 				//Now do some Gauss-Newton iterations for flow
-				for (int iters = 0; iters < 3; iters++)
+				for (int iters = 0; iters < max_iters; iters++)
 				{
 					float JTe_x = 0;  //accumulators for Jac transposed times error
 					float JTe_y = 0;
