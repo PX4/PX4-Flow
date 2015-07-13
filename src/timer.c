@@ -70,7 +70,7 @@ static timer_info timer[NTIMERS];
   * @param  None
   * @retval None
   */
-void timer_update(void)
+void timer_interrupt_fn(void)
 {
 	boot_time_ms++;
 	/* we do it like this to have correct roll-over behaviour */
@@ -129,6 +129,24 @@ void timer_register(void (*timer_fn)(void), uint32_t period_ms) {
 	timer[idx].timer_fn  = timer_fn;
 	/* enable it: */
 	timer[idx].flags = TIMER_FLAG_ENABLED;
+}
+
+int timer_update(void (*timer_fn)(void), uint32_t period_ms) {
+	/* find the timer: */
+	int idx;
+	for (idx = 0; idx < NTIMERS; idx++) {
+		if ((timer[idx].flags & TIMER_FLAG_ENABLED) != 0 && timer[idx].timer_fn == timer_fn) {
+			break;
+		}
+	}
+	if (idx >= NTIMERS) {
+		return -1;
+	}
+	/* update the period */
+	if (timer[idx].period != period_ms) {
+		timer[idx].period = period_ms;
+	}
+	return 0;
 }
 
 void timer_init(void)

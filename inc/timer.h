@@ -50,6 +50,12 @@ void timer_init(void);
  */
 void timer_register(void (*timer_fn)(void), uint32_t period_ms);
 
+/**	Updates the period of an timer that has already been registered.
+ *  @param timer_fn  The timer function that has been registered.
+ * 	@param period_ms The new period of the timer in milliseconds.
+ */
+int timer_update(void (*timer_fn)(void), uint32_t period_ms);
+
 /**	Checks any pending timers and calls the respective timer functions.
  */
 void timer_check(void);
@@ -77,6 +83,6 @@ uint32_t get_time_delta_us(uint32_t start);
   * @param  None
   * @retval None
   */
-void timer_update(void);
+void timer_interrupt_fn(void);
 
 #endif /* TIMER_H_ */

@@ -136,7 +136,7 @@ void PendSV_Handler(void)
   */
 void SysTick_Handler(void)
 {
-	timer_update();
+	timer_interrupt_fn();
 }
 
 /******************************************************************************/

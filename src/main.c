@@ -121,6 +121,9 @@ void system_receive_fn(void) {
 }
 
 void send_video_fn(void) {
+	/* update the rate */
+	timer_update(send_video_fn, global_data.param[PARAM_VIDEO_RATE]);
+	
 	/*  transmit raw 8-bit image */
 	if (global_data.param[PARAM_USB_SEND_VIDEO])
 	{
