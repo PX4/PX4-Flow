@@ -327,12 +327,12 @@ int main(void)
 		int skipped_frames = 0;
 		int loop_count = 0;		//< make sure that we dont end up in an infinite loop inside here ..
 		do { 
-			skipped_frames = dma_copy_image_buffers(&current_image, &previous_image, image_size, (int)(global_data.param[PARAM_FRAME_INTERVAL] + 0.5));
+			skipped_frames = dma_copy_image_buffers(&current_image, &previous_image, image_size, (int)(global_data.param[PARAM_IMAGE_INTERVAL] + 0.5));
 
 			start_computations = get_boot_time_us();
 
 			/* filter the new image */
-			if (global_data.param[PARAM_USE_IMAGE_FILTER]) {
+			if (global_data.param[PARAM_ALGORITHM_IMAGE_FILTER]) {
 				filter_image(current_image, global_data.param[PARAM_IMAGE_WIDTH]);
 			}
 
@@ -363,14 +363,14 @@ int main(void)
 		/* calculate flow value from the raw results */
 		float pixel_flow_x;
 		float pixel_flow_y;
-		float outlier_threshold = global_data.param[PARAM_OUTLIER_THRESHOLD];
+		float outlier_threshold = global_data.param[PARAM_ALGORITHM_OUTLIER_THR_RATIO];
 		float min_outlier_threshold = 0;
 		if(global_data.param[PARAM_ALGORITHM_CHOICE] == 0)
 		{
-			min_outlier_threshold = global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0];
+			min_outlier_threshold = global_data.param[PARAM_ALGORITHM_OUTLIER_THR_BLOCK];
 		}else
 		{
-			min_outlier_threshold = global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1];
+			min_outlier_threshold = global_data.param[PARAM_ALGORITHM_OUTLIER_THR_KLT];
 		}
 		uint8_t qual = flow_extract_result(flow_rslt, flow_rslt_count, &pixel_flow_x, &pixel_flow_y, 
 							outlier_threshold,  min_outlier_threshold);
@@ -440,7 +440,7 @@ int main(void)
 			/* calculate the output values */
 			result_accumulator_output_flow output_flow;
 			result_accumulator_output_flow_rad output_flow_rad;
-			int min_valid_ratio = global_data.param[PARAM_MIN_VALID_RATIO];
+			int min_valid_ratio = global_data.param[PARAM_ALGORITHM_MIN_VALID_RATIO];
 			result_accumulator_calculate_output_flow(&mavlink_accumulator, min_valid_ratio, &output_flow);
 			result_accumulator_calculate_output_flow_rad(&mavlink_accumulator, min_valid_ratio, &output_flow_rad);
 

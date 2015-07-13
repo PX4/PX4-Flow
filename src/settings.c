@@ -78,39 +78,6 @@ void global_data_reset_param_defaults(void){
 	global_data.param_access[PARAM_SYSTEM_SEND_LPOS] = READ_WRITE;
 
 
-	global_data.param[PARAM_ALGORITHM_CHOICE] = 1;
-	strcpy(global_data.param_name[PARAM_ALGORITHM_CHOICE], "ALGO_CHOICE");
-	global_data.param_access[PARAM_ALGORITHM_CHOICE] = READ_WRITE;
-
-	global_data.param[PARAM_USE_IMAGE_FILTER] = 0;
-	strcpy(global_data.param_name[PARAM_USE_IMAGE_FILTER], "USE_IMAGE_FILT");
-	global_data.param_access[PARAM_USE_IMAGE_FILTER] = READ_WRITE;
-
-	global_data.param[PARAM_FRAME_INTERVAL] = 1;
-	strcpy(global_data.param_name[PARAM_FRAME_INTERVAL], "FRAME_INTERVAL");
-	global_data.param_access[PARAM_FRAME_INTERVAL] = READ_WRITE;
-
-	global_data.param[PARAM_QUALITY_FILTER] = 1;
-	strcpy(global_data.param_name[PARAM_QUALITY_FILTER], "QUALITY_FILTER");
-	global_data.param_access[PARAM_QUALITY_FILTER] = READ_WRITE;
-
-	global_data.param[PARAM_USE_MEDIAN] = 1;
-	strcpy(global_data.param_name[PARAM_USE_MEDIAN], "USE_MEDIAN");
-	global_data.param_access[PARAM_USE_MEDIAN] = READ_WRITE;
-
-	global_data.param[PARAM_KLT_MAX_ITERS] = 5;
-	strcpy(global_data.param_name[PARAM_KLT_MAX_ITERS], "KLT_MAX_ITERS");
-	global_data.param_access[PARAM_KLT_MAX_ITERS] = READ_WRITE;
-
-	global_data.param[PARAM_KLT_DET_VALUE_MIN] = 90;
-	strcpy(global_data.param_name[PARAM_KLT_DET_VALUE_MIN], "DET_VALUE_MIN");
-	global_data.param_access[PARAM_KLT_DET_VALUE_MIN] = READ_WRITE;
-
-	global_data.param[PARAM_CORNER_KAPPA] = 0.06;
-	strcpy(global_data.param_name[PARAM_CORNER_KAPPA], "CORNER_KAPPA");
-	global_data.param_access[PARAM_CORNER_KAPPA] = READ_WRITE;
-
-
 	global_data.param[PARAM_USART2_BAUD] = 115200;
 	strcpy(global_data.param_name[PARAM_USART2_BAUD], "USART_2_BAUD");
 	global_data.param_access[PARAM_USART2_BAUD] = READ_ONLY;
@@ -120,9 +87,11 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_USART3_BAUD], "USART_3_BAUD");
 	global_data.param_access[PARAM_USART3_BAUD] = READ_ONLY;
 
+
 	global_data.param[PARAM_FOCAL_LENGTH_MM] = 16.0f;
 	strcpy(global_data.param_name[PARAM_FOCAL_LENGTH_MM], "LENS_FOCAL_LEN");
 	global_data.param_access[PARAM_FOCAL_LENGTH_MM] = READ_WRITE;
+
 
 	global_data.param[PARAM_IMAGE_WIDTH] = FLOW_IMAGE_WIDTH;
 	strcpy(global_data.param_name[PARAM_IMAGE_WIDTH], "IMAGE_WIDTH");
@@ -145,6 +114,49 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_IMAGE_TEST_PATTERN], "IMAGE_TEST_PAT");
 	global_data.param_access[PARAM_IMAGE_TEST_PATTERN] = READ_WRITE;
 
+	global_data.param[PARAM_IMAGE_INTERVAL] = 1;
+	strcpy(global_data.param_name[PARAM_IMAGE_INTERVAL], "IMAGE_INTERVAL");
+	global_data.param_access[PARAM_IMAGE_INTERVAL] = READ_WRITE;
+
+
+	global_data.param[PARAM_ALGORITHM_CHOICE] = 1;
+	strcpy(global_data.param_name[PARAM_ALGORITHM_CHOICE], "ALG_CHOICE");
+	global_data.param_access[PARAM_ALGORITHM_CHOICE] = READ_WRITE;
+
+	global_data.param[PARAM_ALGORITHM_IMAGE_FILTER] = 0;
+	strcpy(global_data.param_name[PARAM_ALGORITHM_IMAGE_FILTER], "ALG_IMG_FILT");
+	global_data.param_access[PARAM_ALGORITHM_IMAGE_FILTER] = READ_WRITE;
+
+	global_data.param[PARAM_ALGORITHM_CORNER_KAPPA] = 0.06;
+	strcpy(global_data.param_name[PARAM_ALGORITHM_CORNER_KAPPA], "ALG_CORN_KAPPA");
+	global_data.param_access[PARAM_ALGORITHM_CORNER_KAPPA] = READ_WRITE;
+
+	global_data.param[PARAM_ALGORITHM_OUTLIER_THR_BLOCK] = 1.0f;
+	strcpy(global_data.param_name[PARAM_ALGORITHM_OUTLIER_THR_BLOCK], "ALG_THR_BM");
+	global_data.param_access[PARAM_ALGORITHM_OUTLIER_THR_BLOCK] = READ_WRITE;
+
+	global_data.param[PARAM_ALGORITHM_OUTLIER_THR_KLT] = 0.2f;
+	strcpy(global_data.param_name[PARAM_ALGORITHM_OUTLIER_THR_KLT], "ALG_THR_KLT");
+	global_data.param_access[PARAM_ALGORITHM_OUTLIER_THR_KLT] = READ_WRITE;
+
+	global_data.param[PARAM_ALGORITHM_OUTLIER_THR_RATIO] = 0.15f;
+	strcpy(global_data.param_name[PARAM_ALGORITHM_OUTLIER_THR_RATIO], "ALG_THR_RATIO");
+	global_data.param_access[PARAM_ALGORITHM_OUTLIER_THR_RATIO] = READ_WRITE;
+
+	global_data.param[PARAM_ALGORITHM_MIN_VALID_RATIO] = 50;
+	strcpy(global_data.param_name[PARAM_ALGORITHM_MIN_VALID_RATIO], "ALG_VALID_RATIO");
+	global_data.param_access[PARAM_ALGORITHM_MIN_VALID_RATIO] = READ_WRITE;
+
+
+	global_data.param[PARAM_KLT_MAX_ITERS] = 5;
+	strcpy(global_data.param_name[PARAM_KLT_MAX_ITERS], "KLT_MAX_ITERS");
+	global_data.param_access[PARAM_KLT_MAX_ITERS] = READ_WRITE;
+
+	global_data.param[PARAM_KLT_DET_VALUE_MIN] = 90;
+	strcpy(global_data.param_name[PARAM_KLT_DET_VALUE_MIN], "KLT_DET_MIN");
+	global_data.param_access[PARAM_KLT_DET_VALUE_MIN] = READ_WRITE;
+
+
 	global_data.param[PARAM_GYRO_SENSITIVITY_DPS] = 250;
 	strcpy(global_data.param_name[PARAM_GYRO_SENSITIVITY_DPS], "GYRO_SENS_DPS");
 	global_data.param_access[PARAM_GYRO_SENSITIVITY_DPS] = READ_WRITE;
@@ -164,6 +176,7 @@ void global_data_reset_param_defaults(void){
 	global_data.param[PARAM_SONAR_KALMAN_L2] = 6.2034f;
 	strcpy(global_data.param_name[PARAM_SONAR_KALMAN_L2], "SONAR_KAL_L2");
 	global_data.param_access[PARAM_SONAR_KALMAN_L2] = READ_WRITE;
+
 
 	global_data.param[PARAM_USB_SEND_VIDEO] = 1; // send video over USB
 	strcpy(global_data.param_name[PARAM_USB_SEND_VIDEO], "USB_SEND_VIDEO");
@@ -186,8 +199,12 @@ void global_data_reset_param_defaults(void){
 	global_data.param_access[PARAM_USB_SEND_DEBUG] = READ_WRITE;
 
 	global_data.param[PARAM_USB_SEND_FLOW_OUTL] = 1; // send flow outlier debug
-	strcpy(global_data.param_name[PARAM_USB_SEND_FLOW_OUTL], "USB_SEND_FLOW_O");
+	strcpy(global_data.param_name[PARAM_USB_SEND_FLOW_OUTL], "USB_SEND_FLW_OL");
 	global_data.param_access[PARAM_USB_SEND_FLOW_OUTL] = READ_WRITE;
+
+	global_data.param[PARAM_USB_SEND_QUAL_0] = 1;
+	strcpy(global_data.param_name[PARAM_USB_SEND_QUAL_0], "USB_SEND_Q_0");
+	global_data.param_access[PARAM_USB_SEND_QUAL_0] = READ_WRITE;
 
 
 	global_data.param[PARAM_VIDEO_ONLY] = 0;
@@ -198,9 +215,10 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_VIDEO_RATE], "VIDEO_RATE");
 	global_data.param_access[PARAM_VIDEO_RATE] = READ_WRITE;
 
-	global_data.param[PARAM_MAX_FLOW_PIXEL] = FLOW_SEARCH_WINDOW_SIZE;
-	strcpy(global_data.param_name[PARAM_MAX_FLOW_PIXEL], "FLOW_MAX_PIX");
-	global_data.param_access[PARAM_MAX_FLOW_PIXEL] = READ_ONLY;
+
+	global_data.param[PARAM_FLOW_MAX_PIXEL] = FLOW_SEARCH_WINDOW_SIZE;
+	strcpy(global_data.param_name[PARAM_FLOW_MAX_PIXEL], "FLOW_MAX_PIX");
+	global_data.param_access[PARAM_FLOW_MAX_PIXEL] = READ_ONLY;
 
 //	global_data.param[PARAM_FLOW_VALUE_THRESHOLD] = 8 * 8 * 20;
 	global_data.param[PARAM_FLOW_VALUE_THRESHOLD] = 5000; // threshold is irrelevant with this value
@@ -212,54 +230,18 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_FLOW_FEATURE_THRESHOLD], "FLOW_F_THLD");
 	global_data.param_access[PARAM_FLOW_FEATURE_THRESHOLD] = READ_WRITE;
 
-	global_data.param[PARAM_FLOW_HIST_FILTER] = 0;
-//	global_data.param[PARAM_FLOW_HIST_FILTER] = 1;
-	strcpy(global_data.param_name[PARAM_FLOW_HIST_FILTER], "FLOW_HIST_FIL");
-	global_data.param_access[PARAM_FLOW_HIST_FILTER] = READ_WRITE;
-
-//	global_data.param[PARAM_FLOW_GYRO_COMPENSATION] = 0;
 	global_data.param[PARAM_FLOW_GYRO_COMPENSATION] = 1;
 	strcpy(global_data.param_name[PARAM_FLOW_GYRO_COMPENSATION], "FLOW_GYRO_COM");
 	global_data.param_access[PARAM_FLOW_GYRO_COMPENSATION] = READ_WRITE;
-
-	global_data.param[PARAM_FLOW_LP_FILTERED] = 0;
-	strcpy(global_data.param_name[PARAM_FLOW_LP_FILTERED], "FLOW_LP_FIL");
-	global_data.param_access[PARAM_FLOW_LP_FILTERED] = READ_WRITE;
-
-	global_data.param[PARAM_FLOW_WEIGHT_NEW] = 0.3f;
-	strcpy(global_data.param_name[PARAM_FLOW_WEIGHT_NEW], "FLOW_W_NEW");
-	global_data.param_access[PARAM_FLOW_WEIGHT_NEW] = READ_WRITE;
 
 	global_data.param[PARAM_FLOW_SERIAL_THROTTLE_FACTOR] = 10.0f;
 	strcpy(global_data.param_name[PARAM_FLOW_SERIAL_THROTTLE_FACTOR], "FLOW_THROTT");
 	global_data.param_access[PARAM_FLOW_SERIAL_THROTTLE_FACTOR] = READ_WRITE;
 
-	global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0] = 1.0f;
-	strcpy(global_data.param_name[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0], "MIN_OUT_THR_A0");
-	global_data.param_access[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_0] = READ_WRITE;
-
-	global_data.param[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1] = 0.2f;
-	strcpy(global_data.param_name[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1], "MIN_OUT_THR_A1");
-	global_data.param_access[PARAM_MINIMUM_OUTLIER_THRESHOLD_AlGO_1] = READ_WRITE;
-
-	global_data.param[PARAM_OUTLIER_THRESHOLD] = 0.15f;
-	strcpy(global_data.param_name[PARAM_OUTLIER_THRESHOLD], "OUTLIER_THR");
-	global_data.param_access[PARAM_OUTLIER_THRESHOLD] = READ_WRITE;
-
-	global_data.param[PARAM_USB_SEND_QUAL_0] = 1;
-	strcpy(global_data.param_name[PARAM_USB_SEND_QUAL_0], "SEND_QUAL_0");
-	global_data.param_access[PARAM_USB_SEND_QUAL_0] = READ_WRITE;
-
-	global_data.param[PARAM_MIN_VALID_RATIO] = 50;
-	strcpy(global_data.param_name[PARAM_MIN_VALID_RATIO], "MIN_VALID_RATIO");
-	global_data.param_access[PARAM_MIN_VALID_RATIO] = READ_WRITE;
 
 	global_data.param[DEBUG_VARIABLE] = 1;
 	strcpy(global_data.param_name[DEBUG_VARIABLE], "DEBUG");
 	global_data.param_access[DEBUG_VARIABLE] = READ_WRITE;
-
-
-
 }
 
 /**

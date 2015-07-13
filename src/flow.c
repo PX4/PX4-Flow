@@ -44,13 +44,14 @@
 #include "flow.h"
 #include "dcmi.h"
 #include "debug.h"
+#include "timer.h"
 
 #define __INLINE inline
 #define __ASM asm
 #include "core_cm4_simd.h"
 
 #define FRAME_SIZE	global_data.param[PARAM_IMAGE_WIDTH]
-#define SEARCH_SIZE	global_data.param[PARAM_MAX_FLOW_PIXEL] // maximum offset to search: 4 + 1/2 pixels
+#define SEARCH_SIZE	global_data.param[PARAM_FLOW_MAX_PIXEL] // maximum offset to search: 4 + 1/2 pixels
 #define TILE_SIZE	8               						// x & y tile size
 #define NUM_BLOCKS	5 // x & y number of tiles to check
 #define NUM_BLOCK_KLT 4
@@ -656,7 +657,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			float det = (JTJ[0]*JTJ[3]-JTJ[1]*JTJ[2]);
 			float dyn_range = (float)(max_val - min_val) + 1;
 			float trace = (JTJ[0] + JTJ[3]);
-			float M_c = det - global_data.param[PARAM_CORNER_KAPPA] * trace * trace;
+			float M_c = det - global_data.param[PARAM_ALGORITHM_CORNER_KAPPA] * trace * trace;
 			if (fabs(det) > global_data.param[PARAM_KLT_DET_VALUE_MIN] * dyn_range && M_c > 0.0f)
 			{
 				float detinv = 1.f / det;
