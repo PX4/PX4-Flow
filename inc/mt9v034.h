@@ -74,6 +74,7 @@
 #define MTV_V3_CTRL_REG_A				0x33
 #define MTV_V4_CTRL_REG_A				0x34
 #define MTV_ANALOG_GAIN_CTRL_REG_A		0x35
+#define MTV_BLC_VALUE_REG_A				0x48
 
 /* Context B */
 #define MTV_COLUMN_START_REG_B  		0xC9
@@ -101,22 +102,35 @@
 #define MTV_CHIP_CONTROL_REG    		0x07
 #define MTV_SOFT_RESET_REG      		0x0C
 
-#define MTV_HDR_ENABLE_REG				0x0F
+#define MTV_SENSOR_TYPE_CTRL_REG		0x0F
+#define MTV_LED_OUT_CTRL_REG			0x1B
 #define MTV_ADC_RES_CTRL_REG			0x1C
+#define MTV_VREF_ADC_CTRL_REG			0x2C
+#define MTV_FRAME_DARK_AVG_REG			0x42
+#define MTV_FRAME_DARK_AVG_THR_REG		0x46
+#define MTV_BLC_CTRL_REG				0x47
+#define MTV_BLC_VALUE_STEP_SIZE_REG		0x4C
 #define MTV_ROW_NOISE_CORR_CTRL_REG		0x70
+#define MTV_ROW_NOISE_CONST_REG			0x71
+#define MTV_PIXEL_FRAME_LINE_CTRL_REG	0x72
 #define MTV_TEST_PATTERN_REG       		0x7F
 #define MTV_TILED_DIGITAL_GAIN_REG		0x80
 #define MTV_AGC_AEC_DESIRED_BIN_REG		0xA5
-#define MTV_MAX_GAIN_REG        		0xAB
-#define MTV_MIN_EXPOSURE_REG       		0xAC  // datasheet min coarse shutter width
-#define MTV_MAX_EXPOSURE_REG       		0xAD  // datasheet max coarse shutter width
+#define MTV_AEC_UPDATE_FREQ_REG			0xA6
+#define MTV_AEC_LPF_REG					0xA8
+#define MTV_AGC_UPDATE_FREQ_REG			0xA9
+#define MTV_AGC_LPF_REG					0xAA
+#define MTV_ANALOG_MAX_GAIN_REG        	0xAB
+#define MTV_MIN_COARSE_SW_REG			0xAC
+#define MTV_MAX_COARSE_SW_REG    		0xAD
+#define MTV_AEC_AGC_BIN_DIFF_THR_REG	0xAE
 #define MTV_AEC_AGC_ENABLE_REG			0xAF
 #define MTV_AGC_AEC_PIXEL_COUNT_REG		0xB0
-#define MTV_AEC_UPDATE_REG				0xA6
-#define MTV_AEC_LOWPASS_REG				0xA8
-#define MTV_AGC_UPDATE_REG				0xA9
-#define MTV_AGC_LOWPASS_REG				0xAA
-#define MTV_DIGITAL_TEST_REG			0x7F
+
+#define MTV_AGC_GAIN_OUT_REG			0xBA
+#define MTV_AEC_EXPOSURE_REG			0xBB
+#define MTV_AGC_AEC_CUR_BIN_REG			0xBC
+
 
 /*
  * Resolution:
