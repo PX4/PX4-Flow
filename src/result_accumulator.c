@@ -169,11 +169,11 @@ void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, u
 		out->frame_count = ctx->frame_count;
 		out->valid_frames = ctx->valid_data_count;
 		out->integration_time = ctx->valid_time * 1000000.0f;
-		out->rad_flow_x = floor(ctx->rad_flow_x_accu * 100.0f + 0.5f);
-		out->rad_flow_y = floor(ctx->rad_flow_y_accu * 100.0f + 0.5f);
-		out->integrated_gyro_x = floor(ctx->gyro_x_accu * 100.0f + 0.5f);
-		out->integrated_gyro_y = floor(ctx->gyro_y_accu * 100.0f + 0.5f);
-		out->integrated_gyro_z = floor(ctx->gyro_z_accu * 100.0f + 0.5f);
+		out->rad_flow_x = floor(ctx->rad_flow_x_accu * 10000.0f + 0.5f);
+		out->rad_flow_y = floor(ctx->rad_flow_y_accu * 10000.0f + 0.5f);
+		out->integrated_gyro_x = floor(ctx->gyro_x_accu * 10000.0f + 0.5f);
+		out->integrated_gyro_y = floor(ctx->gyro_y_accu * 10000.0f + 0.5f);
+		out->integrated_gyro_z = floor(ctx->gyro_z_accu * 10000.0f + 0.5f);
 		out->gyro_x = floor(ctx->gyro_x_accu * (100.0f / ctx->valid_time) + 0.5f);
 		out->gyro_y = floor(ctx->gyro_y_accu * (100.0f / ctx->valid_time) + 0.5f);
 		out->gyro_z = floor(ctx->gyro_z_accu * (100.0f / ctx->valid_time) + 0.5f);
