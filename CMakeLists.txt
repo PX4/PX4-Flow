@@ -184,6 +184,7 @@ set(PX4FLOW_HDRS
     inc/communication.h
     inc/dcmi.h
     inc/debug.h
+    inc/filter.h
     inc/flow.h
     inc/gyro.h
     inc/i2c_frame.h
@@ -192,11 +193,13 @@ set(PX4FLOW_HDRS
     inc/main.h
     inc/mavlink_bridge_header.h
     inc/mt9v034.h
+    inc/result_accumulator.h
     inc/settings.h
     inc/sonar.h
     inc/sonar_mode_filter.h
     inc/stm32f4xx_conf.h
     inc/stm32f4xx_it.h
+    inc/timer.h
     inc/usart.h
     inc/usb_conf.h
     inc/usbd_cdc_vcp.h
@@ -209,6 +212,7 @@ set(PX4FLOW_SRC
     src/communication.c
     src/dcmi.c
     src/debug.c
+    src/filter.c
     src/flow.c
     src/gyro.c
     src/i2c.c
@@ -216,19 +220,19 @@ set(PX4FLOW_SRC
     src/main.c
     src/mt9v034.c
     src/reset.c
+    src/result_accumulator.c
     src/settings.c
     src/sonar.c
     src/sonar_mode_filter.c
     src/stm32f4xx_it.c
     src/system_stm32f4xx.c
+    src/timer.c
     src/usart.c
     src/usb_bsp.c
     src/usbd_cdc_vcp.c
     src/usbd_desc.c
     src/usbd_usr.c
     src/utils.c
-    src/system_stm32f4xx.c
-    src/stm32f4xx_it.c
     )
 
 # building
