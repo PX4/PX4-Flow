@@ -275,12 +275,12 @@ void update_TX_buffer(float dt, float x_rate, float y_rate, float z_rate, int16_
 
 	/* write the i2c_integral_frame */
 	f_integral.frame_count_since_last_readout = output_i2c.valid_frames;
-	f_integral.gyro_x_rate_integral = output_i2c.integrated_gyro_x;	//mrad*10
-	f_integral.gyro_y_rate_integral = output_i2c.integrated_gyro_y;	//mrad*10
+	f_integral.gyro_x_rate_integral = output_i2c.integrated_gyro_x;		//mrad*10
+	f_integral.gyro_y_rate_integral = output_i2c.integrated_gyro_y;		//mrad*10
 	f_integral.gyro_z_rate_integral = output_i2c.integrated_gyro_z; 	//mrad*10
 	f_integral.pixel_flow_x_integral = output_i2c.rad_flow_x; 			//mrad*10
 	f_integral.pixel_flow_y_integral = output_i2c.rad_flow_y; 			//mrad*10
-	f_integral.integration_timespan = output_i2c.integration_time;     //microseconds
+	f_integral.integration_timespan = output_i2c.integration_time;      //microseconds
 	f_integral.ground_distance = output_i2c.ground_distance;		    //mmeters
 	f_integral.sonar_timestamp = output_i2c.time_delta_distance_us;  	//microseconds
 	f_integral.qual = output_i2c.quality;										//0-255 linear quality measurement 0=bad, 255=best
