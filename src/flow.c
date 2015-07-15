@@ -586,7 +586,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		for (int x = 0; x < NUM_BLOCK_KLT; x++, i += pixStep)
 		{
 			uint16_t idx = y*NUM_BLOCK_KLT+x;
-			if (global_data.param[PARAM_FLOW_GYRO_COMPENSATION]) {
+			if (global_data.param[PARAM_KLT_GYRO_ASSIST]) {
 				/* use the gyro measurement to guess the initial position in the new image */
 				us[idx] = i + x_rate; //position in new image at level 0
 				vs[idx] = j + y_rate;
