@@ -180,8 +180,7 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_COARSE_SW_1_REG_A, coarse_sw1);
 		mt9v034_WriteReg16(MTV_COARSE_SW_2_REG_A, coarse_sw2);
 		mt9v034_WriteReg16(MTV_COARSE_SW_CTRL_REG_A, shutter_width_ctrl);
-		mt9v034_WriteReg16(MTV_V2_CTRL_REG_A, total_shutter_width);
-
+		mt9v034_WriteReg16(MTV_COARSE_SW_TOTAL_REG_A, total_shutter_width);
 
 		/* Context B */
 		mt9v034_WriteReg16(MTV_WINDOW_WIDTH_REG_B, new_width_context_b);
@@ -194,25 +193,25 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_COARSE_SW_1_REG_B, coarse_sw1);
 		mt9v034_WriteReg16(MTV_COARSE_SW_2_REG_B, coarse_sw2);
 		mt9v034_WriteReg16(MTV_COARSE_SW_CTRL_REG_B, shutter_width_ctrl);
-		mt9v034_WriteReg16(MTV_V2_CTRL_REG_B, total_shutter_width);
+		mt9v034_WriteReg16(MTV_COARSE_SW_TOTAL_REG_B, total_shutter_width);
 
 		/* General Settings */
 		mt9v034_WriteReg16(MTV_ROW_NOISE_CORR_CTRL_REG, row_noise_correction);
 		mt9v034_WriteReg16(MTV_AEC_AGC_ENABLE_REG, aec_agc_enabled); // disable AEC/AGC for both contexts
-		mt9v034_WriteReg16(MTV_HDR_ENABLE_REG, hdr_enabled); // disable HDR on both contexts
-		mt9v034_WriteReg16(MTV_MIN_EXPOSURE_REG, min_exposure);
-		mt9v034_WriteReg16(MTV_MAX_EXPOSURE_REG, max_exposure);
-		mt9v034_WriteReg16(MTV_MAX_GAIN_REG, new_max_gain);
+		mt9v034_WriteReg16(MTV_SENSOR_TYPE_CTRL_REG, hdr_enabled); // disable HDR on both contexts
+		mt9v034_WriteReg16(MTV_MIN_COARSE_SW_REG, min_exposure);
+		mt9v034_WriteReg16(MTV_MAX_COARSE_SW_REG, max_exposure);
+		mt9v034_WriteReg16(MTV_ANALOG_MAX_GAIN_REG, new_max_gain);
 		mt9v034_WriteReg16(MTV_AGC_AEC_PIXEL_COUNT_REG, pixel_count);
 		mt9v034_WriteReg16(MTV_AGC_AEC_DESIRED_BIN_REG, desired_brightness);
 		mt9v034_WriteReg16(MTV_ADC_RES_CTRL_REG, resolution_ctrl); // here is the way to regulate darkness :)
 
-		mt9v034_WriteReg16(MTV_DIGITAL_TEST_REG, test_data);//enable test pattern
+		mt9v034_WriteReg16(MTV_TEST_PATTERN_REG, test_data);//enable test pattern
 
-		mt9v034_WriteReg16(MTV_AEC_UPDATE_REG,aec_update_freq);
-		mt9v034_WriteReg16(MTV_AEC_LOWPASS_REG,aec_low_pass);
-		mt9v034_WriteReg16(MTV_AGC_UPDATE_REG,agc_update_freq);
-		mt9v034_WriteReg16(MTV_AGC_LOWPASS_REG,agc_low_pass);
+		mt9v034_WriteReg16(MTV_AEC_UPDATE_FREQ_REG,aec_update_freq);
+		mt9v034_WriteReg16(MTV_AEC_LPF_REG,aec_low_pass);
+		mt9v034_WriteReg16(MTV_AGC_UPDATE_FREQ_REG,agc_update_freq);
+		mt9v034_WriteReg16(MTV_AGC_LPF_REG,agc_low_pass);
 
 		/* Reset */
 		mt9v034_WriteReg16(MTV_SOFT_RESET_REG, 0x01);
