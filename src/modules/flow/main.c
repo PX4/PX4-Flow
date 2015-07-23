@@ -84,6 +84,7 @@
 
 
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
+extern USBD_Class_cb_TypeDef custom_composite_cb;
 
 /* timer constants */
 #define SONAR_POLL_MS	 	100	/* steps in milliseconds ticks */
@@ -240,7 +241,7 @@ int main(void)
 	USBD_Init(	&USB_OTG_dev,
 				USB_OTG_FS_CORE_ID,
 				&USR_desc,
-				&USBD_CDC_cb,
+				&custom_composite_cb,
 				&USR_cb);
 
 	/* init mavlink */

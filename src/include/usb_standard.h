@@ -61,7 +61,7 @@ enum {
 	USB_DTYPE_InterfaceAssociation = 0x0B,
 	USB_DTYPE_CSInterface = 0x24,
 	USB_DTYPE_CSEndpoint = 0x25,
-} USB_dtype;
+};
 
 typedef enum {
 	USB_CSCP_NoDeviceClass = 0x00,
