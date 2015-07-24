@@ -35,5 +35,6 @@
 #define __PX4_FLOWBOARD_H
 
 void notify_changed_camera_parameters(void);
+void send_image_completed(void);
 
 #endif /* __PX4_FLOWBOARD_H */

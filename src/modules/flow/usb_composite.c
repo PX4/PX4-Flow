@@ -5,6 +5,7 @@
 
 #define INTERFACE_CDC_CONTROL 0
 #define INTERFACE_CDC_DATA 1
+#define INTERFACE_IMAGE 2
 
 typedef struct ConfigDesc {
   USB_ConfigurationDescriptor Config;
@@ -18,6 +19,9 @@ typedef struct ConfigDesc {
   USB_InterfaceDescriptor CDC_data_interface;
   USB_EndpointDescriptor CDC_out_endpoint;
   USB_EndpointDescriptor CDC_in_endpoint;
+ 
+  USB_InterfaceDescriptor ImageInterface;
+  USB_EndpointDescriptor ImageInEndpoint;
 }  __attribute__((packed)) ConfigDesc;
 
 const ConfigDesc configuration_descriptor = {
@@ -25,7 +29,7 @@ const ConfigDesc configuration_descriptor = {
     .bLength = sizeof(USB_ConfigurationDescriptor),
     .bDescriptorType = USB_DTYPE_Configuration,
     .wTotalLength  = sizeof(ConfigDesc),
-    .bNumInterfaces = 2,
+    .bNumInterfaces = 3,
     .bConfigurationValue = 1,
     .iConfiguration = 0,
     .bmAttributes = USB_CONFIG_ATTR_BUSPOWERED,
@@ -96,6 +100,26 @@ const ConfigDesc configuration_descriptor = {
     .wMaxPacketSize = CDC_DATA_MAX_PACKET_SIZE,
     .bInterval = 0x0
   },
+  
+  .ImageInterface = {
+    .bLength = sizeof(USB_InterfaceDescriptor),
+    .bDescriptorType = USB_DTYPE_Interface,
+    .bInterfaceNumber = INTERFACE_IMAGE,
+    .bAlternateSetting = 0,
+    .bNumEndpoints = 1,
+    .bInterfaceClass = USB_CSCP_VendorSpecificClass,
+    .bInterfaceSubClass = 0x00,
+    .bInterfaceProtocol = 0x00,
+    .iInterface = 0,
+  },
+  .ImageInEndpoint = {
+    .bLength = sizeof(USB_EndpointDescriptor),
+    .bDescriptorType = USB_DTYPE_Endpoint,
+    .bEndpointAddress = IMAGE_IN_EP,
+    .bmAttributes = (USB_EP_TYPE_BULK | ENDPOINT_ATTR_NO_SYNC | ENDPOINT_USAGE_DATA),
+    .wMaxPacketSize = IMAGE_IN_PACKET_SIZE,
+    .bInterval = 0x00
+  },
 };
 
 static uint8_t usb_Init        (void  *pdev, uint8_t cfgidx);
@@ -122,11 +146,15 @@ USBD_Class_cb_TypeDef custom_composite_cb = {
 };
 
 static uint8_t usb_Init        (void  *pdev, uint8_t cfgidx) {
-  return USBD_CDC_cb.Init(pdev, cfgidx);
+	USBD_CDC_cb.Init(pdev, cfgidx);
+	DCD_EP_Open(pdev, IMAGE_IN_EP, IMAGE_IN_PACKET_SIZE, USB_OTG_EP_BULK);
+	return USBD_OK;
 }
 
 static uint8_t usb_DeInit      (void  *pdev, uint8_t cfgidx) {
-  return USBD_CDC_cb.DeInit(pdev, cfgidx);
+  USBD_CDC_cb.DeInit(pdev, cfgidx);
+	DCD_EP_Close(pdev, IMAGE_IN_EP);
+	return USBD_OK;
 }
 
 static uint8_t usb_Setup       (void  *pdev, USB_SETUP_REQ *req) {
@@ -137,8 +165,15 @@ static uint8_t usb_EP0_RxReady  (void *pdev) {
   return USBD_CDC_cb.EP0_RxReady(pdev);
 }
 
+void send_image_completed(void);
+
 static uint8_t usb_DataIn      (void *pdev, uint8_t epnum) {
-  return USBD_CDC_cb.DataIn(pdev, epnum);
+  if (epnum == (CDC_IN_EP & 0x7f) || epnum == (CDC_CMD_EP & 0x7f)) {
+    return USBD_CDC_cb.DataIn(pdev, epnum);
+  } else if (epnum == (IMAGE_IN_EP & 0x7f)) {
+    send_image_completed();
+  }
+  return USBD_OK;
 }
 
 static uint8_t usb_DataOut     (void *pdev, uint8_t epnum) {
