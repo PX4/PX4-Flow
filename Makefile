@@ -59,6 +59,7 @@ SRCS += 	lib/STM32F4xx_StdPeriph_Driver/src/misc.c \
 
 CFLAGS		 = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
 			-O3 \
+			-ggdb \
 			-std=gnu99 \
 			-Wall \
 			-MD \
@@ -83,7 +84,7 @@ all:		$(BINARY) objcopy
 
 $(BINARY):	$(SRCS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-	
+
 objcopy:
 	@$(OBJCOPY) -O binary px4flow.elf px4flow.bin
 	@python -u Tools/px_mkfw.py --board_id 6 > px4flow_prototype.px4
