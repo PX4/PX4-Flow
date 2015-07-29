@@ -32,51 +32,28 @@
  ****************************************************************************/
 
 /**
- * @file i2c_frame.h
- * Definition of i2c frames.
- * @author Thomas Boehm <thomas.boehm@fortiss.org>
- * @author James Goppert <james.goppert@gmail.com>
+ * @file lidar.h
+ * I2C master mode and lidar communications.
+ * @author Tom Cauchois <tom@3drobotics.com>
  */
 
-#ifndef I2C_FRAME_H_
-#define I2C_FRAME_H_
-#include <inttypes.h>
+//FIXME: possible power savings?
 
+#ifndef LIDAR_H_
+#define LIDAR_H_
+#include <stdint.h>
+#include <stdbool.h>
 
-typedef  struct i2c_frame
-{
-    uint16_t frame_count;
-    int16_t pixel_flow_x_sum;
-    int16_t pixel_flow_y_sum;
-    int16_t flow_comp_m_x;
-    int16_t flow_comp_m_y;
-    int16_t qual;
-    int16_t gyro_x_rate;
-    int16_t gyro_y_rate;
-    int16_t gyro_z_rate;
-    uint8_t gyro_range;
-    uint8_t distance_timestamp;
-    int16_t ground_distance;
-} i2c_frame;
+//Stated range of sensor
+#define MINIMUM_DISTANCE 0.0f
+#define MAXIMUM_DISTANCE 40.0f
 
-#define I2C_FRAME_SIZE (sizeof(i2c_frame))
+void i2c_init_master(void);
 
+void lidar_config(void);
+void lidar_trigger(void);
+void lidar_readback(void);
+bool lidar_read(float* distance_filtered, float* distance_raw);
+uint32_t get_lidar_measure_time(void);
 
-typedef struct i2c_integral_frame
-{
-    uint16_t frame_count_since_last_readout;
-    int16_t pixel_flow_x_integral;
-    int16_t pixel_flow_y_integral;
-    int16_t gyro_x_rate_integral;
-    int16_t gyro_y_rate_integral;
-    int16_t gyro_z_rate_integral;
-    uint32_t integration_timespan;
-    uint32_t distance_timestamp;
-    uint16_t ground_distance;
-    int16_t gyro_temperature;
-    uint8_t qual;
-} i2c_integral_frame;
-
-#define I2C_INTEGRAL_FRAME_SIZE (sizeof(i2c_integral_frame))
-
-#endif /* I2C_FRAME_H_ */
+#endif //LIDAR_H_

@@ -48,7 +48,7 @@
 #include "usart.h"
 #include "settings.h"
 #include "sonar.h"
-#include "sonar_mode_filter.h"
+#include "distance_mode_filter.h"
 
 #define SONAR_SCALE	1000.0f
 #define SONAR_MIN	0.12f		/** 0.12m sonar minimum distance */
@@ -134,7 +134,7 @@ void UART4_IRQHandler(void)
 					dt = ((float)(measure_time - last_measure_time)) / 1000000.0f;
 
 					valid_data = temp;
-					sonar_mode = insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
+					sonar_mode = insert_distance_value_and_get_mode_value(valid_data / SONAR_SCALE);
 					new_value = 1;
 					sonar_valid = true;
 				} else {

@@ -47,7 +47,7 @@
 #include "led.h"
 #include "i2c_frame.h"
 #include "gyro.h"
-#include "sonar.h"
+#include "lidar.h"
 #include "main.h"
 
 #include "mavlink_bridge_header.h"
@@ -243,15 +243,15 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 	f.gyro_z_rate = gyro_z_rate * getGyroScalingFactor();
 	f.gyro_range = getGyroRange();
 
-	uint32_t time_since_last_sonar_update;
+	uint32_t time_since_last_distance_update;
 
-	time_since_last_sonar_update = (get_boot_time_us()
-			- get_sonar_measure_time());
+	time_since_last_distance_update = (get_boot_time_us()
+			- get_lidar_measure_time());
 
-	if (time_since_last_sonar_update < 255 * 1000) {
-		f.sonar_timestamp = time_since_last_sonar_update / 1000; //convert to ms
+	if (time_since_last_distance_update < 255 * 1000) {
+		f.distance_timestamp = time_since_last_distance_update / 1000; //convert to ms
 	} else {
-		f.sonar_timestamp = 255;
+		f.distance_timestamp = 255;
 	}
 
 	static float accumulated_flow_x = 0;
@@ -313,7 +313,7 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 	f_integral.pixel_flow_y_integral = accumulated_flow_y * 10.0f; //mrad*10
 	f_integral.integration_timespan = integration_timespan;     //microseconds
 	f_integral.ground_distance = ground_distance * 1000;		    //mmeters
-	f_integral.sonar_timestamp = time_since_last_sonar_update;  //microseconds
+	f_integral.distance_timestamp = time_since_last_distance_update;  //microseconds
 	f_integral.qual =
 			(uint8_t) (accumulated_quality / accumulated_framecount); //0-255 linear quality measurement 0=bad, 255=best
 	f_integral.gyro_temperature = gyro_temp;//Temperature * 100 in centi-degrees Celsius

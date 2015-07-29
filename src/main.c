@@ -54,7 +54,7 @@
 #include "gyro.h"
 #include "i2c.h"
 #include "usart.h"
-#include "sonar.h"
+#include "lidar.h"
 #include "communication.h"
 #include "debug.h"
 #include "usbd_cdc_core.h"
@@ -90,7 +90,7 @@ volatile uint32_t boot_time10_us = 0;
 #define TIMER_CIN       	0
 #define TIMER_LED       	1
 #define TIMER_DELAY     	2
-#define TIMER_SONAR			3
+#define TIMER_DISTANCE			3
 #define TIMER_SYSTEM_STATE	4
 #define TIMER_RECEIVE		5
 #define TIMER_PARAMS		6
@@ -98,7 +98,8 @@ volatile uint32_t boot_time10_us = 0;
 #define TIMER_LPOS		8
 #define MS_TIMER_COUNT		100 /* steps in 10 microseconds ticks */
 #define LED_TIMER_COUNT		500 /* steps in milliseconds ticks */
-#define SONAR_TIMER_COUNT 	100	/* steps in milliseconds ticks */
+#define DISTANCE_TIMER_COUNT 	100	/* steps in milliseconds ticks */
+#define DISTANCE_TIMER_HALF 50
 #define SYSTEM_STATE_COUNT	1000/* steps in milliseconds ticks */
 #define PARAMS_COUNT		100	/* steps in milliseconds ticks */
 #define LPOS_TIMER_COUNT 	100	/* steps in milliseconds ticks */
@@ -145,10 +146,14 @@ void timer_update_ms(void)
 		timer[TIMER_LED] = LED_TIMER_COUNT;
 	}
 
-	if (timer[TIMER_SONAR] == 0)
+	if (timer[TIMER_DISTANCE] == 0)
 	{
-		sonar_trigger();
-		timer[TIMER_SONAR] = SONAR_TIMER_COUNT;
+		lidar_readback();
+		timer[TIMER_DISTANCE] = DISTANCE_TIMER_COUNT;
+	}
+	else if(timer[TIMER_DISTANCE] == DISTANCE_TIMER_HALF)
+	{
+		lidar_trigger();
 	}
 
 	if (timer[TIMER_SYSTEM_STATE] == 0)
@@ -280,17 +285,15 @@ int main(void)
 	/* usart config*/
 	usart_init();
 
-    /* i2c config*/
-    i2c_init();
-
-	/* sonar config*/
-	float sonar_distance_filtered = 0.0f; // distance in meter
-	float sonar_distance_raw = 0.0f; // distance in meter
+  /* i2c config*/
+	i2c_init_master();
+	lidar_config();
+	float distance_filtered = 0.0f; // distance in meter
+	float distance_raw = 0.0f; // distance in meter
 	bool distance_valid = false;
-	sonar_config();
 
 	/* reset/start timers */
-	timer[TIMER_SONAR] = SONAR_TIMER_COUNT;
+	timer[TIMER_DISTANCE] = DISTANCE_TIMER_COUNT;
 	timer[TIMER_SYSTEM_STATE] = SYSTEM_STATE_COUNT;
 	timer[TIMER_RECEIVE] = SYSTEM_STATE_COUNT / 2;
 	timer[TIMER_PARAMS] = PARAMS_COUNT;
@@ -321,7 +324,7 @@ int main(void)
 	static uint16_t accumulated_quality = 0;
 	static uint32_t integration_timespan = 0;
 	static uint32_t lasttime = 0;
-	uint32_t time_since_last_sonar_update= 0;
+	uint32_t time_since_last_distance_update= 0;
 
 
 	/* main loop */
@@ -389,13 +392,13 @@ int main(void)
 		/* calculate focal_length in pixel */
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
-		/* get sonar data */
-		distance_valid = sonar_read(&sonar_distance_filtered, &sonar_distance_raw);
+		/* get distance data */
+		distance_valid = lidar_read(&distance_filtered, &distance_raw);
 
 		/* reset to zero for invalid distances */
 		if (!distance_valid) {
-			sonar_distance_filtered = 0.0f;
-			sonar_distance_raw = 0.0f;
+			distance_filtered = 0.0f;
+			distance_raw = 0.0f;
 		}
 
 		/* compute optical flow */
@@ -419,10 +422,10 @@ int main(void)
 			if (distance_valid)
 			{
 				/* calc velocity (negative of flow values scaled with distance) */
-				float new_velocity_x = - flow_compx * sonar_distance_filtered;
-				float new_velocity_y = - flow_compy * sonar_distance_filtered;
+				float new_velocity_x = - flow_compx * distance_filtered;
+				float new_velocity_y = - flow_compy * distance_filtered;
 
-				time_since_last_sonar_update = (get_boot_time_us()- get_sonar_measure_time());
+				time_since_last_distance_update = (get_boot_time_us()- get_lidar_measure_time());
 
 				if (qual > 0)
 				{
@@ -479,23 +482,23 @@ int main(void)
 
 			if(global_data.param[PARAM_SONAR_FILTERED])
 			{
-				ground_distance = sonar_distance_filtered;
+				ground_distance = distance_filtered;
 			}
 			else
 			{
-				ground_distance = sonar_distance_raw;
+				ground_distance = distance_raw;
 			}
 
 			//update I2C transmitbuffer
 			if(valid_frame_count>0)
 			{
-				update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_sum/valid_frame_count, velocity_y_sum/valid_frame_count, qual,
-						ground_distance, x_rate, y_rate, z_rate, gyro_temp);
+				//update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_sum/valid_frame_count, velocity_y_sum/valid_frame_count, qual,
+				//		ground_distance, x_rate, y_rate, z_rate, gyro_temp);
 			}
 			else
 			{
-				update_TX_buffer(pixel_flow_x, pixel_flow_y, 0.0f, 0.0f, qual,
-						ground_distance, x_rate, y_rate, z_rate, gyro_temp);
+				//update_TX_buffer(pixel_flow_x, pixel_flow_y, 0.0f, 0.0f, qual,
+				//		ground_distance, x_rate, y_rate, z_rate, gyro_temp);
 			}
 
             //serial mavlink  + usb mavlink output throttled
@@ -534,7 +537,7 @@ int main(void)
 						integration_timespan, accumulated_flow_x, accumulated_flow_y,
 						accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,
 						gyro_temp, accumulated_quality/accumulated_framecount,
-						time_since_last_sonar_update,ground_distance);
+						time_since_last_distance_update,ground_distance);
 
 				/* send approximate local position estimate without heading */
 				if (global_data.param[PARAM_SYSTEM_SEND_LPOS])
@@ -569,7 +572,7 @@ int main(void)
 							integration_timespan, accumulated_flow_x, accumulated_flow_y,
 							accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,
 							gyro_temp, accumulated_quality/accumulated_framecount,
-							time_since_last_sonar_update,ground_distance);
+							time_since_last_distance_update,ground_distance);
 				}
 
 

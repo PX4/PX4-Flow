@@ -33,9 +33,9 @@ SRCS = 		src/main.c \
 			src/usbd_cdc_vcp.c \
 			src/usbd_desc.c \
 			src/usbd_usr.c \
-			src/i2c.c \
 			src/reset.c \
-			src/sonar_mode_filter.c
+			src/lidar.c \
+			src/distance_mode_filter.c
 SRCS += 	src/system_stm32f4xx.c src/stm32f4xx_it.c lib/startup_stm32f4xx.s
 SRCS += 	lib/STM32F4xx_StdPeriph_Driver/src/misc.c \
 			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c \
