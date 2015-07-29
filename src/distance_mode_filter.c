@@ -37,9 +37,9 @@
 /**
  * insert-only ring buffer of distance data, needs to be of uneven size
  * the initialization to zero will make the filter respond zero for the
- * first three inserted readinds, which is a decent startup-logic.
+ * first N inserted readinds, which is a decent startup-logic.
  */
-static float distance_values[3] = { 0.0f };
+static float distance_values[5] = { 0.0f };
 static unsigned insert_index = 0;
 
 static void distance_bubble_sort(float distance_values[], unsigned n);

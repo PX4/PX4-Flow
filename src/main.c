@@ -98,8 +98,8 @@ volatile uint32_t boot_time10_us = 0;
 #define TIMER_LPOS		8
 #define MS_TIMER_COUNT		100 /* steps in 10 microseconds ticks */
 #define LED_TIMER_COUNT		500 /* steps in milliseconds ticks */
-#define DISTANCE_TIMER_COUNT 	100	/* steps in milliseconds ticks */
-#define DISTANCE_TIMER_HALF 50
+#define DISTANCE_TIMER_COUNT 		20 /* steps in milliseconds ticks */
+#define DISTANCE_TIMER_TRIGGER 18
 #define SYSTEM_STATE_COUNT	1000/* steps in milliseconds ticks */
 #define PARAMS_COUNT		100	/* steps in milliseconds ticks */
 #define LPOS_TIMER_COUNT 	100	/* steps in milliseconds ticks */
@@ -151,7 +151,7 @@ void timer_update_ms(void)
 		lidar_readback();
 		timer[TIMER_DISTANCE] = DISTANCE_TIMER_COUNT;
 	}
-	else if(timer[TIMER_DISTANCE] == DISTANCE_TIMER_HALF)
+	else if(timer[TIMER_DISTANCE] == DISTANCE_TIMER_TRIGGER)
 	{
 		lidar_trigger();
 	}
