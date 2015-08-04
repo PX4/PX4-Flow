@@ -181,6 +181,7 @@ set(PERIPH_SRC
     )
 
 set(PX4FLOW_HDRS
+    inc/camera.h
     inc/communication.h
     inc/dcmi.h
     inc/debug.h
@@ -209,6 +210,7 @@ set(PX4FLOW_HDRS
     )
 
 set(PX4FLOW_SRC
+    inc/camera.c
     src/communication.c
     src/dcmi.c
     src/debug.c

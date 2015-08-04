@@ -23,6 +23,7 @@ SRCS = 		src/main.c \
 			src/utils.c \
 			src/led.c \
 			src/settings.c \
+			src/camera.c \
 			src/communication.c \
 			src/filter.c \
 			src/flow.c \

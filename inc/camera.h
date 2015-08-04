@@ -1,6 +1,7 @@
 /****************************************************************************
  *
  *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
+ *   Author: Simon Laube <simon@leitwert.ch>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,11 +39,11 @@
 
 #define CAMERA_MAX_BUFFER_COUNT 5
 
-struct _camera_sensor;
-typedef struct _camera_sensor camera_sensor;
+struct _camera_sensor_interface;
+typedef struct _camera_sensor_interface camera_sensor_interface;
 
-struct _camera_transport;
-typedef struct _camera_transport camera_transport;
+struct _camera_transport_interface;
+typedef struct _camera_transport_interface camera_transport_interface;
 
 struct _camera_ctx;
 typedef struct _camera_ctx camera_ctx;
@@ -54,7 +55,10 @@ typedef struct _camera_img_param {
 	struct _size {
 		uint16_t x;		///< Image size in x direction.
 		uint16_t y;		///< Image size in y direction.
-	} size;				///< Image size.
+	} size;				/**< Image size. 
+						 *   The image size is constrained by the transfer size of the camera_transport_interface.
+						 *   The image size in bytes must be an exact multiple of the transfer size 
+						 *   as well as at least two times the transfer size. */
 	uint8_t col_bin;	///< Column binning ratio. (x direction)
 	uint8_t row_bin;	///< Row binning ration.   (y direction)
 } camera_img_param;
@@ -83,6 +87,7 @@ typedef void (*camera_snapshot_done_cb)(camera_image_buffer *buf);
  * @param ctx		The context to use.
  * @param sensor	The sensor interface to use.
  * @param transport	The sensor data transport interface to use.
+ * @param img_param	The initial image parameters to use for img_stream operation mode.
  * @param buffers	Array of initialized buffers to use for buffering the images in img_stream mode.
  *					In each camera_image_buffer the buffer and buffer_size members must be correctly set.
  *					The camera_img_stream_get_buffers function will return pointers to one of these buffers.
@@ -93,7 +98,8 @@ typedef void (*camera_snapshot_done_cb)(camera_image_buffer *buf);
  *					More buffers will reduce the latency when frames are skipped.
  * @return			Zero when successful.
  */
-int camera_init(camera_ctx *ctx, camera_sensor *sensor, camera_transport *transport,
+int camera_init(camera_ctx *ctx, camera_sensor_interface *sensor, camera_transport_interface *transport,
+				const camera_img_param *img_param,
 				camera_image_buffer buffers[], size_t buffer_count);
 
 /**
@@ -146,5 +152,75 @@ void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer **buf
  */
 int camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param, camera_image_buffer *dst, camera_snapshot_done_cb cb);
 
+/**
+ * The camera driver context struct.
+ */
+struct _camera_ctx {
+	camera_sensor_interface *sensor;
+	camera_transport_interface *transport;
+};
+
+/** Camera sensor configuration interface.
+ */
+struct _camera_sensor_interface {
+	void *usr;		///< User pointer that should be passed to the following interface functions.
+	/**
+	 * Initializes the sensor and the hardware of the microcontroller.
+	 * @param usr		User pointer from this struct.
+	 * @param img_param	The image parameters to use for initialization.
+	 * @return 0 on success.
+	 */
+	int (*init)(void *usr, const camera_img_param *img_param);
+	/**
+	 * Prepares the sensor to switch to new parameters.
+	 * This function should perform most of the work that is needed to update the sensor with new parameters.
+	 * @param usr		User pointer from this struct.
+	 * @param img_param	The new image parameters.
+	 * @return 0 on success.
+	 */
+	int (*prepare_update_param)(void *usr, const camera_img_param *img_param);
+	/**
+	 * Switches the sensor to the new parameters that have been previously prepared.
+	 * This function is called just after the camera module has started outputting a new frame.
+	 * @param usr		User pointer from this struct.
+	 * @return >= 0 on success: the number of frames until the changes take effect.
+	 *		   < 0 on error.
+	 * @note  This function may be called from an interrupt vector and should do as little work as necessary.
+	 */
+	int (*update_param)(void *usr);
+};
+
+/**
+ * Callback for notifying the camera driver about a completed transfer.
+ * @param usr		The user data pointer that has been specified in the init function. (cb_usr)
+ * @param buffer	The buffer that contains the data of the transfer was completed.
+ * @param size		The size of the transfer.
+ */
+typedef void (*camera_transport_transfer_done_cb)(void *usr, void *buffer, size_t size);
+
+/**
+ * Callback for notifying the camera driver about a completed frame.
+ * @param usr		The user data pointer that has been specified in the init function. (cb_usr)
+ */
+typedef void (*camera_transport_frame_done_cb)(void *usr);
+
+/** Camera image transport interface.
+ */
+struct _camera_transport_interface {
+	void *usr;		///< User pointer that should be passed to the following interface functions.
+	/**
+	 * Initializes the sensor and the hardware of the microcontroller.
+	 * @param usr		User pointer from this struct.
+	 * @param transfer_done_cb Callback which should be called when a transfer has been completed.
+	 * @param frame_done_cb Callback which should be called when a frame has been completed.
+	 * @param cb_usr    Callback user data pointer which should be passed to the transfer_done_cb
+	 *					and frame_done_cb callbacks.
+	 * @return 0 on success.
+	 */
+	int (*init)(void *usr, 
+				camera_transport_transfer_done_cb transfer_done_cb, 
+				camera_transport_frame_done_cb frame_done_cb,
+				void *cb_usr);
+};
 
 #endif /* CAMERA_H_ */
