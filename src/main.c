@@ -76,8 +76,8 @@ void buffer_reset(void);
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 
 /* fast image buffers for calculations */
-uint8_t* image_buffer_8bit_1 = ((uint8_t*) 0x10000000);
-uint8_t* image_buffer_8bit_2 = ((uint8_t*) ( 0x10000000 | FULL_IMAGE_SIZE ));
+uint8_t image_buffer_8bit_1[FULL_IMAGE_SIZE] __attribute__((section(".ccm")));
+uint8_t image_buffer_8bit_2[FULL_IMAGE_SIZE] __attribute__((section(".ccm")));
 uint8_t buffer_reset_needed;
 
 /* boot time in milliseconds ticks */
