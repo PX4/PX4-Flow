@@ -36,6 +36,20 @@
 
 #include <stdint.h>
 #include "settings.h"
+#include "camera.h"
+
+/**
+ * Configures the maximum exposure time in number of image rows.
+ * Exposure should not affect frame time.
+ * Set to number of rows in the image.
+ */
+#define CONFIG_MAX_EXPOSURE_ROWS (64)
+/**
+ * Configures the maximum analog gain.
+ * Range: 1x - 4x => 16 - 64.
+ * Higher gain means more noise.
+ */
+#define CONFIG_MAX_ANALOG_GAIN (64)
 
 /* Constants */
 #define TIMEOUT_MAX      				10000

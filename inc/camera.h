@@ -59,8 +59,7 @@ typedef struct _camera_img_param {
 						 *   The image size is constrained by the transfer size of the camera_transport_interface.
 						 *   The image size in bytes must be an exact multiple of the transfer size 
 						 *   as well as at least two times the transfer size. */
-	uint8_t col_bin;	///< Column binning ratio. (x direction)
-	uint8_t row_bin;	///< Row binning ration.   (y direction)
+	uint8_t binning;	///< Column and row binning ratio.
 } camera_img_param;
 
 /**
@@ -99,7 +98,7 @@ typedef void (*camera_snapshot_done_cb)(camera_image_buffer *buf);
  *					More buffers will reduce the latency when frames are skipped.
  * @return			Zero when successful.
  */
-int camera_init(camera_ctx *ctx, camera_sensor_interface *sensor, camera_transport_interface *transport,
+int camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const camera_transport_interface *transport,
 				const camera_img_param *img_param,
 				camera_image_buffer buffers[], size_t buffer_count);
 
@@ -205,6 +204,7 @@ typedef void (*camera_transport_frame_done_cb)(void *usr);
  */
 struct _camera_transport_interface {
 	void *usr;		///< User pointer that should be passed to the following interface functions.
+	size_t transfer_size;	///< Transfer size of this transport.
 	/**
 	 * Initializes the sensor and the hardware of the microcontroller.
 	 * @param usr		User pointer from this struct.
@@ -224,8 +224,9 @@ struct _camera_transport_interface {
  * The camera driver context struct.
  */
 struct _camera_ctx {
-	camera_sensor_interface *sensor;
-	camera_transport_interface *transport;
+	const camera_sensor_interface *sensor;
+	const camera_transport_interface *transport;
+	
 };
 
 #endif /* CAMERA_H_ */

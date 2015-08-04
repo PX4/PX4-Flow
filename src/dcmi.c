@@ -478,9 +478,6 @@ void dcmi_hw_init(void)
 		dcmi_image_buffer_8bit_3 [i] = 0;
 	}
 
-	GPIO_InitTypeDef GPIO_InitStructure;
-	I2C_InitTypeDef I2C_InitStruct;
-
 	/*** Configures the DCMI GPIOs to interface with the OV2640 camera module ***/
 	/* Enable DCMI GPIOs clocks */
 	RCC_AHB1PeriphClockCmd(
@@ -524,49 +521,6 @@ void dcmi_hw_init(void)
 			| GPIO_Pin_5 | GPIO_Pin_6;
 	GPIO_Init(GPIOE, &GPIO_InitStructure);
 
-	/* I2C2 clock enable */
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
-
-	/* GPIOB clock enable */
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
-
-	/* Connect I2C2 pins to AF4 */
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource10, GPIO_AF_I2C2);
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource11, GPIO_AF_I2C2);
-
-	/* Configure I2C2 GPIOs */
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-	/* I2C DeInit */
-	I2C_DeInit(I2C2);
-
-	/* Enable the I2C peripheral */
-	I2C_Cmd(I2C2, ENABLE);
-
-	/* Set the I2C structure parameters */
-	I2C_InitStruct.I2C_Mode = I2C_Mode_I2C;
-	I2C_InitStruct.I2C_DutyCycle = I2C_DutyCycle_2;
-	I2C_InitStruct.I2C_OwnAddress1 = 0xFE;
-	I2C_InitStruct.I2C_Ack = I2C_Ack_Enable;
-	I2C_InitStruct.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-	I2C_InitStruct.I2C_ClockSpeed = 100000;
-
-	/* Initialize the I2C peripheral w/ selected parameters */
-	I2C_Init(I2C2, &I2C_InitStruct);
-
-	/* Initialize GPIOs for EXPOSURE and STANDBY lines of the camera */
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIOA, GPIO_Pin_2 | GPIO_Pin_3);
 }
 
 /**
