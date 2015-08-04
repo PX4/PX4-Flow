@@ -92,6 +92,7 @@ typedef void (*camera_snapshot_done_cb)(camera_image_buffer *buf);
  *					In each camera_image_buffer the buffer and buffer_size members must be correctly set.
  *					The camera_img_stream_get_buffers function will return pointers to one of these buffers.
  *					The buffer can reside in the CCM of the microcontroller.
+ *					The structs are copied to an internal data-structure.
  * @param buffer_count Number of buffers that are passed in buffers.
  *					Must be lower than or equal the configured CAMERA_MAX_BUFFER_COUNT. 
  *					There must be at least one more buffer than what is requested in camera_img_stream_get_buffers.
@@ -152,14 +153,6 @@ void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer **buf
  */
 int camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param, camera_image_buffer *dst, camera_snapshot_done_cb cb);
 
-/**
- * The camera driver context struct.
- */
-struct _camera_ctx {
-	camera_sensor_interface *sensor;
-	camera_transport_interface *transport;
-};
-
 /** Camera sensor configuration interface.
  */
 struct _camera_sensor_interface {
@@ -180,14 +173,18 @@ struct _camera_sensor_interface {
 	 */
 	int (*prepare_update_param)(void *usr, const camera_img_param *img_param);
 	/**
-	 * Switches the sensor to the new parameters that have been previously prepared.
-	 * This function is called just after the camera module has started outputting a new frame.
+	 * Called every frame just after readout has started (but not completed yet).
+	 * This function may be used to switch the sensor to new parameters that have been previously prepared.
 	 * @param usr		User pointer from this struct.
-	 * @return >= 0 on success: the number of frames until the changes take effect.
-	 *		   < 0 on error.
 	 * @note  This function may be called from an interrupt vector and should do as little work as necessary.
 	 */
-	int (*update_param)(void *usr);
+	void (*notify_readout_start)(void *usr);
+	/**
+	 * Called to retrieve the image parameters of the current frame that is being output.
+	 * This function is called after notify_readout_start to retrieve the
+	 * parameters that were in effect at the time the image was taken.
+	 */
+	void (*get_current_param)(void *usr, camera_img_param *img_param);
 };
 
 /**
@@ -221,6 +218,14 @@ struct _camera_transport_interface {
 				camera_transport_transfer_done_cb transfer_done_cb, 
 				camera_transport_frame_done_cb frame_done_cb,
 				void *cb_usr);
+};
+
+/**
+ * The camera driver context struct.
+ */
+struct _camera_ctx {
+	camera_sensor_interface *sensor;
+	camera_transport_interface *transport;
 };
 
 #endif /* CAMERA_H_ */

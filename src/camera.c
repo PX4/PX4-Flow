@@ -34,10 +34,25 @@
 
 #include "camera.h"
 
+#include <string.h>
+
+void camera_transport_transfer_done_fn(void *usr, void *buffer, size_t size);
+void camera_transport_frame_done_fn(void *usr);
+
 int camera_init(camera_ctx *ctx, camera_sensor_interface *sensor, camera_transport_interface *transport,
 				const camera_img_param *img_param,
 				camera_image_buffer buffers[], size_t buffer_count) {
+	memset(ctx, 0, sizeof(camera_ctx));
+	ctx->sensor    = sensor;
+	ctx->transport = transport;
+	// initialize state:
 	
+	// initialize hardware:
+	ctx->transport->init(ctx->transport->usr,
+						 camera_transport_transfer_done_fn,
+						 camera_transport_frame_done_fn,
+						 ctx);
+	ctx->sensor->init(ctx->sensor->usr, img_param);
 }
 
 int camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param) {
@@ -56,3 +71,12 @@ int camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param,
 	
 }
 
+
+
+void camera_transport_transfer_done_fn(void *usr, void *buffer, size_t size) {
+	
+}
+
+void camera_transport_frame_done_fn(void *usr) {
+	
+}
