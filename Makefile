@@ -59,7 +59,7 @@ CFLAGS		 = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
 			-O3 \
 			-ggdb \
 			-std=gnu99 \
-			-Wall \
+			-Wall -Werror \
 			-MMD \
 			-Iinc \
 			-Ilib \
