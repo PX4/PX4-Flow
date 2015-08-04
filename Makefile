@@ -62,7 +62,7 @@ CFLAGS		 = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
 			-ggdb \
 			-std=gnu99 \
 			-Wall \
-			-MD \
+			-MMD \
 			-Iinc \
 			-Ilib \
 			-Ilib/STM32F4xx_StdPeriph_Driver/inc \
@@ -79,11 +79,13 @@ LDFLAGS		 = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
 			-Tstm32f4.ld \
 			-Wl,-gc-sections \
 			-lm
+			
+-include $(BINARY:.elf=.d)
 
 all:		$(BINARY) objcopy
 
 $(BINARY):	$(SRCS)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $(SRCS) -o $@ $(LDFLAGS)
 
 objcopy:
 	@$(OBJCOPY) -O binary px4flow.elf px4flow.bin
