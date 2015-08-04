@@ -55,8 +55,6 @@ SRCS += 	lib/STM32F4xx_StdPeriph_Driver/src/misc.c \
 			lib/STM32_USB_Device_Library/Core/src/usbd_ioreq.c \
 			lib/STM32_USB_Device_Library/Class/cdc/src/usbd_cdc_core.c
 
-.PHONY: clean upload-usb
-
 CFLAGS		 = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
 			-O3 \
 			-ggdb \
@@ -82,15 +80,17 @@ LDFLAGS		 = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
 			
 -include $(BINARY:.elf=.d)
 
-all:		$(BINARY) objcopy
+all: px4flow.px4
 
 $(BINARY):	$(SRCS)
 	$(CC) $(CFLAGS) $(SRCS) -o $@ $(LDFLAGS)
 
-objcopy:
+px4flow.px4: px4flow.elf
 	@$(OBJCOPY) -O binary px4flow.elf px4flow.bin
 	@python -u Tools/px_mkfw.py --board_id 6 > px4flow_prototype.px4
 	@python -u Tools/px_mkfw.py --prototype px4flow_prototype.px4 --image $(BINARY_BIN) > px4flow.px4
+	
+objcopy: px4flow.px4
 
 clean:
 	rm -f *.o *.d $(BINARY) $(BINARY_BIN)
@@ -122,11 +122,9 @@ ifeq ($(SERIAL_PORTS),)
 SERIAL_PORTS		 = "\\\\.\\COM32,\\\\.\\COM31,\\\\.\\COM30,\\\\.\\COM29,\\\\.\\COM28,\\\\.\\COM27,\\\\.\\COM26,\\\\.\\COM25,\\\\.\\COM24,\\\\.\\COM23,\\\\.\\COM22,\\\\.\\COM21,\\\\.\\COM20,\\\\.\\COM19,\\\\.\\COM18,\\\\.\\COM17,\\\\.\\COM16,\\\\.\\COM15,\\\\.\\COM14,\\\\.\\COM13,\\\\.\\COM12,\\\\.\\COM11,\\\\.\\COM10,\\\\.\\COM9,\\\\.\\COM8,\\\\.\\COM7,\\\\.\\COM6,\\\\.\\COM5,\\\\.\\COM4,\\\\.\\COM3,\\\\.\\COM2,\\\\.\\COM1,\\\\.\\COM0"
 endif
 
-upload-usb:
+upload-usb: px4flow.px4
 	@echo Attempting to flash PX4FLOW board via USB
-	@python -u Tools/px_mkfw.py --board_id 6 > px4flow_prototype.px4
-	@python -u Tools/px_mkfw.py --prototype px4flow_prototype.px4 --image $(BINARY_BIN) > px4flow.px4
 	@python -u Tools/px_uploader.py px4flow.px4 --baud 921600 --port $(SERIAL_PORTS)
 
-
+.PHONY: all clean objcopy upload-jtag flash flash-bootloader flash-both flash-both-no-shutdown upload-usb
 #-include $(DEPS)
