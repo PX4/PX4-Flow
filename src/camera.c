@@ -35,8 +35,7 @@
 #include "camera.h"
 #include "timer.h"
 
-#define __INLINE inline
-#define __ASM asm
+#include "stm32f4xx_conf.h"
 #include "core_cmFunc.h"
 
 #include <string.h>
@@ -225,8 +224,8 @@ static bool camera_img_stream_get_buffers_idx(camera_ctx *ctx, int bidx[], size_
 	camera_buffer_fifo_remove_front(ctx, bidx, count);
 	/* check that the buffers are in consecutive order: */
 	bool consecutive = true;
-	uint32_t exp_frame = ctx->buffers[bidx[0]].frame_number + 1;
-	for (i = 1; i < count; ++i, ++exp_frame) {
+	uint32_t exp_frame = ctx->buffers[bidx[0]].frame_number - 1;
+	for (i = 1; i < count; ++i, --exp_frame) {
 		if (ctx->buffers[bidx[i]].frame_number != exp_frame) {
 			consecutive = false;
 			break;

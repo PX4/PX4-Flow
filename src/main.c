@@ -115,6 +115,8 @@ void send_video_fn(void) {
 	/* update the rate */
 	timer_update(send_video_fn, global_data.param[PARAM_VIDEO_RATE]);
 
+	if (previous_image == NULL) return;
+	
 	/*  transmit raw 8-bit image */
 	if (global_data.param[PARAM_USB_SEND_VIDEO] && !global_data.param[PARAM_VIDEO_ONLY])
 	{
@@ -282,11 +284,12 @@ int main(void)
 		bool use_klt = global_data.param[PARAM_ALGORITHM_CHOICE] != 0;
 
 		uint32_t start_computations = 0;
-
+		
 		/* get recent images */
 		camera_image_buffer *frames[2];
 		camera_img_stream_get_buffers(&cam_ctx, frames, 2, true);
 		int frame_delta = ((int32_t)frames[0]->frame_number - (int32_t)last_frame_index);
+		last_frame_index = frames[0]->frame_number;
 		fps_skipped_counter += frame_delta - 1;
 		
 		flow_klt_image *klt_images[2] = {NULL, NULL};
