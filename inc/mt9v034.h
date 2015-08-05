@@ -168,9 +168,4 @@ void mt9v034_context_configuration(void);
   */
 void mt9v034_set_context(void);
 
-uint16_t mt9v034_ReadReg16(uint8_t address);
-uint8_t mt9v034_WriteReg16(uint16_t address, uint16_t Data);
-uint8_t mt9v034_ReadReg(uint16_t Addr);
-uint8_t mt9v034_WriteReg(uint16_t Addr, uint8_t Data);
-
 #endif /* MT9V34_H_ */
