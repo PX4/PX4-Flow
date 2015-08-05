@@ -51,14 +51,14 @@ typedef struct _mt9v034_sensor_ctx {
 	camera_img_param context_b;
 } mt9v034_sensor_ctx;
 
-int mt9v034_init(void *usr, const camera_img_param *img_param);
-int mt9v034_prepare_update_param(void *usr, const camera_img_param *img_param);
+bool mt9v034_init(void *usr, const camera_img_param *img_param);
+bool mt9v034_prepare_update_param(void *usr, const camera_img_param *img_param);
 void mt9v034_notify_readout_start(void *usr);
 void mt9v034_get_current_param(void *usr, camera_img_param *img_param);
 
-static int mt9v034_init_hw(mt9v034_sensor_ctx *ctx);
+static bool mt9v034_init_hw(mt9v034_sensor_ctx *ctx);
 static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx);
-static void mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, const camera_img_param *img_param);
+static void mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, const camera_img_param *img_param, bool full_refresh);
 
 static mt9v034_sensor_ctx mt9v034_ctx;
 
@@ -71,17 +71,19 @@ const camera_sensor_interface mt9v034_sensor_interface = {
 };
 
 
-int mt9v034_init(void *usr, const camera_img_param *img_param) {
+bool mt9v034_init(void *usr, const camera_img_param *img_param) {
 	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
 	memset(ctx, 0, sizeof(mt9v034_sensor_ctx));
 	ctx->cur_context = 0;
-	if (mt9v034_init_hw(ctx) != 0) return -1;
-	mt9v034_configure_context(ctx, 0, img_param);
-	mt9v034_configure_context(ctx, 1, img_param);
+	if (!mt9v034_init_hw(ctx)) return false;
+	mt9v034_configure_context(ctx, 0, img_param, true);
+	mt9v034_configure_context(ctx, 1, img_param, true);
 	mt9v034_configure_general(ctx);
+	
+	return true;
 }
 
-int mt9v034_prepare_update_param(void *usr, const camera_img_param *img_param);
+bool mt9v034_prepare_update_param(void *usr, const camera_img_param *img_param);
 
 void mt9v034_notify_readout_start(void *usr) {
 	// TODO: decide when to switch context:
@@ -100,7 +102,7 @@ void mt9v034_notify_readout_start(void *usr) {
 void mt9v034_get_current_param(void *usr, camera_img_param *img_param);
 
 
-static int mt9v034_init_hw(mt9v034_sensor_ctx *ctx) {
+static bool mt9v034_init_hw(mt9v034_sensor_ctx *ctx) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	I2C_InitTypeDef I2C_InitStruct;
 
@@ -150,9 +152,9 @@ static int mt9v034_init_hw(mt9v034_sensor_ctx *ctx) {
 	
 	/* test I2C: */
 	uint16_t version = mt9v034_ReadReg16(MTV_CHIP_VERSION_REG);
-	if (version != 0x1324) return -1;
+	if (version != 0x1324) return false;
 	
-	return 0;
+	return true;
 }
 
 static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
@@ -285,7 +287,7 @@ static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
 	 */
 }
 
-static void mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, const camera_img_param *img_param) {
+static void mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, const camera_img_param *img_param, bool full_refresh) {
 	/* image dimensions */
 	uint16_t new_width_context_a  = global_data.param[PARAM_IMAGE_WIDTH] * 4; // windowing off, row + col bin reduce size
 	uint16_t new_height_context_a = global_data.param[PARAM_IMAGE_HEIGHT] * 4;

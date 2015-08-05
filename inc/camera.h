@@ -36,6 +36,7 @@
 #define CAMERA_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define CAMERA_MAX_BUFFER_COUNT 5
 
@@ -96,11 +97,11 @@ typedef void (*camera_snapshot_done_cb)(camera_image_buffer *buf);
  *					Must be lower than or equal the configured CAMERA_MAX_BUFFER_COUNT. 
  *					There must be at least one more buffer than what is requested in camera_img_stream_get_buffers.
  *					More buffers will reduce the latency when frames are skipped.
- * @return			Zero when successful.
+ * @return			True when successful.
  */
-int camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const camera_transport_interface *transport,
-				const camera_img_param *img_param,
-				camera_image_buffer buffers[], size_t buffer_count);
+bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const camera_transport_interface *transport,
+				 const camera_img_param *img_param,
+				 camera_image_buffer buffers[], size_t buffer_count);
 
 /**
  * Schedules the new parameters to take effect as soon as possible. This function makes sure that 
@@ -108,9 +109,9 @@ int camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const ca
  * @param ctx		The context to use.
  * @param img_param	The new image parameters to use. Note that the image must still fit inside the buffers passed 
  *					to camera_init.
- * @return	Zero on success.
+ * @return	True on success.
  */
-int camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param);
+bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param);
 
 /**
  * Gets the most recent images. If no more recent image is available this function returns immediatly without doing anything.
@@ -148,9 +149,9 @@ void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer **buf
  * @param cb		Callback function which is called when the snapshot has been taken.
  *					Note that the callback is called from the interrupt context and should only do minimal stuff
  *					like setting a flag to notify the main loop. Calling camera_* functions is not allowed.
- * @return			Zero when snapshot has been successfully scheduled.
+ * @return			True when snapshot has been successfully scheduled.
  */
-int camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param, camera_image_buffer *dst, camera_snapshot_done_cb cb);
+bool camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param, camera_image_buffer *dst, camera_snapshot_done_cb cb);
 
 /** Camera sensor configuration interface.
  */
@@ -160,17 +161,17 @@ struct _camera_sensor_interface {
 	 * Initializes the sensor and the hardware of the microcontroller.
 	 * @param usr		User pointer from this struct.
 	 * @param img_param	The image parameters to use for initialization.
-	 * @return 0 on success.
+	 * @return true on success.
 	 */
-	int (*init)(void *usr, const camera_img_param *img_param);
+	bool (*init)(void *usr, const camera_img_param *img_param);
 	/**
 	 * Prepares the sensor to switch to new parameters.
 	 * This function should perform most of the work that is needed to update the sensor with new parameters.
 	 * @param usr		User pointer from this struct.
 	 * @param img_param	The new image parameters.
-	 * @return 0 on success.
+	 * @return true on success.
 	 */
-	int (*prepare_update_param)(void *usr, const camera_img_param *img_param);
+	bool (*prepare_update_param)(void *usr, const camera_img_param *img_param);
 	/**
 	 * Called every frame just after readout has started (but not completed yet).
 	 * This function may be used to switch the sensor to new parameters that have been previously prepared.
@@ -212,12 +213,12 @@ struct _camera_transport_interface {
 	 * @param frame_done_cb Callback which should be called when a frame has been completed.
 	 * @param cb_usr    Callback user data pointer which should be passed to the transfer_done_cb
 	 *					and frame_done_cb callbacks.
-	 * @return 0 on success.
+	 * @return True on success.
 	 */
-	int (*init)(void *usr, 
-				camera_transport_transfer_done_cb transfer_done_cb, 
-				camera_transport_frame_done_cb frame_done_cb,
-				void *cb_usr);
+	bool (*init)(void *usr, 
+				 camera_transport_transfer_done_cb transfer_done_cb, 
+				 camera_transport_frame_done_cb frame_done_cb,
+				 void *cb_usr);
 };
 
 /**
