@@ -91,8 +91,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 	ctx->target_buffer   = NULL;
 	
 	ctx->seq_snapshot_active                 = false;
-	ctx->seq_updating_img_stream             = false;
-	ctx->seq_write_img_stream_param_yourself = false;
+	ctx->seq_img_stream_param_pending        = false;
 	// initialize hardware:
 	if (!ctx->transport->init(ctx->transport->usr,
 							  camera_transport_transfer_done_fn,
@@ -179,6 +178,10 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 				}
 				// notify camera_img_stream_get_buffers function.
 				ctx->new_frame_arrived = true;
+			} else if (ctx->seq_snapshot_active && ctx->target_buffer != NULL) {
+				// snapshot has been taken!
+				ctx->snapshot_cb();
+				ctx->seq_snapshot_active = false;
 			}
 			// reset state:
 			ctx->target_buffer = NULL;
@@ -194,7 +197,8 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 		ctx->sensor->notify_readout_start(ctx->sensor->usr);
 		// get current sensor parameter:
 		camera_img_param cparam;
-		ctx->sensor->get_current_param(ctx->sensor->usr, &cparam);
+		bool img_data_valid;
+		ctx->sensor->get_current_param(ctx->sensor->usr, &cparam, &img_data_valid);
 		// update the receiving variables:
 		ctx->cur_frame_index += 1;
 		ctx->receiving_frame = true;
@@ -202,13 +206,32 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 		ctx->cur_frame_size  = (uint32_t)cparam.size.x * (uint32_t)cparam.size.y;
 		ctx->cur_frame_pos   = size;
 		ctx->target_buffer_index = -1;
-		// check that the size parameters match:
-		if (cparam.size.x == ctx->img_stream_param.size.x ||
-			cparam.size.y == ctx->img_stream_param.size.y) {
-			// get least recently used buffer from the available buffers:
-			camera_buffer_fifo_remove_back(ctx, &ctx->target_buffer_index, 1);
-			ctx->target_buffer   = &ctx->buffers[ctx->target_buffer_index];
-			// initialize it:
+		if (!ctx->seq_snapshot_active) {
+			// check that the size parameters match to the img stream:
+			if (cparam.size.x  == ctx->img_stream_param.size.x &&
+				cparam.size.y  == ctx->img_stream_param.size.y &&
+				cparam.binning == ctx->img_stream_param.binning) {
+				if (img_data_valid) {
+					// get least recently used buffer from the available buffers:
+					camera_buffer_fifo_remove_back(ctx, &ctx->target_buffer_index, 1);
+					ctx->target_buffer   = &ctx->buffers[ctx->target_buffer_index];
+				}
+			}
+		} else {
+			// check that the size parameters match to the snapshot parameters:
+			if (cparam.size.x  == ctx->snapshot_param.size.x &&
+				cparam.size.y  == ctx->snapshot_param.size.y &&
+				cparam.binning == ctx->snapshot_param.binning) {
+				if (img_data_valid) {
+					// get the buffer:
+					ctx->target_buffer   = ctx->snapshot_buffer;
+					// initiate switching back to img stream mode:
+					ctx->sensor->restore_previous_param(ctx->sensor->usr);
+				}
+			}
+		}
+		// initialize the target buffer:
+		if (ctx->target_buffer != NULL) {
 			ctx->target_buffer->timestamp    = get_boot_time_us();
 			ctx->target_buffer->frame_number = ctx->cur_frame_index;
 			ctx->target_buffer->param        = cparam;
@@ -232,10 +255,61 @@ void camera_transport_frame_done_fn(void *usr) {
 }
 
 bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param) {
-	if (!ctx->seq_snapshot_active) {
-		return ctx->sensor->prepare_update_param(ctx->sensor->usr, img_param);
+	uint32_t img_size = (uint32_t)img_param->size.x * (uint32_t)img_param->size.y;
+	if (img_size % ctx->transport->transfer_size != 0 || img_size / ctx->transport->transfer_size < 2) {
+		// invalid size parameter!
+		return false;
+	}
+	int i;
+	for (i = 0; i < ctx->buffer_count; ++i) {
+		// check image size against each buffer:
+		if (img_size > ctx->buffers[i].buffer_size) {
+			return false;
+		}
+	}
+	if (!ctx->seq_snapshot_active && !ctx->seq_img_stream_param_pending) {
+		if (ctx->sensor->prepare_update_param(ctx->sensor->usr, img_param)) {
+			ctx->img_stream_param = *img_param;
+			return true;
+		}
+	} else {
+		ctx->img_stream_param = *img_param;
+		ctx->seq_img_stream_param_pending = true;
+		return true;
 	}
 	return false;
+}
+
+bool camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param, camera_image_buffer *dst, camera_snapshot_done_cb cb) {
+	uint32_t img_size = (uint32_t)img_param->size.x * (uint32_t)img_param->size.y;
+	if (img_size % ctx->transport->transfer_size != 0 || img_size / ctx->transport->transfer_size < 2) {
+		// invalid size parameter!
+		return false;
+	}
+	// check image size against the buffer:
+	if (img_size > dst->buffer_size || dst->buffer == NULL) {
+		return false;
+	}
+	if (!ctx->seq_snapshot_active) {
+		if (ctx->sensor->prepare_update_param(ctx->sensor->usr, img_param)) {
+			ctx->snapshot_param  = *img_param;
+			ctx->snapshot_buffer = dst;
+			ctx->snapshot_cb     = cb;
+			ctx->seq_snapshot_active = true;
+			return true;
+		}
+	}
+	return false;
+}
+
+void camera_snapshot_acknowledge(camera_ctx *ctx) {
+	if (!ctx->seq_snapshot_active) {
+		if (ctx->seq_img_stream_param_pending) {
+			ctx->seq_img_stream_param_pending = false;
+			/* write the pending changes to the sensor: */
+			ctx->sensor->prepare_update_param(ctx->sensor->usr, &ctx->img_stream_param);
+		}
+	}
 }
 
 static bool camera_img_stream_get_buffers_idx(camera_ctx *ctx, int bidx[], size_t count, bool reset_new_frm) {
@@ -310,9 +384,3 @@ void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer *buff
 	ctx->buffers_are_reserved = false;
 	__enable_irq();
 }
-
-bool camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param, camera_image_buffer *dst, camera_snapshot_done_cb cb) {
-	return false;
-}
-
-

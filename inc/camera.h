@@ -76,14 +76,14 @@ typedef struct _camera_image_buffer {
 	uint32_t meta;				///< Buffer meta data not used by the camera driver. This can be used to identify buffers.
 } camera_image_buffer;
 
-#define BuildCameraImageBuffer(memory_variable) ((camera_image_buffer){.buffer = &memory_variable, .buffer_size = sizeof(memory_variable)})
+#define BuildCameraImageBuffer(memory_variable) ((const camera_image_buffer){.buffer = memory_variable, .buffer_size = sizeof(memory_variable)})
 
 /**
  * Callback which is called when a snapshot capture has finished.
  * @note This callback may be called from an interrupt handler.
  * @param Pointer to buffer which contains the snapshot.
  */
-typedef void (*camera_snapshot_done_cb)(camera_image_buffer *buf);
+typedef void (*camera_snapshot_done_cb)();
 
 /**
  * Initializes the camera driver.
@@ -158,6 +158,13 @@ void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer *buff
  */
 bool camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param, camera_image_buffer *dst, camera_snapshot_done_cb cb);
 
+/**
+ * This function must be called right after the snapshot callback function has been called. No other calls to the camera driver are allowed.
+ * @note	This function must not be called directly from the callback!
+ * @param ctx		The context to use.
+ */
+void camera_snapshot_acknowledge(camera_ctx *ctx);
+
 /** Camera sensor configuration interface.
  */
 struct _camera_sensor_interface {
@@ -178,6 +185,11 @@ struct _camera_sensor_interface {
 	 */
 	bool (*prepare_update_param)(void *usr, const camera_img_param *img_param);
 	/**
+	 * Immediately switches back to the previous parameters.
+	 * @param usr		User pointer from this struct.
+	 */
+	void (*restore_previous_param)(void *usr);
+	/**
 	 * Called every frame just after readout has started (but not completed yet).
 	 * This function may be used to switch the sensor to new parameters that have been previously prepared.
 	 * @param usr		User pointer from this struct.
@@ -188,8 +200,9 @@ struct _camera_sensor_interface {
 	 * Called to retrieve the image parameters of the current frame that is being output.
 	 * This function is called after notify_readout_start to retrieve the
 	 * parameters that were in effect at the time the image was taken.
+	 * @param  img_data_valid boolean which receives a flag whether the image data is valid or not.
 	 */
-	void (*get_current_param)(void *usr, camera_img_param *img_param);
+	void (*get_current_param)(void *usr, camera_img_param *img_param, bool *img_data_valid);
 };
 
 /**
@@ -257,6 +270,7 @@ struct _camera_ctx {
 	
 	camera_img_param snapshot_param;						///< The parameters of the snapshot mode.
 	camera_image_buffer *snapshot_buffer;					///< Pointer to buffer which receives the snapshot. NULL when no snapshot is pending.
+	camera_snapshot_done_cb snapshot_cb;					///< Callback pointer which is called when the snapshot is complete.
 	
 	/* retrieving buffers */
 	
@@ -277,12 +291,8 @@ struct _camera_ctx {
 	volatile bool seq_snapshot_active;						/**< Flag that is asserted as long as a snapshot is not finished.
 															 *   While asserted the camera_img_stream_schedule_param_change function
 															 *   should not update the sensor. It should write the new parameters to the img_stream_param variable. */
-	volatile bool seq_updating_img_stream;					/**< Flag that must be set when snapshot is active and a write to the img_stream_param
-															 *   variable takes place. This is used by the interrupt to avoid switching the sensor back to normal
-															 *   mode while a parameter update takes place. */
-	volatile bool seq_write_img_stream_param_yourself;		/**< This flag is set by the interrupt handler when seq_snapshot_active and seq_updating_img_stream
-															 *   both where active while the interrupt handler attempted to switch the sensor back to streaming mode.
-															 *   in this case the parameter update function should do the parameter update of the sensor by itself. */
+	volatile bool seq_img_stream_param_pending;				/**< Flag that is set when pending img stream parameter updates are in the img_stream_param variable.
+															 *   These updates will be written to the sensor in the camera_snapshot_acknowledge function. */
 };
 
 #endif /* CAMERA_H_ */

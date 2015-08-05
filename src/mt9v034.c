@@ -48,8 +48,9 @@ typedef struct _mt9v034_sensor_ctx mt9v034_sensor_ctx;
 
 bool mt9v034_init(void *usr, const camera_img_param *img_param);
 bool mt9v034_prepare_update_param(void *usr, const camera_img_param *img_param);
+void mt9v034_restore_previous_param(void *usr);
 void mt9v034_notify_readout_start(void *usr);
-void mt9v034_get_current_param(void *usr, camera_img_param *img_param);
+void mt9v034_get_current_param(void *usr, camera_img_param *img_param, bool *img_data_valid);
 
 static bool mt9v034_init_hw(mt9v034_sensor_ctx *ctx);
 static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx);
@@ -76,6 +77,7 @@ struct _mt9v034_sensor_ctx {
 	volatile int cur_context;		///< The current camera sensor context that has been activated.
 	volatile bool do_switch_context;///< When true the mt9v034_notify_readout_start function will switch the camera sensor context.
 	volatile int desired_context;	///< The desired context when do_switch_context is true.
+	volatile int previous_context;	///< The previous context index.
 	
 	camera_img_param context_p[2];	///< The parameters of the camera sensor register sets. (for context A and B)
 	
@@ -86,6 +88,9 @@ struct _mt9v034_sensor_ctx {
 	/* current frame parameter simulation model */
 	
 	camera_img_param cur_param;		///< The parameters of the frame that is beeing read out.
+	bool cur_param_data_valid;		/**< Flag telling wether the image data is going to be valid.
+									 *   The sensor outputs garbage on the first frame after changing resolution.
+									 *   TODO: verify that this is always the case and why. */
 	camera_img_param exp_param;		///< Because exposure parameters take one more frame time to propagate to the output this holds the exposure settings.
 };
 
@@ -95,6 +100,7 @@ const camera_sensor_interface mt9v034_sensor_interface = {
 	.usr                  = &mt9v034_ctx,
 	.init                 = mt9v034_init,
 	.prepare_update_param = mt9v034_prepare_update_param,
+	.restore_previous_param = mt9v034_restore_previous_param,
 	.notify_readout_start = mt9v034_notify_readout_start,
 	.get_current_param    = mt9v034_get_current_param
 };
@@ -109,6 +115,7 @@ bool mt9v034_init(void *usr, const camera_img_param *img_param) {
 	memset(ctx, 0, sizeof(mt9v034_sensor_ctx));
 	ctx->cur_context = 0;
 	ctx->desired_context = 0;
+	ctx->previous_context = 0;
 	ctx->do_switch_context = false;
 	/* init hardware: */
 	if (!mt9v034_init_hw(ctx)) return false;
@@ -119,6 +126,7 @@ bool mt9v034_init(void *usr, const camera_img_param *img_param) {
 	/* initialize the cur and exp param: */
 	ctx->cur_param = *img_param;
 	ctx->exp_param = *img_param;
+	ctx->cur_param_data_valid = false;
 	/* do a forced context update next. */
 	ctx->do_switch_context = true;
 	return true;
@@ -140,9 +148,19 @@ bool mt9v034_prepare_update_param(void *usr, const camera_img_param *img_param) 
 		return false;
 	}
 	/* setup context switching */
+	ctx->previous_context  = ctx->cur_context;
 	ctx->desired_context   = new_ctx_idx;
 	ctx->do_switch_context = true;
 	return true;
+}
+
+void mt9v034_restore_previous_param(void *usr) {
+	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
+	/* deassert pending context switch command: */
+	ctx->do_switch_context = false;
+	/* switch back to previous context */
+	ctx->desired_context   = ctx->previous_context;
+	ctx->do_switch_context = true;
 }
 
 void mt9v034_notify_readout_start(void *usr) {
@@ -154,6 +172,13 @@ void mt9v034_notify_readout_start(void *usr) {
 	/* transfer exposure settings of currently active context into exp_param */
 	//    There are no exposure settings yet.
 	/* transfer other settings of currently active context into cur_param */
+	if (cur_ctx_param->size.x != ctx->cur_param.size.x ||
+	    cur_ctx_param->size.y != ctx->cur_param.size.y) {
+		// first frame after changing resolution is invalid.
+		ctx->cur_param_data_valid = false;
+	} else {
+		ctx->cur_param_data_valid = true;
+	}
 	ctx->cur_param.size    = cur_ctx_param->size;
 	ctx->cur_param.binning = cur_ctx_param->binning;
 	/* handle context switching: */
@@ -167,16 +192,17 @@ void mt9v034_notify_readout_start(void *usr) {
 		}
 		mt9v034_WriteReg(MTV_CHIP_CONTROL_REG, ctx->chip_control_reg);
 		/* update pixel count for AGC and AEC: */
-		mt9v034_WriteReg(MTV_AGC_AEC_PIXEL_COUNT_REG, ctx_param->size.x * ctx_param->size.y);
+		mt9v034_WriteReg(MTV_AGC_AEC_PIXEL_COUNT_REG, (uint32_t)ctx_param->size.x * (uint32_t)ctx_param->size.y);
 		/* done. */
 		ctx->do_switch_context = false;
 		ctx->cur_context       = desired_ctx_idx;
 	}
 }
 
-void mt9v034_get_current_param(void *usr, camera_img_param *img_param) {
+void mt9v034_get_current_param(void *usr, camera_img_param *img_param, bool *img_data_valid) {
 	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
 	*img_param = ctx->cur_param;
+	*img_data_valid = ctx->cur_param_data_valid;
 }
 
 static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {

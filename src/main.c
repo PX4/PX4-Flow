@@ -91,6 +91,13 @@ struct lpos_t {
 	float vz;
 } lpos = {0};
 
+static camera_ctx cam_ctx;
+static camera_img_param img_stream_param;
+
+uint8_t snapshot_buffer_mem[128 * 128];
+
+static camera_image_buffer snapshot_buffer;
+	
 void sonar_update_fn(void) {
 	sonar_trigger();
 }
@@ -109,7 +116,24 @@ void system_receive_fn(void) {
 	communication_receive_usb();
 }
 
-uint8_t *previous_image = NULL;
+const camera_image_buffer *previous_image = NULL;
+
+void mavlink_send_image(const camera_image_buffer *image) {
+	uint32_t img_size = (uint32_t)image->param.size.x * (uint32_t)image->param.size.y;
+	mavlink_msg_data_transmission_handshake_send(
+			MAVLINK_COMM_2,
+			MAVLINK_DATA_STREAM_IMG_RAW8U,
+			img_size,
+			image->param.size.x,
+			image->param.size.y,
+			img_size / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1,
+			MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN,
+			100);
+	uint16_t frame = 0;
+	for (frame = 0; frame < img_size / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1; frame++) {
+		mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *)image->buffer)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
+	}
+}
 
 void send_video_fn(void) {
 	/* update the rate */
@@ -120,32 +144,8 @@ void send_video_fn(void) {
 	/*  transmit raw 8-bit image */
 	if (global_data.param[PARAM_USB_SEND_VIDEO] && !global_data.param[PARAM_VIDEO_ONLY])
 	{
-		/* get size of image to send */
-		uint16_t image_size_send;
-		uint16_t image_width_send;
-		uint16_t image_height_send;
-
-		uint16_t image_size = global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT];
-
-		image_size_send = image_size;
-		image_width_send = global_data.param[PARAM_IMAGE_WIDTH];
-		image_height_send = global_data.param[PARAM_IMAGE_HEIGHT];
-
-		mavlink_msg_data_transmission_handshake_send(
-				MAVLINK_COMM_2,
-				MAVLINK_DATA_STREAM_IMG_RAW8U,
-				image_size_send,
-				image_width_send,
-				image_height_send,
-				image_size_send / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1,
-				MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN,
-				100);
+		mavlink_send_image(previous_image);
 		LEDToggle(LED_COM);
-		uint16_t frame = 0;
-		for (frame = 0; frame < image_size_send / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1; frame++)
-		{
-			mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
-		}
 	}
 	else if (!global_data.param[PARAM_USB_SEND_VIDEO])
 	{
@@ -156,6 +156,32 @@ void send_video_fn(void) {
 void send_params_fn(void) {
 	debug_message_send_one();
 	communication_parameter_send();
+}
+
+/*void switch_params_fn(void) {
+	switch (img_stream_param.binning) {
+		case 1: img_stream_param.binning = 4; break;
+		case 2: img_stream_param.binning = 1; break;
+		case 4: img_stream_param.binning = 2; break;
+	}
+	camera_img_stream_schedule_param_change(&cam_ctx, &img_stream_param);
+}*/
+
+volatile bool snap_capture_done = false;
+
+void snapshot_captured_fn() {
+	LEDToggle(LED_COM);
+	snap_capture_done = true;
+}
+
+void take_snapshot_fn(void) {
+	if (global_data.param[PARAM_USB_SEND_VIDEO] && global_data.param[PARAM_VIDEO_ONLY]) {
+		static camera_img_param snapshot_param;
+		snapshot_param.size.x = 128;
+		snapshot_param.size.y = 128;
+		snapshot_param.binning = 1;
+		camera_snapshot_schedule(&cam_ctx, &snapshot_param, &snapshot_buffer, snapshot_captured_fn);
+	}
 }
 
 #define FLOW_IMAGE_SIZE (64)
@@ -173,6 +199,8 @@ flow_klt_image flow_klt_images[2] __attribute__((section(".ccm")));
   */
 int main(void)
 {
+	snapshot_buffer = BuildCameraImageBuffer(snapshot_buffer_mem);
+	
 	/* load settings and parameters */
 	global_data_reset_param_defaults();
 	global_data_reset();
@@ -202,8 +230,6 @@ int main(void)
 	communication_init();
 
 	/* initialize camera: */
-	camera_ctx cam_ctx;
-	camera_img_param img_stream_param;
 	img_stream_param.size.x = FLOW_IMAGE_SIZE;
 	img_stream_param.size.y = FLOW_IMAGE_SIZE;
 	img_stream_param.binning = 4;
@@ -240,6 +266,7 @@ int main(void)
 	timer_register(system_receive_fn, SYSTEM_STATE_MS / 2);
 	timer_register(send_params_fn, PARAMS_MS);
 	timer_register(send_video_fn, global_data.param[PARAM_VIDEO_RATE]);
+	timer_register(take_snapshot_fn, 500);
 
 	/* variables */
 	uint32_t counter = 0;
@@ -259,6 +286,14 @@ int main(void)
 	{
 		/* check timers */
 		timer_check();
+		
+		if (snap_capture_done) {
+			snap_capture_done = false;
+			camera_snapshot_acknowledge(&cam_ctx);
+			/* send the snapshot! */
+			LEDToggle(LED_COM);
+			mavlink_send_image(&snapshot_buffer);
+		}
 
 		/* calculate focal_length in pixel */
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 0.006f); //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
@@ -378,16 +413,17 @@ int main(void)
 		/* create flow image if needed (previous_image is not needed anymore)
 		 * -> can be used for debugging purpose
 		 */
-		previous_image = frames[1]->buffer;
+		previous_image = frames[1];
 		if (global_data.param[PARAM_USB_SEND_VIDEO])
 		{
 			uint16_t frame_size = global_data.param[PARAM_IMAGE_WIDTH];
+			uint8_t *prev_img = previous_image->buffer;
 			for (int i = 0; i < flow_rslt_count; i++) {
 				if (flow_rslt[i].quality > 0) {
-					previous_image[flow_rslt[i].at_y * frame_size + flow_rslt[i].at_x] = 255;
+					prev_img[flow_rslt[i].at_y * frame_size + flow_rslt[i].at_x] = 255;
 					int ofs = (int)floor(flow_rslt[i].at_y + flow_rslt[i].y * 2 + 0.5f) * frame_size + (int)floor(flow_rslt[i].at_x + flow_rslt[i].x * 2 + 0.5f);
 					if (ofs >= 0 && ofs < frame_size * frame_size) {
-						previous_image[ofs] = 200;
+						prev_img[ofs] = 200;
 					}
 				}
 			}
