@@ -43,12 +43,8 @@
 
 #include <string.h>
 
-typedef struct _mt9v034_sensor_ctx {
-	int cur_context;
-	camera_img_param cur_param;
-	camera_img_param exp_param;
-	camera_img_param context_p[2];
-} mt9v034_sensor_ctx;
+struct _mt9v034_sensor_ctx;
+typedef struct _mt9v034_sensor_ctx mt9v034_sensor_ctx;
 
 bool mt9v034_init(void *usr, const camera_img_param *img_param);
 bool mt9v034_prepare_update_param(void *usr, const camera_img_param *img_param);
@@ -79,7 +75,7 @@ static uint8_t mt9v034_ReadReg(uint16_t Addr);
   * @param  Addr: mt9v034 register address.
   * @param  Data: Data to be written to the specific register
   * @retval 0x00 if write operation is OK.
-  *       0xFF if timeout condition occured (device not connected or bus error).
+  *			0xFF if timeout condition occurred (device not connected or bus error).
   */
 static uint8_t mt9v034_WriteReg(uint16_t Addr, uint8_t Data);
 
@@ -93,37 +89,88 @@ const camera_sensor_interface mt9v034_sensor_interface = {
 	.get_current_param    = mt9v034_get_current_param
 };
 
+struct _mt9v034_sensor_ctx {
+	volatile int cur_context;		///< The current camera sensor context that has been activated.
+	volatile bool do_switch_context;///< When true the mt9v034_notify_readout_start function will switch the camera sensor context.
+	volatile int desired_context;	///< The desired context when do_switch_context is true.
+	uint16_t chip_control_reg;		///< The current chip control register value.
+	camera_img_param cur_param;		///< The parameters of the frame that is beeing read out.
+	camera_img_param exp_param;		///< Because exposure parameters take one more frame time to propagate to the output this holds the exposure settings.
+	camera_img_param context_p[2];
+};
 
 bool mt9v034_init(void *usr, const camera_img_param *img_param) {
 	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
 	memset(ctx, 0, sizeof(mt9v034_sensor_ctx));
 	ctx->cur_context = 0;
+	ctx->desired_context = 0;
+	ctx->do_switch_context = false;
 	if (!mt9v034_init_hw(ctx)) return false;
 	mt9v034_configure_context(ctx, 0, img_param, true);
 	mt9v034_configure_context(ctx, 1, img_param, true);
 	mt9v034_configure_general(ctx);
-	
+	/* initialize the cur and exp param: */
+	ctx->cur_param = *img_param;
+	ctx->exp_param = *img_param;
+	/* do a forced context update next. */
+	ctx->do_switch_context = true;
 	return true;
 }
 
-bool mt9v034_prepare_update_param(void *usr, const camera_img_param *img_param);
-
-void mt9v034_notify_readout_start(void *usr) {
-	// TODO: decide when to switch context:
-	
-	mt9v034_WriteReg16(MTV_AGC_AEC_PIXEL_COUNT_REG, pixel_count);
-	
-	uint16_t new_control;
-	if ()
-		new_control = 0x8188; // Context B
-	else
-		new_control = 0x0188; // Context A
-
-	mt9v034_WriteReg16(MTV_CHIP_CONTROL_REG, new_control);
+bool mt9v034_prepare_update_param(void *usr, const camera_img_param *img_param) {
+	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
+	/* deassert pending context switch command: */
+	ctx->do_switch_context = false;
+	/* determine which context to use to do the parameter update: */
+	int cur_ctx_idx = ctx->cur_context;
+	int new_ctx_idx = !cur_ctx_idx;
+	if (!mt9v034_configure_context(ctx, new_ctx_idx, img_param, false)) {
+		// invalid parameters.
+		// check if there was a pending context switch when we started:
+		if (cur_ctx_idx != ctx->desired_context) {
+			ctx->do_switch_context = true;
+		}
+		return false;
+	}
+	/* setup context switching */
+	ctx->desired_context   = new_ctx_idx;
+	ctx->do_switch_context = true;
+	return true;
 }
 
-void mt9v034_get_current_param(void *usr, camera_img_param *img_param);
+void mt9v034_notify_readout_start(void *usr) {
+	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
+	camera_img_param *cur_ctx_param = &ctx->context_p[ctx->cur_context];
+	/* update the sensor parameter simulation: */
+	/* transfer exposure settings from exp_param into cur_param */
+	//    There are no exposure settings yet.
+	/* transfer exposure settings of currently active context into exp_param */
+	//    There are no exposure settings yet.
+	/* transfer other settings of currently active context into cur_param */
+	ctx->cur_param.size    = cur_ctx_param->size;
+	ctx->cur_param.binning = cur_ctx_param->binning;
+	/* handle context switching: */
+	if (ctx->do_switch_context) {
+		/* update chip control register bit 15: */
+		int desired_ctx_idx = ctx->desired_context;
+		camera_img_param *ctx_param = &ctx->context_p[desired_ctx_idx];
+		switch(desired_ctx_idx) {
+			case 0: ctx->chip_control_reg &= 0x7FFF; break;
+			case 1: ctx->chip_control_reg |= 0x8000; break;
+		}
+		mt9v034_WriteReg16(MTV_CHIP_CONTROL_REG, ctx->chip_control_reg);
+		/* update pixel count for AGC and AEC: */
+		mt9v034_WriteReg16(MTV_AGC_AEC_PIXEL_COUNT_REG, ctx_param->size.x * ctx_param->size.y);
+		/* done. */
+		ctx->do_switch_context = false;
+		ctx->cur_context       = desired_ctx_idx;
+	}
+}
 
+void mt9v034_get_current_param(void *usr, camera_img_param *img_param) {
+	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
+	*img_param = *ctx->cur_param;
+}
 
 static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
 	/*
@@ -136,7 +183,8 @@ static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
 	 *   [8] Simultaneous mode:         1 = Enabled. Pixel and column readout take place in conjunction with exposure.
 	 *  [15] Context A / B select       0 = Context A registers are used.
 	 */
-	mt9v034_WriteReg16(MTV_CHIP_CONTROL_REG, 0x0188);
+	ctx->chip_control_reg = 0x0188;
+	mt9v034_WriteReg16(MTV_CHIP_CONTROL_REG, ctx->chip_control_reg);
 
 	/* settings that are the same for both contexts: */
 	
@@ -428,6 +476,9 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 			}
 			break;
 	}
+	
+	/* update the current settings: */
+	*ctx_param = *img_param;
 	
 	return true;
 }
