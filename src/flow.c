@@ -439,11 +439,11 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 			int8_t sumy = 0;
 			int8_t ii, jj;
 
-			uint8_t *base1 = image1 + j * frame_size + i;
+			//uint8_t *base1 = image1 + j * frame_size + i;
 
 			for (jj = winmin; jj <= winmax; jj++)
 			{
-				uint8_t *base2 = image2 + (j+jj) * frame_size + i;
+				//uint8_t *base2 = image2 + (j+jj) * frame_size + i;
 
 				for (ii = winmin; ii <= winmax; ii++)
 				{

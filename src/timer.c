@@ -171,7 +171,7 @@ void timer_init(void)
 uint32_t get_boot_time_ms(void)
 {
 	// clear the COUNTFLAG:
-	volatile bool dummy = (SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) != 0;
+	volatile bool dummy __attribute__((unused)) = (SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) != 0;
 	volatile uint32_t val;
 	do {
 		// read the value:
@@ -184,7 +184,7 @@ uint32_t get_boot_time_ms(void)
 uint32_t get_boot_time_us(void)
 {
 	// clear the COUNTFLAG:
-	volatile bool dummy = (SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) != 0;
+	volatile bool dummy __attribute__((unused)) = (SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) != 0;
 	volatile uint32_t val_us_base;
 	volatile uint32_t val_tick;
 	do {
