@@ -90,7 +90,7 @@ typedef void (*camera_snapshot_done_cb)(camera_image_buffer *buf);
  * @param img_param	The initial image parameters to use for img_stream operation mode.
  * @param buffers	Array of initialized buffers to use for buffering the images in img_stream mode.
  *					In each camera_image_buffer the buffer and buffer_size members must be correctly set.
- *					The camera_img_stream_get_buffers function will return pointers to one of these buffers.
+ *					The camera_img_stream_get_buffers function will return pointers to one of these (copied) buffers.
  *					The buffer can reside in the CCM of the microcontroller.
  *					The structs are copied to an internal data-structure.
  * @param buffer_count Number of buffers that are passed in buffers.
@@ -122,11 +122,12 @@ bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_p
  *					It is guaranteed to retrieve consecutive images.
  * @param count		Number of most recent images to retrieve. Must be lower than buffer_count - 1 which was 
  *					passed to camera_init.
- * @return			0 when a new most recent image has been retrieved. 
- *					1 if there was no new most recent image since the last call to this function. (In this case nothing has been updated)
+ * @return			 0 when a new set of count most recent images has been retrieved.
+ *					 1 if there was no new most recent image since the last call to this function 
+ *                     or it is not possible to return count consecutive frames.
  *					-1 on error.
- * @note			When this function is successful the buffers need to be returned to the camera driver before 
- *					requesting new buffers.
+ * @note			When this function is successful (return value 0) the buffers need to be returned to the camera driver before 
+ *					requesting new buffers. (use camera_img_stream_return_buffers)
  */
 int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer **buffers[], size_t count);
 
@@ -146,6 +147,7 @@ void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer **buf
  * @param img_param	The image parameters for the snapshot image.
  * @param dst		The destination buffer which should receive the image.
  *					The buffer and buffer_size members must be correctly set.
+ *					The pointed variable must remain valid until the snapshot capture is done.
  * @param cb		Callback function which is called when the snapshot has been taken.
  *					Note that the callback is called from the interrupt context and should only do minimal stuff
  *					like setting a flag to notify the main loop. Calling camera_* functions is not allowed.
@@ -193,7 +195,7 @@ struct _camera_sensor_interface {
  * @param buffer	The buffer that contains the data of the transfer was completed.
  * @param size		The size of the transfer.
  */
-typedef void (*camera_transport_transfer_done_cb)(void *usr, void *buffer, size_t size);
+typedef void (*camera_transport_transfer_done_cb)(void *usr, const void *buffer, size_t size);
 
 /**
  * Callback for notifying the camera driver about a completed frame.
@@ -225,9 +227,48 @@ struct _camera_transport_interface {
  * The camera driver context struct.
  */
 struct _camera_ctx {
-	const camera_sensor_interface *sensor;
-	const camera_transport_interface *transport;
+	/* assets of the camera driver */
 	
+	const camera_sensor_interface *sensor;					///< Sensor interface.
+	const camera_transport_interface *transport;			///< Transport interface.
+	
+	/* image streaming buffer and parameters */
+	
+	camera_img_param img_stream_param;						///< The parameters of the image streaming mode.
+	camera_image_buffer buffers[CAMERA_MAX_BUFFER_COUNT];	///< The image buffers for image stream mode.
+	uint8_t avail_bufs[CAMERA_MAX_BUFFER_COUNT];			///< Indexes to the buffers that are available. Ordered in the MRU order.
+	uint8_t avail_buf_count;								///< Number of buffer indexes in the avail_bufs array.
+	volatile bool new_frame_arrived;						///< Flag which is set by the interrupt handler to notify that a new frame has arrived.
+	
+	/* image snapshot buffer and parameters */
+	
+	camera_img_param snapshot_param;						///< The parameters of the snapshot mode.
+	camera_image_buffer *snapshot_buffer;					///< Pointer to buffer which receives the snapshot. NULL when no snapshot is pending.
+	
+	/* retrieving buffers */
+	
+	uint32_t last_read_frame_index;							///< The frame index of the last frame that has been read in streaming mode
+	
+	/* frame acquisition */
+	
+	uint32_t cur_frame_index;
+	bool receiving_frame;
+	camera_image_buffer *target_buffer;
+	int target_buffer_index;
+	uint32_t cur_frame_size;
+	uint32_t cur_frame_pos;
+	
+	/* sequencing */
+	
+	volatile bool seq_snapshot_active;						/**< Flag that is asserted as long as a snapshot is not finished.
+															 *   While asserted the camera_img_stream_schedule_param_change function
+															 *   should not update the sensor. It should write the new parameters to the img_stream_param variable. */
+	volatile bool seq_updating_img_stream;					/**< Flag that must be set when snapshot is active and a write to the img_stream_param
+															 *   variable takes place. This is used by the interrupt to avoid switching the sensor back to normal
+															 *   mode while a parameter update takes place. */
+	volatile bool seq_write_img_stream_param_yourself;		/**< This flag is set by the interrupt handler when seq_snapshot_active and seq_updating_img_stream
+															 *   both where active while the interrupt handler attempted to switch the sensor back to streaming mode.
+															 *   in this case the parameter update function should do the parameter update of the sensor by itself. */
 };
 
 #endif /* CAMERA_H_ */

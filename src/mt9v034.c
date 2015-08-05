@@ -90,13 +90,22 @@ const camera_sensor_interface mt9v034_sensor_interface = {
 };
 
 struct _mt9v034_sensor_ctx {
+	/* context switching */
+	
 	volatile int cur_context;		///< The current camera sensor context that has been activated.
 	volatile bool do_switch_context;///< When true the mt9v034_notify_readout_start function will switch the camera sensor context.
 	volatile int desired_context;	///< The desired context when do_switch_context is true.
+	
+	camera_img_param context_p[2];	///< The parameters of the camera sensor register sets. (for context A and B)
+	
+	/* mirrored registers of the sensor */
+	
 	uint16_t chip_control_reg;		///< The current chip control register value.
+	
+	/* current frame parameter simulation model */
+	
 	camera_img_param cur_param;		///< The parameters of the frame that is beeing read out.
 	camera_img_param exp_param;		///< Because exposure parameters take one more frame time to propagate to the output this holds the exposure settings.
-	camera_img_param context_p[2];
 };
 
 bool mt9v034_init(void *usr, const camera_img_param *img_param) {
