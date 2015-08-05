@@ -57,27 +57,18 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 
 /**
   * @brief  Reads from a specific Camera register
-  */
-static uint16_t mt9v034_ReadReg16(uint8_t address);
-/**
-  * @brief  Writes to a specific Camera register
-  */
-static uint8_t mt9v034_WriteReg16(uint16_t address, uint16_t Data);
-/**
-  * @brief  Reads a byte from a specific Camera register
   * @param  Addr: mt9v034 register address.
-  * @retval data read from the specific register or 0xFF if timeout condition
+  * @retval data read from the specific register or 0xFFFF if timeout condition
   *         occurred.
   */
-static uint8_t mt9v034_ReadReg(uint16_t Addr);
+static uint16_t mt9v034_ReadReg(uint16_t Addr);
 /**
   * @brief  Writes a byte at a specific Camera register
   * @param  Addr: mt9v034 register address.
   * @param  Data: Data to be written to the specific register
-  * @retval 0x00 if write operation is OK.
-  *			0xFF if timeout condition occurred (device not connected or bus error).
+  * @retval true when operation is successful.
   */
-static uint8_t mt9v034_WriteReg(uint16_t Addr, uint8_t Data);
+static bool mt9v034_WriteReg(uint16_t Addr, uint16_t Data);
 
 struct _mt9v034_sensor_ctx {
 	/* context switching */
@@ -174,9 +165,9 @@ void mt9v034_notify_readout_start(void *usr) {
 			case 0: ctx->chip_control_reg &= 0x7FFF; break;
 			case 1: ctx->chip_control_reg |= 0x8000; break;
 		}
-		mt9v034_WriteReg16(MTV_CHIP_CONTROL_REG, ctx->chip_control_reg);
+		mt9v034_WriteReg(MTV_CHIP_CONTROL_REG, ctx->chip_control_reg);
 		/* update pixel count for AGC and AEC: */
-		mt9v034_WriteReg16(MTV_AGC_AEC_PIXEL_COUNT_REG, ctx_param->size.x * ctx_param->size.y);
+		mt9v034_WriteReg(MTV_AGC_AEC_PIXEL_COUNT_REG, ctx_param->size.x * ctx_param->size.y);
 		/* done. */
 		ctx->do_switch_context = false;
 		ctx->cur_context       = desired_ctx_idx;
@@ -200,7 +191,7 @@ static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
 	 *  [15] Context A / B select       0 = Context A registers are used.
 	 */
 	ctx->chip_control_reg = 0x0188;
-	mt9v034_WriteReg16(MTV_CHIP_CONTROL_REG, ctx->chip_control_reg);
+	mt9v034_WriteReg(MTV_CHIP_CONTROL_REG, ctx->chip_control_reg);
 
 	/* settings that are the same for both contexts: */
 	
@@ -209,7 +200,7 @@ static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
 	 * [1:0] ADC Mode Context A:        2 = 10-bit linear
 	 * [9:8] ADC Mode Context B:        2 = 10-bit linear
 	 */
-	mt9v034_WriteReg16(MTV_ADC_RES_CTRL_REG, 0x0202);
+	mt9v034_WriteReg(MTV_ADC_RES_CTRL_REG, 0x0202);
 	
 	/*
 	 * Row Noise Correction Control
@@ -224,21 +215,21 @@ static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
 	} else {
 		row_noise_correction = 0x0000;
 	}
-	mt9v034_WriteReg16(MTV_ROW_NOISE_CORR_CTRL_REG, row_noise_correction);
+	mt9v034_WriteReg(MTV_ROW_NOISE_CORR_CTRL_REG, row_noise_correction);
 	
 	/*
 	 * Minimum Coarse Shutter Width
 	 * Set to minimum. (1)
 	 */
-	mt9v034_WriteReg16(MTV_MIN_COARSE_SW_REG, 0x0001);
+	mt9v034_WriteReg(MTV_MIN_COARSE_SW_REG, 0x0001);
 	/*
 	 * Maximum Coarse Shutter Width
 	 */
-	mt9v034_WriteReg16(MTV_MAX_COARSE_SW_REG, CONFIG_MAX_EXPOSURE_ROWS);
+	mt9v034_WriteReg(MTV_MAX_COARSE_SW_REG, CONFIG_MAX_EXPOSURE_ROWS);
 	/*
 	 * Maximum Analog Gain
 	 */
-	mt9v034_WriteReg16(MTV_ANALOG_MAX_GAIN_REG, CONFIG_MAX_ANALOG_GAIN);
+	mt9v034_WriteReg(MTV_ANALOG_MAX_GAIN_REG, CONFIG_MAX_ANALOG_GAIN);
 	
 	/*
 	 * AEC/AGC Desired Bin
@@ -251,29 +242,29 @@ static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
 	} else {
 		desired_brightness = 16;
 	}
-	mt9v034_WriteReg16(MTV_AGC_AEC_DESIRED_BIN_REG, desired_brightness);
+	mt9v034_WriteReg(MTV_AGC_AEC_DESIRED_BIN_REG, desired_brightness);
 	/*
 	 * AEC Update Frequency
 	 * Number of frames to skip between changes in AEC
 	 * Range: 0-15
 	 */
-	mt9v034_WriteReg16(MTV_AEC_UPDATE_FREQ_REG, 2);
+	mt9v034_WriteReg(MTV_AEC_UPDATE_FREQ_REG, 2);
 	/*
 	 * AEC Low Pass Filter
 	 * Range: 0-2
 	 */
-	mt9v034_WriteReg16(MTV_AEC_LPF_REG, 1);
+	mt9v034_WriteReg(MTV_AEC_LPF_REG, 1);
 	/*
 	 * AGC Output Update Frequency
 	 * Number of frames to skip between changes in AGC
 	 * Range: 0-15
 	 */
-	mt9v034_WriteReg16(MTV_AGC_UPDATE_FREQ_REG, 2);
+	mt9v034_WriteReg(MTV_AGC_UPDATE_FREQ_REG, 2);
 	/*
 	 * AGC Low Pass Filter
 	 * Range: 0-2
 	 */
-	mt9v034_WriteReg16(MTV_AGC_LPF_REG, 2);
+	mt9v034_WriteReg(MTV_AGC_LPF_REG, 2);
 	/*
 	 * AGC/AEC Enable
 	 *   [0] AEC Enable Ctx A:                   1 = Enable
@@ -281,14 +272,14 @@ static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
 	 *   [8] AEC Enable Ctx B:                   1 = Enable
 	 *   [9] AGC Enable Ctx B:                   1 = Enable
 	 */
-	mt9v034_WriteReg16(MTV_AEC_AGC_ENABLE_REG, 0x0303);
+	mt9v034_WriteReg(MTV_AEC_AGC_ENABLE_REG, 0x0303);
 	/*
 	 * Sensor Type Control
 	 *   [0] HDR Enable Ctx A:                   0 = Disable
 	 *   [1] Color/Mono Sensor Control:          0 = Monochrome
 	 *   [8] HDR Enable Ctx B:                   0 = Disable
 	 */
-	mt9v034_WriteReg16(MTV_SENSOR_TYPE_CTRL_REG, 0x0000);
+	mt9v034_WriteReg(MTV_SENSOR_TYPE_CTRL_REG, 0x0000);
 	
 	/*
 	 * Digital Test Pattern
@@ -304,10 +295,10 @@ static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
 	} else {
 		test_data = 0x0000;
 	}
-	mt9v034_WriteReg16(MTV_TEST_PATTERN_REG, test_data);//enable test pattern
+	mt9v034_WriteReg(MTV_TEST_PATTERN_REG, test_data);//enable test pattern
 
 	/* Reset */
-	mt9v034_WriteReg16(MTV_SOFT_RESET_REG, 0x01);
+	mt9v034_WriteReg(MTV_SOFT_RESET_REG, 0x01);
 	
 	/*
 	 * NOTES:
@@ -459,36 +450,36 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 	switch (context_idx) {
 		case 0:
 			if (update_size || update_binning) {
-				mt9v034_WriteReg16(MTV_WINDOW_WIDTH_REG_A, width);
-				mt9v034_WriteReg16(MTV_WINDOW_HEIGHT_REG_A, height);
-				mt9v034_WriteReg16(MTV_HOR_BLANKING_REG_A, hor_blanking);
-				mt9v034_WriteReg16(MTV_VER_BLANKING_REG_A, ver_blanking);
-				mt9v034_WriteReg16(MTV_READ_MODE_REG_A, readmode);
-				mt9v034_WriteReg16(MTV_COLUMN_START_REG_A, col_start);
-				mt9v034_WriteReg16(MTV_ROW_START_REG_A, row_start);
+				mt9v034_WriteReg(MTV_WINDOW_WIDTH_REG_A, width);
+				mt9v034_WriteReg(MTV_WINDOW_HEIGHT_REG_A, height);
+				mt9v034_WriteReg(MTV_HOR_BLANKING_REG_A, hor_blanking);
+				mt9v034_WriteReg(MTV_VER_BLANKING_REG_A, ver_blanking);
+				mt9v034_WriteReg(MTV_READ_MODE_REG_A, readmode);
+				mt9v034_WriteReg(MTV_COLUMN_START_REG_A, col_start);
+				mt9v034_WriteReg(MTV_ROW_START_REG_A, row_start);
 			}
 			if (full_refresh) {
-				mt9v034_WriteReg16(MTV_COARSE_SW_1_REG_A, coarse_sw1);
-				mt9v034_WriteReg16(MTV_COARSE_SW_2_REG_A, coarse_sw2);
-				mt9v034_WriteReg16(MTV_COARSE_SW_CTRL_REG_A, coarse_sw_ctrl);
-				mt9v034_WriteReg16(MTV_COARSE_SW_TOTAL_REG_A, coarse_sw_total);
+				mt9v034_WriteReg(MTV_COARSE_SW_1_REG_A, coarse_sw1);
+				mt9v034_WriteReg(MTV_COARSE_SW_2_REG_A, coarse_sw2);
+				mt9v034_WriteReg(MTV_COARSE_SW_CTRL_REG_A, coarse_sw_ctrl);
+				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_A, coarse_sw_total);
 			}
 			break;
 		case 1:
 			if (update_size || update_binning) {
-				mt9v034_WriteReg16(MTV_WINDOW_WIDTH_REG_B, width);
-				mt9v034_WriteReg16(MTV_WINDOW_HEIGHT_REG_B, height);
-				mt9v034_WriteReg16(MTV_HOR_BLANKING_REG_B, hor_blanking);
-				mt9v034_WriteReg16(MTV_VER_BLANKING_REG_B, ver_blanking);
-				mt9v034_WriteReg16(MTV_READ_MODE_REG_B, readmode);
-				mt9v034_WriteReg16(MTV_COLUMN_START_REG_B, col_start);
-				mt9v034_WriteReg16(MTV_ROW_START_REG_B, row_start);
+				mt9v034_WriteReg(MTV_WINDOW_WIDTH_REG_B, width);
+				mt9v034_WriteReg(MTV_WINDOW_HEIGHT_REG_B, height);
+				mt9v034_WriteReg(MTV_HOR_BLANKING_REG_B, hor_blanking);
+				mt9v034_WriteReg(MTV_VER_BLANKING_REG_B, ver_blanking);
+				mt9v034_WriteReg(MTV_READ_MODE_REG_B, readmode);
+				mt9v034_WriteReg(MTV_COLUMN_START_REG_B, col_start);
+				mt9v034_WriteReg(MTV_ROW_START_REG_B, row_start);
 			}
 			if (full_refresh) {
-				mt9v034_WriteReg16(MTV_COARSE_SW_1_REG_B, coarse_sw1);
-				mt9v034_WriteReg16(MTV_COARSE_SW_2_REG_B, coarse_sw2);
-				mt9v034_WriteReg16(MTV_COARSE_SW_CTRL_REG_B, coarse_sw_ctrl);
-				mt9v034_WriteReg16(MTV_COARSE_SW_TOTAL_REG_B, coarse_sw_total);
+				mt9v034_WriteReg(MTV_COARSE_SW_1_REG_B, coarse_sw1);
+				mt9v034_WriteReg(MTV_COARSE_SW_2_REG_B, coarse_sw2);
+				mt9v034_WriteReg(MTV_COARSE_SW_CTRL_REG_B, coarse_sw_ctrl);
+				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_B, coarse_sw_total);
 			}
 			break;
 	}
@@ -548,105 +539,87 @@ static bool mt9v034_init_hw(mt9v034_sensor_ctx *ctx) {
 	GPIO_ResetBits(GPIOA, GPIO_Pin_2 | GPIO_Pin_3);
 	
 	/* test I2C: */
-	uint16_t version = mt9v034_ReadReg16(MTV_CHIP_VERSION_REG);
+	uint16_t version = mt9v034_ReadReg(MTV_CHIP_VERSION_REG);
 	if (version != 0x1324) return false;
 	
 	return true;
 }
 
-static uint8_t mt9v034_WriteReg(uint16_t Addr, uint8_t Data) {
-	uint32_t timeout = TIMEOUT_MAX;
+static bool mt9v034_I2cWaitEvent(uint32_t i2c_event) {
+	uint32_t timeout = TIMEOUT_MAX; /* Initialize timeout value */
+	while(!I2C_CheckEvent(I2C2, i2c_event)) {
+		/* If the timeout delay is exceeded, exit with error code */
+		if ((timeout--) == 0) return false;
+	}
+	return true;
+}
 
+static bool mt9v034_WriteReg(uint16_t Addr, uint16_t Data) {
 	/* Generate the Start Condition */
 	I2C_GenerateSTART(I2C2, ENABLE);
 
 	/* Test on I2C2 EV5 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-	while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT))
-	{
-		/* If the timeout delay is exceeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_MODE_SELECT))
+		return false;
 
 	/* Send DCMI selected device slave Address for write */
 	I2C_Send7bitAddress(I2C2, mt9v034_DEVICE_WRITE_ADDRESS, I2C_Direction_Transmitter);
 
 	/* Test on I2C2 EV6 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-	while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
-	{
-		/* If the timeout delay is exceeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
+		return false;
 
 	/* Send I2C2 location address LSB */
 	I2C_SendData(I2C2, (uint8_t)(Addr));
 
 	/* Test on I2C2 EV8 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-	while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
-	{
-		/* If the timeout delay is exceeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+		return false;
+	
+	/* Send Data MSB */
+	I2C_SendData(I2C2, Data >> 8);
 
-	/* Send Data */
+	/* Test on I2C2 EV8 and clear it */
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+		return false;
+
+	/* Send Data LSB */
 	I2C_SendData(I2C2, Data);
 
 	/* Test on I2C2 EV8 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-	while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED))
-	{
-		/* If the timeout delay is exceeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+		return false;
 
 	/* Send I2C2 STOP Condition */
 	I2C_GenerateSTOP(I2C2, ENABLE);
 
-	/* If operation is OK, return 0 */
-	return 0;
+	/* If operation is OK, return true */
+	return true;
 }
 
-static uint8_t mt9v034_WriteReg16(uint16_t address, uint16_t Data) {
-	uint8_t result = mt9v034_WriteReg(address, (uint8_t)( Data >> 8)); // write upper byte
-	result |= mt9v034_WriteReg(0xF0, (uint8_t) Data); // write lower byte
-	return result;
-}
-
-static uint8_t mt9v034_ReadReg(uint16_t Addr) {
-	uint32_t timeout = TIMEOUT_MAX;
-	uint8_t Data = 0;
+static uint16_t mt9v034_ReadReg(uint16_t Addr) {
+	uint16_t Data = 0;
 
 	/* Generate the Start Condition */
 	I2C_GenerateSTART(I2C2, ENABLE);
 
 	/* Test on I2C2 EV5 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-	while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT)) {
-		/* If the timeout delay is exceeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_MODE_SELECT))
+		return 0xFFFF;
 
 	/* Send DCMI selected device slave Address for write */
 	I2C_Send7bitAddress(I2C2, mt9v034_DEVICE_READ_ADDRESS, I2C_Direction_Transmitter);
 
 	/* Test on I2C2 EV6 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-	while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED)) {
-		/* If the timeout delay is exceeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
-
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED))
+		return 0xFFFF;
+	
 	/* Send I2C2 location address LSB */
 	I2C_SendData(I2C2, (uint8_t)(Addr));
 
 	/* Test on I2C2 EV8 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-	while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) {
-		/* If the timeout delay is exceeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_BYTE_TRANSMITTED))
+		return 0xFFFF;
 
 	/* Clear AF flag if set */
 	I2C2->SR1 |= (uint16_t)0x0400;
@@ -655,44 +628,39 @@ static uint8_t mt9v034_ReadReg(uint16_t Addr) {
 	I2C_GenerateSTART(I2C2, ENABLE);
 
 	/* Test on I2C2 EV6 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-	while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_MODE_SELECT)) {
-		/* If the timeout delay is exceeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_MODE_SELECT))
+		return 0xFFFF;
 
 	/* Send DCMI selected device slave Address for write */
 	I2C_Send7bitAddress(I2C2, mt9v034_DEVICE_READ_ADDRESS, I2C_Direction_Receiver);
 
 	/* Test on I2C2 EV6 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-	while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED)) {
-		/* If the timeout delay is exceeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED))
+		return 0xFFFF;
+
+	/* Prepare an ACK for the next data received */
+	I2C_AcknowledgeConfig(I2C2, ENABLE);
+
+	/* Test on I2C2 EV7 and clear it */
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_BYTE_RECEIVED))
+		return 0xFFFF;
+
+	/* Receive the Data MSB */
+	Data = ((uint16_t)I2C_ReceiveData(I2C2)) << 8;
 
 	/* Prepare an NACK for the next data received */
 	I2C_AcknowledgeConfig(I2C2, DISABLE);
 
 	/* Test on I2C2 EV7 and clear it */
-	timeout = TIMEOUT_MAX; /* Initialize timeout value */
-	while(!I2C_CheckEvent(I2C2, I2C_EVENT_MASTER_BYTE_RECEIVED)) {
-		/* If the timeout delay is exceeded, exit with error code */
-		if ((timeout--) == 0) return 0xFF;
-	}
+	if (!mt9v034_I2cWaitEvent(I2C_EVENT_MASTER_BYTE_RECEIVED))
+		return 0xFFFF;
+
+	/* Receive the Data LSB */
+	Data |= I2C_ReceiveData(I2C2);
 
 	/* Prepare Stop after receiving data */
 	I2C_GenerateSTOP(I2C2, ENABLE);
 
-	/* Receive the Data */
-	Data = I2C_ReceiveData(I2C2);
-
 	/* return the read data */
 	return Data;
-}
-
-static uint16_t mt9v034_ReadReg16(uint8_t address) {
-	uint16_t result = mt9v034_ReadReg(address) << 8; // read upper byte
-	result |= mt9v034_ReadReg(0xF0); // read lower byte
-	return result;
 }
