@@ -48,7 +48,6 @@
 #include "communication.h"
 #include "timer.h"
 
-extern void buffer_reset(void);
 extern void systemreset(bool to_bootloader);
 
 mavlink_system_t mavlink_system;
@@ -239,18 +238,11 @@ void handle_mavlink_message(mavlink_channel_t chan,
 							/* handle low light mode and noise correction */
 							if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR || i == PARAM_IMAGE_TEST_PATTERN)
 							{
-								mt9v034_context_configuration();
-								dma_reconfigure();
-								buffer_reset();
 							}
 
 							/* handle calibration on/off */
 							else if(i == PARAM_VIDEO_ONLY)
 							{
-								mt9v034_set_context();
-								dma_reconfigure();
-								buffer_reset();
-
 								if(global_data.param[PARAM_VIDEO_ONLY])
 									debug_string_message_buffer("Calibration Mode On");
 								else

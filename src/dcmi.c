@@ -56,11 +56,15 @@ typedef struct _dcmi_transport_ctx dcmi_transport_ctx;
 uint8_t dcmi_dma_buffer_1[CONFIG_DCMI_DMA_BUFFER_SIZE];
 uint8_t dcmi_dma_buffer_2[CONFIG_DCMI_DMA_BUFFER_SIZE];
 
+bool dcmi_init(void *usr, 
+			   camera_transport_transfer_done_cb transfer_done_cb, 
+			   camera_transport_frame_done_cb frame_done_cb,
+			   void *cb_usr);
+
 /**
  * @brief HW initialization of DCMI clock
  */
 static void dcmi_clock_init();
-
 /**
  * @brief HW initialization DCMI
  */
@@ -112,6 +116,7 @@ bool dcmi_init(void *usr,
 	dcmi_dma_init();
 	dcmi_dma_enable();
 	dcmi_dma_it_init();
+	return true;
 }
 
 /**

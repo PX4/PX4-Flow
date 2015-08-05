@@ -35,7 +35,12 @@
 #include "camera.h"
 #include "timer.h"
 
+#define __INLINE inline
+#define __ASM asm
+#include "core_cmFunc.h"
+
 #include <string.h>
+
 
 void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t size);
 void camera_transport_frame_done_fn(void *usr);
@@ -140,7 +145,7 @@ static void camera_buffer_fifo_push_at(camera_ctx *ctx, size_t pos, const int *i
 		ctx->avail_bufs[i - 1 + count] = ctx->avail_bufs[i - 1];
 	}
 	// fill in:
-	for (i = pos; < pos + count; ++i) {
+	for (i = pos; i < pos + count; ++i) {
 		ctx->avail_bufs[i] = *in++;
 	}
 	// update count:
@@ -211,6 +216,7 @@ void camera_transport_frame_done_fn(void *usr) {
 }
 
 bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param) {
+	return false;
 }
 
 static bool camera_img_stream_get_buffers_idx(camera_ctx *ctx, int bidx[], size_t count, bool reset_new_frm) {
@@ -241,7 +247,7 @@ static bool camera_img_stream_get_buffers_idx(camera_ctx *ctx, int bidx[], size_
 	return consecutive;
 }
 
-int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer **buffers[], size_t count, bool wait_for_new) {
+int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer *buffers[], size_t count, bool wait_for_new) {
 	if (ctx->buffers_are_reserved) return -1;
 	if (count > ctx->buffer_count - 1 || count <= 0) return -1;
 	/* buffer management needs to be performed atomically: */
@@ -267,13 +273,13 @@ int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer **buffers
 	}
 }
 
-void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer **buffers[], size_t count) {
+void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer *buffers[], size_t count) {
 	if (!ctx->buffers_are_reserved) return;
 	/* get the buffer indexes: */
 	int bidx[count];
 	int i;
 	for (i = 0; i < count; ++i) {
-		int idx = buffers[i] - ctx->buffers[0];
+		int idx = buffers[i] - &ctx->buffers[0];
 		if (idx < 0 || idx >= ctx->buffer_count) return;
 		bidx[i] = idx;
 	}
@@ -287,6 +293,7 @@ void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer **buf
 }
 
 bool camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param, camera_image_buffer *dst, camera_snapshot_done_cb cb) {
+	return false;
 }
 
 

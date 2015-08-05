@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define CAMERA_MAX_BUFFER_COUNT 5
 
@@ -131,7 +132,7 @@ bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_p
  * @note			When this function is successful (return value 0) the buffers need to be returned to the camera driver before 
  *					requesting new buffers. (use camera_img_stream_return_buffers)
  */
-int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer **buffers[], size_t count, bool wait_for_new);
+int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer *buffers[], size_t count, bool wait_for_new);
 
 /**
  * Returns the buffers that have been retrieved by camera_img_stream_get_buffers back to the camera driver.
@@ -140,7 +141,7 @@ int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer **buffers
  * @param buffers	Pointer to an array of buffer pointers which will be returned to the camera driver.
  * @param count		Number of buffer pointers in the array.
  */
-void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer **buffers[], size_t count);
+void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer *buffers[], size_t count);
 
 /**
  * Schedules a snapshot to be taken with the camera. The snapshot will be scheduled as soon as possible.

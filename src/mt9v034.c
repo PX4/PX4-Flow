@@ -185,7 +185,7 @@ void mt9v034_notify_readout_start(void *usr) {
 
 void mt9v034_get_current_param(void *usr, camera_img_param *img_param) {
 	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
-	*img_param = *ctx->cur_param;
+	*img_param = ctx->cur_param;
 }
 
 static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx) {
