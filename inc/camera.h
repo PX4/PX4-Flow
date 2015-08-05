@@ -224,12 +224,20 @@ struct _camera_transport_interface {
 				 camera_transport_transfer_done_cb transfer_done_cb, 
 				 camera_transport_frame_done_cb frame_done_cb,
 				 void *cb_usr);
+	/**
+	 * This function is called to reset the transport layer to align it with the frame boundaries.
+	 * It is called in the frame_done_cb after a few frames when we can be sure that the camera module has the correct resolution.
+	 */
+	void (*reset)(void *usr);
 };
 
 /**
  * The camera driver context struct.
  */
 struct _camera_ctx {
+	/* startup control */
+	int startup_discard_frame_count;						///< Number of frames to discard at startup.
+	
 	/* assets of the camera driver */
 	
 	const camera_sensor_interface *sensor;					///< Sensor interface.

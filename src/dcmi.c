@@ -61,6 +61,8 @@ bool dcmi_init(void *usr,
 			   camera_transport_frame_done_cb frame_done_cb,
 			   void *cb_usr);
 
+void dcmi_reset(void *usr);
+
 /**
  * @brief HW initialization of DCMI clock
  */
@@ -94,6 +96,7 @@ const camera_transport_interface dcmi_transport_interface = {
 	.usr                  = &dcmi_ctx,
 	.transfer_size        = CONFIG_DCMI_DMA_BUFFER_SIZE,
 	.init                 = dcmi_init,
+	.reset                = dcmi_reset
 };
 
 const camera_transport_interface *dcmi_get_transport_interface() {
@@ -119,6 +122,15 @@ bool dcmi_init(void *usr,
 	return true;
 }
 
+void dcmi_reset(void *usr) {
+	/* stop the DMA: */
+	DMA_Cmd(DMA2_Stream1, DISABLE);
+	/* clear pending interrupt: */
+	DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
+	/* re-enable */
+	DMA_Cmd(DMA2_Stream1, ENABLE);
+}
+
 /**
  * @brief Interrupt handler of DCMI
  */
@@ -138,15 +150,14 @@ void DCMI_IRQHandler(void) {
 void DMA2_Stream1_IRQHandler(void)
 {
 	/* transfer completed */
-	if (DMA_GetITStatus(DMA2_Stream1, DMA_IT_TCIF1) != RESET)
-	{
+	if (DMA_GetITStatus(DMA2_Stream1, DMA_IT_TCIF1) != RESET) {
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
 		/* get the buffer that has been completed: */
 		void *buffer;
 		if (DMA_GetCurrentMemoryTarget(DMA2_Stream1)) {
-			buffer = dcmi_dma_buffer_1;
-		} else {
 			buffer = dcmi_dma_buffer_2;
+		} else {
+			buffer = dcmi_dma_buffer_1;
 		}
 		/* get context: */
 		dcmi_transport_ctx *ctx = &dcmi_ctx;

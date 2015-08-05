@@ -288,6 +288,9 @@ int main(void)
 		/* get recent images */
 		camera_image_buffer *frames[2];
 		camera_img_stream_get_buffers(&cam_ctx, frames, 2, true);
+		
+		start_computations = get_boot_time_us();
+		
 		int frame_delta = ((int32_t)frames[0]->frame_number - (int32_t)last_frame_index);
 		last_frame_index = frames[0]->frame_number;
 		fps_skipped_counter += frame_delta - 1;

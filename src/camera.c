@@ -60,6 +60,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 		return false;
 	}
 	// initialize state:
+	ctx->startup_discard_frame_count = 4;
 	ctx->img_stream_param = *img_param;
 	int i;
 	for (i = 0; i < buffer_count; ++i) {
@@ -153,6 +154,9 @@ static void camera_buffer_fifo_push_at(camera_ctx *ctx, size_t pos, const int *i
 
 void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t size) {
 	camera_ctx *ctx = (camera_ctx *)usr;
+	if (ctx->startup_discard_frame_count > 0) {
+		return;
+	}
 	if (ctx->receiving_frame) {
 		// check if we have a target buffer:
 		if (ctx->target_buffer != NULL) {
@@ -212,6 +216,14 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 }
 
 void camera_transport_frame_done_fn(void *usr) {
+	camera_ctx *ctx = (camera_ctx *)usr;
+	if (ctx->startup_discard_frame_count > 0) {
+		ctx->startup_discard_frame_count--;
+		if (ctx->startup_discard_frame_count == 0) {
+			/* re-initialize the transport */
+			ctx->transport->reset(ctx->transport->usr);
+		}
+	}
 }
 
 bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param) {
