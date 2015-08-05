@@ -79,16 +79,6 @@ static uint8_t mt9v034_ReadReg(uint16_t Addr);
   */
 static uint8_t mt9v034_WriteReg(uint16_t Addr, uint8_t Data);
 
-static mt9v034_sensor_ctx mt9v034_ctx;
-
-const camera_sensor_interface mt9v034_sensor_interface = {
-	.usr                  = &mt9v034_ctx,
-	.init                 = mt9v034_init,
-	.prepare_update_param = mt9v034_prepare_update_param,
-	.notify_readout_start = mt9v034_notify_readout_start,
-	.get_current_param    = mt9v034_get_current_param
-};
-
 struct _mt9v034_sensor_ctx {
 	/* context switching */
 	
@@ -108,13 +98,30 @@ struct _mt9v034_sensor_ctx {
 	camera_img_param exp_param;		///< Because exposure parameters take one more frame time to propagate to the output this holds the exposure settings.
 };
 
+static mt9v034_sensor_ctx mt9v034_ctx;
+
+const camera_sensor_interface mt9v034_sensor_interface = {
+	.usr                  = &mt9v034_ctx,
+	.init                 = mt9v034_init,
+	.prepare_update_param = mt9v034_prepare_update_param,
+	.notify_readout_start = mt9v034_notify_readout_start,
+	.get_current_param    = mt9v034_get_current_param
+};
+
+const camera_sensor_interface *mt9v034_get_sensor_interface() {
+	return &mt9v034_sensor_interface;
+}
+
 bool mt9v034_init(void *usr, const camera_img_param *img_param) {
 	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
+	/* init context: */
 	memset(ctx, 0, sizeof(mt9v034_sensor_ctx));
 	ctx->cur_context = 0;
 	ctx->desired_context = 0;
 	ctx->do_switch_context = false;
+	/* init hardware: */
 	if (!mt9v034_init_hw(ctx)) return false;
+	/* configure sensor: */
 	mt9v034_configure_context(ctx, 0, img_param, true);
 	mt9v034_configure_context(ctx, 1, img_param, true);
 	mt9v034_configure_general(ctx);

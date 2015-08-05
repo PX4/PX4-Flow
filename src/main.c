@@ -5,6 +5,7 @@
  *   		 Dominik Honegger <dominik.honegger@inf.ethz.ch>
  *   		 Petri Tanskanen <tpetri@inf.ethz.ch>
  *   		 Samuel Zihlmann <samuezih@ee.ethz.ch>
+ *           Simon Laube <simon@leitwert.ch>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -72,24 +73,13 @@
 #endif
 
 
-/* prototypes */
-void buffer_reset(void);
-
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
-
-/* fast image buffers for calculations */
-uint8_t* image_buffer_8bit_1 = ((uint8_t*) 0x10000000);
-uint8_t* image_buffer_8bit_2 = ((uint8_t*) ( 0x10000000 | FULL_IMAGE_SIZE ));
-uint8_t buffer_reset_needed;
 
 /* timer constants */
 #define SONAR_POLL_MS	 	100	/* steps in milliseconds ticks */
 #define SYSTEM_STATE_MS		1000/* steps in milliseconds ticks */
 #define PARAMS_MS			100	/* steps in milliseconds ticks */
 #define LPOS_TIMER_COUNT 	100	/* steps in milliseconds ticks */
-
-static uint8_t *current_image;
-static uint8_t *previous_image;
 
 /* local position estimate without orientation, useful for unit testing w/o FMU */
 struct lpos_t {
@@ -100,7 +90,6 @@ struct lpos_t {
 	float vy;
 	float vz;
 } lpos = {0};
-
 
 void sonar_update_fn(void) {
 	sonar_trigger();
@@ -165,46 +154,19 @@ void send_params_fn(void) {
 	communication_parameter_send();
 }
 
-void buffer_reset(void) {
-	buffer_reset_needed = 1;
-}
+#define FLOW_IMAGE_SIZE (64)
 
-void enter_image_calibration_mode() {
-	while(global_data.param[PARAM_VIDEO_ONLY])
-	{
-		dcmi_restart_calibration_routine();
-
-		/* waiting for first quarter of image */
-		while(get_frame_counter() < 2){}
-		dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 1);
-
-		/* waiting for second quarter of image */
-		while(get_frame_counter() < 3){}
-		dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 1);
-
-		/* waiting for all image parts */
-		while(get_frame_counter() < 4){}
-
-		send_calibration_image(&previous_image, &current_image);
-
-		/* check timers */
-		timer_check();
-
-		LEDToggle(LED_COM);
-	}
-
-	dcmi_restart_calibration_routine();
-	LEDOff(LED_COM);
-}
+uint8_t image_buffer_8bit_1[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+uint8_t image_buffer_8bit_2[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+uint8_t image_buffer_8bit_3[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+uint8_t image_buffer_8bit_4[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+uint8_t image_buffer_8bit_5[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
 
 /**
   * @brief  Main function.
   */
 int main(void)
 {
-	current_image  = image_buffer_8bit_1;
-	previous_image = image_buffer_8bit_2;
-
 	/* load settings and parameters */
 	global_data_reset_param_defaults();
 	global_data_reset();
@@ -233,18 +195,26 @@ int main(void)
 	/* init mavlink */
 	communication_init();
 
-	/* enable image capturing */
-	enable_image_capture();
+	/* initialize camera: */
+	camera_ctx cam_ctx;
+	camera_img_param img_stream_param;
+	img_stream_param.size.x = FLOW_IMAGE_SIZE;
+	img_stream_param.size.y = FLOW_IMAGE_SIZE;
+	img_stream_param.binning = 4;
+	{
+		camera_image_buffer buffers[5] = {
+			BuildCameraImageBuffer(image_buffer_8bit_1),
+			BuildCameraImageBuffer(image_buffer_8bit_2),
+			BuildCameraImageBuffer(image_buffer_8bit_3),
+			BuildCameraImageBuffer(image_buffer_8bit_4),
+			BuildCameraImageBuffer(image_buffer_8bit_5)
+		};
+		camera_init(&cam_ctx, mt9v034_get_sensor_interface(), dcmi_get_transport_interface(), 
+					&img_stream_param, buffers, 5);
+	}
 
 	/* gyro config */
 	gyro_config();
-
-	/* init and clear fast image buffers */
-	for (int i = 0; i < global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]; i++)
-	{
-		image_buffer_8bit_1[i] = 0;
-		image_buffer_8bit_2[i] = 0;
-	}
 
 	/* usart config*/
 	usart_init();
@@ -280,25 +250,6 @@ int main(void)
 	{
 		/* check timers */
 		timer_check();
-
-		/* reset flow buffers if needed */
-		if(buffer_reset_needed)
-		{
-			buffer_reset_needed = 0;
-			if(!global_data.param[PARAM_VIDEO_ONLY]) {
-				/* get two new fresh images: */
-				dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 1);
-				dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 1);
-			}
-			continue;
-		}
-
-		/* calibration routine */
-		if(global_data.param[PARAM_VIDEO_ONLY])
-		{
-			enter_image_calibration_mode();
-			continue;
-		}
 
 		uint16_t image_size = global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT];
 

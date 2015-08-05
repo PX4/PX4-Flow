@@ -40,7 +40,7 @@
 void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t size);
 void camera_transport_frame_done_fn(void *usr);
 
-bool camera_init(camera_ctx *ctx, camera_sensor_interface *sensor, camera_transport_interface *transport,
+bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const camera_transport_interface *transport,
 				 const  camera_img_param *img_param,
 				 camera_image_buffer buffers[], size_t buffer_count) {
 	memset(ctx, 0, sizeof(camera_ctx));

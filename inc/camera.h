@@ -75,6 +75,8 @@ typedef struct _camera_image_buffer {
 	uint32_t meta;				///< Buffer meta data not used by the camera driver. This can be used to identify buffers.
 } camera_image_buffer;
 
+#define BuildCameraImageBuffer(memory_variable) ((camera_image_buffer){.buffer = &memory_variable, .buffer_size = sizeof(memory_variable)})
+
 /**
  * Callback which is called when a snapshot capture has finished.
  * @note This callback may be called from an interrupt handler.
