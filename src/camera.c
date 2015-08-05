@@ -72,6 +72,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 		// init the avail_bufs array:
 		ctx->avail_bufs[i] = i;
 	}
+	ctx->buffer_count    = buffer_count;
 	ctx->avail_buf_count = buffer_count;
 	ctx->new_frame_arrived = false;
 	
@@ -106,6 +107,46 @@ static void uint32_t_memcpy(uint32_t *dst, const uint32_t *src, size_t count) {
 	}
 }
 
+static void camera_buffer_fifo_remove_front(camera_ctx *ctx, int *out, size_t count) {
+	size_t bc = ctx->avail_buf_count;
+	size_t i;
+	// read out:
+	for (i = 0; i < count; ++i) {
+		*out++ = ctx->avail_bufs[i];
+	}
+	// close gap:
+	for (i = count; i < bc; ++i) {
+		ctx->avail_bufs[i - count] = ctx->avail_bufs[i];
+	}
+	ctx->avail_buf_count = bc - count;
+}
+
+static void camera_buffer_fifo_remove_back(camera_ctx *ctx, int *out, size_t count) {
+	size_t bc = ctx->avail_buf_count;
+	size_t i;
+	// read out:
+	for (i = bc - count; i < bc; ++i) {
+		*out++ = ctx->avail_bufs[i];
+	}
+	// reduce count:
+	ctx->avail_buf_count = bc - count;
+}
+
+static void camera_buffer_fifo_push_at(camera_ctx *ctx, size_t pos, const int *in, size_t count) {
+	size_t bc = ctx->avail_buf_count;
+	size_t i;
+	// move away:
+	for (i = bc; i > pos; --i) {
+		ctx->avail_bufs[i - 1 + count] = ctx->avail_bufs[i - 1];
+	}
+	// fill in:
+	for (i = pos; < pos + count; ++i) {
+		ctx->avail_bufs[i] = *in++;
+	}
+	// update count:
+	ctx->avail_buf_count = bc + count;
+}
+
 void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t size) {
 	camera_ctx *ctx = (camera_ctx *)usr;
 	if (ctx->receiving_frame) {
@@ -121,9 +162,10 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 			// frame done!
 			if (ctx->target_buffer_index >= 0) {
 				// put back into available buffers (in the front)
-				memmove(ctx->avail_bufs + 1, ctx->avail_bufs, ctx->avail_buf_count * sizeof(ctx->avail_bufs[0]));
-				ctx->avail_bufs[0] = ctx->target_buffer_index;
-				ctx->avail_buf_count += 1;
+				camera_buffer_fifo_push_at(ctx, 0, &ctx->target_buffer_index, 1);
+				if (ctx->put_back_buf_pos < ctx->avail_buf_count) {
+					ctx->put_back_buf_pos += 1;
+				}
 				// notify camera_img_stream_get_buffers function.
 				ctx->new_frame_arrived = true;
 			}
@@ -153,8 +195,7 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 		if (cparam.size.x == ctx->img_stream_param.size.x ||
 			cparam.size.y == ctx->img_stream_param.size.y) {
 			// get least recently used buffer from the available buffers:
-			ctx->target_buffer_index = ctx->avail_bufs[ctx->avail_buf_count - 1];
-			ctx->avail_buf_count -= 1;
+			camera_buffer_fifo_remove_back(ctx, &ctx->target_buffer_index, 1);
 			ctx->target_buffer   = &ctx->buffers[ctx->target_buffer_index];
 			// initialize it:
 			ctx->target_buffer->timestamp    = get_boot_time_us();
@@ -172,12 +213,77 @@ void camera_transport_frame_done_fn(void *usr) {
 bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param) {
 }
 
-int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer **buffers[], size_t count) {
-	
+static bool camera_img_stream_get_buffers_idx(camera_ctx *ctx, int bidx[], size_t count, bool reset_new_frm) {
+	int i;
+	__disable_irq();
+	camera_buffer_fifo_remove_front(ctx, bidx, count);
+	/* check that the buffers are in consecutive order: */
+	bool consecutive = true;
+	uint32_t exp_frame = ctx->buffers[bidx[0]].frame_number + 1;
+	for (i = 1; i < count; ++i, ++exp_frame) {
+		if (ctx->buffers[bidx[i]].frame_number != exp_frame) {
+			consecutive = false;
+			break;
+		}
+	}
+	if (consecutive) {
+		/* good! */
+		ctx->put_back_buf_pos = 0;
+		ctx->buffers_are_reserved = true;
+	} else {
+		/* not good. put back the buffers: */
+		camera_buffer_fifo_push_at(ctx, 0, bidx, count);
+	}
+	if (reset_new_frm) {
+		ctx->new_frame_arrived = false;
+	}
+	__enable_irq();
+	return consecutive;
+}
+
+int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer **buffers[], size_t count, bool wait_for_new) {
+	if (ctx->buffers_are_reserved) return -1;
+	if (count > ctx->buffer_count - 1 || count <= 0) return -1;
+	/* buffer management needs to be performed atomically: */
+	int bidx[count];
+	int i;
+	while (1) {
+		if (wait_for_new) {
+			/* wait until a new frame is available: */
+			while(!ctx->new_frame_arrived);
+		}
+		if (camera_img_stream_get_buffers_idx(ctx, bidx, count, wait_for_new)) {
+			/* update the pointers: */
+			for (i = 0; i < count; ++i) {
+				buffers[i] = &ctx->buffers[bidx[i]];
+			}
+			return 0;
+		} else {
+			/* not possible! check if we want to wait for the new frame: */
+			if (!wait_for_new) {
+				return 1;
+			}
+		}
+	}
 }
 
 void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer **buffers[], size_t count) {
-	
+	if (!ctx->buffers_are_reserved) return;
+	/* get the buffer indexes: */
+	int bidx[count];
+	int i;
+	for (i = 0; i < count; ++i) {
+		int idx = buffers[i] - ctx->buffers[0];
+		if (idx < 0 || idx >= ctx->buffer_count) return;
+		bidx[i] = idx;
+	}
+	/* buffer management needs to be performed atomically: */
+	__disable_irq();
+	size_t at_pos = ctx->put_back_buf_pos;
+	if (at_pos > ctx->avail_buf_count) at_pos = ctx->avail_buf_count;
+	camera_buffer_fifo_push_at(ctx, ctx->put_back_buf_pos, bidx, count);
+	ctx->buffers_are_reserved = false;
+	__enable_irq();
 }
 
 bool camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param, camera_image_buffer *dst, camera_snapshot_done_cb cb) {

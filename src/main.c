@@ -109,6 +109,8 @@ void system_receive_fn(void) {
 	communication_receive_usb();
 }
 
+uint8_t *previous_image = NULL;
+
 void send_video_fn(void) {
 	/* update the rate */
 	timer_update(send_video_fn, global_data.param[PARAM_VIDEO_RATE]);
@@ -161,6 +163,8 @@ uint8_t image_buffer_8bit_2[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((se
 uint8_t image_buffer_8bit_3[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
 uint8_t image_buffer_8bit_4[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
 uint8_t image_buffer_8bit_5[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+
+flow_klt_image flow_klt_images[2] __attribute__((section(".ccm")));
 
 /**
   * @brief  Main function.
@@ -245,13 +249,14 @@ int main(void)
 	uint32_t fps_timing_start = get_boot_time_us();
 	uint16_t fps_counter = 0;
 	uint16_t fps_skipped_counter = 0;
+	
+	uint32_t last_frame_index = 0;
+	
 	/* main loop */
 	while (1)
 	{
 		/* check timers */
 		timer_check();
-
-		uint16_t image_size = global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT];
 
 		/* calculate focal_length in pixel */
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 0.006f); //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
@@ -278,28 +283,62 @@ int main(void)
 
 		uint32_t start_computations = 0;
 
-		/* copy recent image to faster ram */
-		int skipped_frames = 0;
-		int loop_count = 0;		//< make sure that we dont end up in an infinite loop inside here ..
-		do { 
-			skipped_frames = dma_copy_image_buffers(&current_image, &previous_image, image_size, (int)(global_data.param[PARAM_IMAGE_INTERVAL] + 0.5));
-
-			start_computations = get_boot_time_us();
-
-			/* filter the new image */
-			if (global_data.param[PARAM_ALGORITHM_IMAGE_FILTER]) {
-				filter_image(current_image, global_data.param[PARAM_IMAGE_WIDTH]);
+		/* get recent images */
+		camera_image_buffer *frames[2];
+		camera_img_stream_get_buffers(&cam_ctx, frames, 2, true);
+		int frame_delta = ((int32_t)frames[0]->frame_number - (int32_t)last_frame_index);
+		fps_skipped_counter += frame_delta - 1;
+		
+		flow_klt_image *klt_images[2] = {NULL, NULL};
+		{
+			/* make sure that the new images get the correct treatment */
+			/* this algorithm will still work if both images are new */
+			int i;
+			bool used_klt_image[2] = {false, false};
+			for (i = 0; i < 2; ++i) {
+				if (frames[i]->frame_number != frames[i]->meta) {
+					// the image is new. apply pre-processing:
+					/* filter the new image */
+					if (global_data.param[PARAM_ALGORITHM_IMAGE_FILTER]) {
+						filter_image(frames[i]->buffer, frames[i]->param.size.x);
+					}
+					/* update meta data to mark it as an up-to date image: */
+					frames[i]->meta = frames[i]->frame_number;
+				} else {
+					// the image has the preprocessing already applied.
+					if (use_klt) {
+						int j;
+						/* find the klt image that matches: */
+						for (j = 0; j < 2; ++j) {
+							if (flow_klt_images[j].meta == frames[i]->frame_number) {
+								used_klt_image[j] = true;
+								klt_images[i] = &flow_klt_images[j];
+							}
+						}
+					}
+				}
 			}
-
-			/* Preprocessing needed by the klt algorithm: */
 			if (use_klt) {
-				klt_preprocess_image(current_image);
+				/* only for KLT: */
+				/* preprocess the images if they are not yet preprocessed */
+				for (i = 0; i < 2; ++i) {
+					if (klt_images[i] == NULL) {
+						// need processing. find unused KLT image:
+						int j;
+						for (j = 0; j < 2; ++j) {
+							if (!used_klt_image[j]) {
+								used_klt_image[j] = true;
+								klt_images[i] = &flow_klt_images[j];
+								break;
+							}
+						}
+						klt_preprocess_image(frames[i]->buffer, klt_images[i]);
+					}
+				}
 			}
-			/* make sure no frames have been skipped. request a new image if a frame was skipped to ensure minimal time delta between images */
-			fps_skipped_counter += skipped_frames;
-			loop_count++;
-		} while (skipped_frames > 0 && loop_count < 2);
-		float frame_dt = get_time_between_images() * 0.000001f;
+		}
+		
+		float frame_dt = (frames[0]->timestamp - frames[1]->timestamp) * 0.000001f;
 
 		/* compute gyro rate in pixels and change to image coordinates */
 		float x_rate_px = - y_rate * (focal_length_px * frame_dt);
@@ -310,9 +349,9 @@ int main(void)
 		flow_raw_result flow_rslt[32];
 		uint16_t flow_rslt_count = 0;
 		if (!use_klt) {
-			flow_rslt_count = compute_flow(previous_image, current_image, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
+			flow_rslt_count = compute_flow(frames[1]->buffer, frames[0]->buffer, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
 		} else {
-			flow_rslt_count =  compute_klt(previous_image, current_image, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
+			flow_rslt_count =  compute_klt(klt_images[1], klt_images[0], x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
 		}
 
 		/* calculate flow value from the raw results */
@@ -333,6 +372,7 @@ int main(void)
 		/* create flow image if needed (previous_image is not needed anymore)
 		 * -> can be used for debugging purpose
 		 */
+		previous_image = frames[1]->buffer;
 		if (global_data.param[PARAM_USB_SEND_VIDEO])
 		{
 			uint16_t frame_size = global_data.param[PARAM_IMAGE_WIDTH];
@@ -347,6 +387,9 @@ int main(void)
 			}
 		}
 
+		/* return the image buffers */
+		camera_img_stream_return_buffers(&cam_ctx, frames, 2);
+		
 		/* decide which distance to use */
 		float ground_distance = 0.0f;
 
@@ -359,7 +402,7 @@ int main(void)
 			ground_distance = sonar_distance_raw;
 		}
 
-		/* update I2C transmitbuffer */
+		/* update I2C transmit buffer */
 		update_TX_buffer(frame_dt, 
 						 x_rate, y_rate, z_rate, gyro_temp, 
 						 qual, pixel_flow_x, pixel_flow_y, 1.0f / focal_length_px, 

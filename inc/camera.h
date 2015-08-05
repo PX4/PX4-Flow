@@ -116,7 +116,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param);
 
 /**
- * Gets the most recent images. If no more recent image is available this function returns immediatly without doing anything.
+ * Gets the most recent images. If no more recent image is available this function returns immediately without doing anything.
  * @param ctx		The context to use.
  * @param buffers	Pointer to an array of buffer pointers which are updated to point to the most recent buffers.
  *					The first buffer pointer will be updated to the most recent image followed by the next
@@ -124,14 +124,14 @@ bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_p
  *					It is guaranteed to retrieve consecutive images.
  * @param count		Number of most recent images to retrieve. Must be lower than buffer_count - 1 which was 
  *					passed to camera_init.
- * @return			 0 when a new set of count most recent images has been retrieved.
- *					 1 if there was no new most recent image since the last call to this function 
- *                     or it is not possible to return count consecutive frames.
+ * @param wait_for_new When true the function will wait until the the requested images are available.
+ * @return			 0 when a set of count consecutive most recent images have been retrieved.
+ *					 1 it is not possible to return count consecutive frames. you need to wait until the frames are captured.
  *					-1 on error.
  * @note			When this function is successful (return value 0) the buffers need to be returned to the camera driver before 
  *					requesting new buffers. (use camera_img_stream_return_buffers)
  */
-int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer **buffers[], size_t count);
+int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer **buffers[], size_t count, bool wait_for_new);
 
 /**
  * Returns the buffers that have been retrieved by camera_img_stream_get_buffers back to the camera driver.
@@ -238,8 +238,10 @@ struct _camera_ctx {
 	
 	camera_img_param img_stream_param;						///< The parameters of the image streaming mode.
 	camera_image_buffer buffers[CAMERA_MAX_BUFFER_COUNT];	///< The image buffers for image stream mode.
-	uint8_t avail_bufs[CAMERA_MAX_BUFFER_COUNT];			///< Indexes to the buffers that are available. Ordered in the MRU order.
-	uint8_t avail_buf_count;								///< Number of buffer indexes in the avail_bufs array.
+	int buffer_count;										///< Total number of buffers.
+	volatile uint8_t avail_bufs[CAMERA_MAX_BUFFER_COUNT];	///< Indexes to the buffers that are available. Ordered in the MRU order.
+	volatile uint8_t avail_buf_count;						///< Number of buffer indexes in the avail_bufs array.
+	volatile uint8_t put_back_buf_pos;						///< Position where to put back the reserved buffers.
 	volatile bool new_frame_arrived;						///< Flag which is set by the interrupt handler to notify that a new frame has arrived.
 	
 	/* image snapshot buffer and parameters */
@@ -249,6 +251,7 @@ struct _camera_ctx {
 	
 	/* retrieving buffers */
 	
+	volatile bool buffers_are_reserved;						///< True when buffers have been reserved by the camera_img_stream_get_buffers function and need to be returned.
 	uint32_t last_read_frame_index;							///< The frame index of the last frame that has been read in streaming mode
 	
 	/* frame acquisition */

@@ -36,6 +36,8 @@
 
 #include <stdint.h>
 
+#define FLOW_FRAME_SIZE	64
+
 typedef struct _flow_raw_result {
 	float x;		///< The flow in x direction
 	float y;		///< The flow in y direction
@@ -43,6 +45,12 @@ typedef struct _flow_raw_result {
 	uint8_t at_x;	///< The mid-position of the patch that was used to calculate the flow.
 	uint8_t at_y;	///< The mid-position of the patch that was used to calculate the flow.
 } flow_raw_result;
+
+typedef struct _flow_klt_image {
+	uint8_t *image;
+	uint8_t preprocessed[(FLOW_FRAME_SIZE * FLOW_FRAME_SIZE) / 2];
+	uint32_t meta;
+} flow_klt_image;
 
 /**
  *  @brief Computes pixel flow from image1 to image2
@@ -62,9 +70,9 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 /**
  *	Preprocesses the image for use with compute_klt. 
  *	This will add the pyramid levels.
- *	@note Image buffer needs to be at least twice as big as the original image.
+ *  The pointed memory needs to be in CCM.
  */
-void klt_preprocess_image(uint8_t *image);
+void klt_preprocess_image(uint8_t *image, flow_klt_image *klt_image);
 
 /**
  *  @brief Computes pixel flow from image1 to image2
@@ -80,7 +88,7 @@ void klt_preprocess_image(uint8_t *image);
  *	@param result_count The available space in the out buffer.
  *	@return The number of results written to the out buffer.
  */
-uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
+uint16_t compute_klt(flow_klt_image *image1, flow_klt_image *image2, float x_rate, float y_rate, float z_rate,
 					 flow_raw_result *out, uint16_t max_out);
 
 /**
