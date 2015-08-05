@@ -149,17 +149,16 @@ void DCMI_IRQHandler(void) {
 /**
  * @brief Interrupt handler of DCMI DMA stream
  */
-void DMA2_Stream1_IRQHandler(void)
-{
+void DMA2_Stream1_IRQHandler(void) {
 	/* transfer completed */
 	if (DMA_GetITStatus(DMA2_Stream1, DMA_IT_TCIF1) != RESET) {
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
 		/* get the buffer that has been completed: */
 		void *buffer;
 		if (DMA_GetCurrentMemoryTarget(DMA2_Stream1) == 0) {
-			buffer = dcmi_dma_buffer_1;
-		} else {
 			buffer = dcmi_dma_buffer_2;
+		} else {
+			buffer = dcmi_dma_buffer_1;
 		}
 		/* get context: */
 		dcmi_transport_ctx *ctx = &dcmi_ctx;

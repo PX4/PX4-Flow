@@ -37,6 +37,7 @@
 
 #include "stm32f4xx_conf.h"
 #include "core_cmFunc.h"
+#include "led.h"
 
 #include <string.h>
 
@@ -231,6 +232,9 @@ void camera_transport_frame_done_fn(void *usr) {
 }
 
 bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param) {
+	if (!ctx->seq_snapshot_active) {
+		return ctx->sensor->prepare_update_param(ctx->sensor->usr, img_param);
+	}
 	return false;
 }
 

@@ -533,7 +533,7 @@ static bool mt9v034_init_hw(mt9v034_sensor_ctx *ctx) {
 	I2C_InitStruct.I2C_OwnAddress1 = 0xFE;
 	I2C_InitStruct.I2C_Ack = I2C_Ack_Enable;
 	I2C_InitStruct.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-	I2C_InitStruct.I2C_ClockSpeed = 100000;
+	I2C_InitStruct.I2C_ClockSpeed = 400000;
 
 	/* Initialize the I2C peripheral w/ selected parameters */
 	I2C_Init(I2C2, &I2C_InitStruct);
