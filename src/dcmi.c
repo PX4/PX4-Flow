@@ -126,8 +126,10 @@ void dcmi_reset(void *usr) {
 	/* stop the DMA: */
 	DMA_Cmd(DMA2_Stream1, DISABLE);
 	/* clear pending interrupt: */
-	DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
-	/* re-enable */
+	if (DMA_GetITStatus(DMA2_Stream1, DMA_IT_TCIF1) != RESET) {
+		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
+	}
+	/* re-enable DMA */
 	DMA_Cmd(DMA2_Stream1, ENABLE);
 }
 
@@ -154,10 +156,10 @@ void DMA2_Stream1_IRQHandler(void)
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
 		/* get the buffer that has been completed: */
 		void *buffer;
-		if (DMA_GetCurrentMemoryTarget(DMA2_Stream1)) {
-			buffer = dcmi_dma_buffer_2;
-		} else {
+		if (DMA_GetCurrentMemoryTarget(DMA2_Stream1) == 0) {
 			buffer = dcmi_dma_buffer_1;
+		} else {
+			buffer = dcmi_dma_buffer_2;
 		}
 		/* get context: */
 		dcmi_transport_ctx *ctx = &dcmi_ctx;

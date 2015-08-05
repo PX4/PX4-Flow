@@ -60,7 +60,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 		return false;
 	}
 	// initialize state:
-	ctx->startup_discard_frame_count = 4;
+	ctx->startup_discard_frame_count = -1;
 	ctx->img_stream_param = *img_param;
 	int i;
 	for (i = 0; i < buffer_count; ++i) {
@@ -102,6 +102,8 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 	if (!ctx->sensor->init(ctx->sensor->usr, img_param)) {
 		return false;
 	}
+	/* after initialization start the discard count down! */
+	ctx->startup_discard_frame_count = 16;
 	return true;
 }
 
@@ -154,7 +156,7 @@ static void camera_buffer_fifo_push_at(camera_ctx *ctx, size_t pos, const int *i
 
 void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t size) {
 	camera_ctx *ctx = (camera_ctx *)usr;
-	if (ctx->startup_discard_frame_count > 0) {
+	if (ctx->startup_discard_frame_count != 0) {
 		return;
 	}
 	if (ctx->receiving_frame) {
@@ -217,10 +219,12 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 
 void camera_transport_frame_done_fn(void *usr) {
 	camera_ctx *ctx = (camera_ctx *)usr;
-	if (ctx->startup_discard_frame_count > 0) {
-		ctx->startup_discard_frame_count--;
-		if (ctx->startup_discard_frame_count == 0) {
-			/* re-initialize the transport */
+	int fdc = ctx->startup_discard_frame_count;
+	if (fdc > 0) {
+		fdc--;
+		ctx->startup_discard_frame_count = fdc;
+		/* re-initialize the transport twice */
+		if (fdc == 0 || fdc == 1) {
 			ctx->transport->reset(ctx->transport->usr);
 		}
 	}

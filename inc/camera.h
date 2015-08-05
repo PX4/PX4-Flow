@@ -236,7 +236,7 @@ struct _camera_transport_interface {
  */
 struct _camera_ctx {
 	/* startup control */
-	int startup_discard_frame_count;						///< Number of frames to discard at startup.
+	volatile int startup_discard_frame_count;				///< Number of frames to discard at startup.
 	
 	/* assets of the camera driver */
 	
