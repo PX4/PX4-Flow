@@ -44,6 +44,8 @@
  */
 const camera_sensor_interface *mt9v034_get_sensor_interface();
 
+uint32_t mt9v034_get_clks_per_row(uint16_t width, int binning);
+
 /**
  * Configures the maximum exposure time in number of image rows.
  * Exposure should not affect frame time.
@@ -56,6 +58,17 @@ const camera_sensor_interface *mt9v034_get_sensor_interface();
  * Higher gain means more noise.
  */
 #define CONFIG_MAX_ANALOG_GAIN (64)
+/**
+ * Configures the workaround to eliminate corrupted pixel data.
+ * According to the datasheet the image data should be sampled at the rising edge of the clock.
+ * In binning mode 2 and 4 however this occasionally causes corrupted pixel data.
+ * If we sample on the falling edge of the clock there will be corrupted pixels in no binning mode.
+ * 
+ * This workaround inverts the pixel clock at the correct time when switching binning modes.
+ * 
+ * Provide 3 booleans which tell whether to invert the pixel clock for 1x, 2x and 4x binning mode.
+ */
+#define CONFIG_CLOCK_INVERSION_WORKAROUND {false, true, true}
 
 /* Constants */
 #define TIMEOUT_MAX      				10000

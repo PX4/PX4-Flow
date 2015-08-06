@@ -46,13 +46,14 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 void camera_transport_frame_done_fn(void *usr);
 
 bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const camera_transport_interface *transport,
+				 uint16_t exposure_min_clks, uint16_t exposure_max_clks, float analog_gain_max,
 				 const  camera_img_param *img_param,
 				 camera_image_buffer buffers[], size_t buffer_count) {
 	memset(ctx, 0, sizeof(camera_ctx));
 	ctx->sensor    = sensor;
 	ctx->transport = transport;
 	// check parameter:
-	if (buffer_count > CAMERA_MAX_BUFFER_COUNT && buffer_count < 2) {
+	if (buffer_count > CONFIG_CAMERA_MAX_BUFFER_COUNT && buffer_count < 2) {
 		return false;
 	}
 	uint32_t img_size = (uint32_t)img_param->size.x * (uint32_t)img_param->size.y;
@@ -62,7 +63,19 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 	}
 	// initialize state:
 	ctx->startup_discard_frame_count = -1;
-	ctx->img_stream_param = *img_param;
+	ctx->exposure_min_clks = exposure_min_clks;
+	ctx->exposure_max_clks = exposure_max_clks;
+	ctx->analog_gain_max   = analog_gain_max;
+	ctx->analog_gain       = 1;
+	ctx->exposure          = ctx->exposure_min_clks;
+	ctx->exposure_smoothing = ctx->exposure_min_clks;
+	ctx->exposure_sampling_stride = 0;
+	memset(ctx->exposure_bins, 0, sizeof(ctx->exposure_bins));
+	ctx->exposure_hist_count = 0;
+	ctx->img_stream_param.p = *img_param;
+	ctx->img_stream_param.analog_gain = ctx->analog_gain;
+	ctx->img_stream_param.exposure = ctx->exposure;
+	ctx->snapshot_param = ctx->img_stream_param;
 	int i;
 	for (i = 0; i < buffer_count; ++i) {
 		// check the buffer:
@@ -73,7 +86,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 		ctx->buffers[i] = buffers[i];
 		ctx->buffers[i].frame_number = 0;
 		ctx->buffers[i].timestamp = get_boot_time_us();
-		ctx->buffers[i].param = *img_param;
+		ctx->buffers[i].param = ctx->img_stream_param;
 		memset(ctx->buffers[i].buffer, 0, img_size);
 		// init the avail_bufs array:
 		ctx->avail_bufs[i] = i;
@@ -91,7 +104,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 	ctx->target_buffer   = NULL;
 	
 	ctx->seq_snapshot_active                 = false;
-	ctx->seq_img_stream_param_pending        = false;
+	ctx->seq_pend_img_stream_param        = false;
 	// initialize hardware:
 	if (!ctx->transport->init(ctx->transport->usr,
 							  camera_transport_transfer_done_fn,
@@ -99,7 +112,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 							  ctx)) {
 		return false;
 	}
-	if (!ctx->sensor->init(ctx->sensor->usr, img_param)) {
+	if (!ctx->sensor->init(ctx->sensor->usr, &ctx->img_stream_param)) {
 		return false;
 	}
 	/* after initialization start the discard count down! */
@@ -154,12 +167,51 @@ static void camera_buffer_fifo_push_at(camera_ctx *ctx, size_t pos, const int *i
 	ctx->avail_buf_count = bc + count;
 }
 
+static void camera_update_exposure_hist(camera_ctx *ctx, const uint8_t *buffer, size_t size) {
+	if (ctx->exposure_sampling_stride > 0) {
+		int i;
+		int c = 0;
+		for (i = ctx->exposure_sampling_stride / 2; i < size; i += ctx->exposure_sampling_stride) {
+			int idx = (buffer[i] >> (8u - CONFIG_CAMERA_EXPOSURE_BIN_BITS));
+			ctx->exposure_bins[idx]++;
+			c++;
+		}
+		ctx->exposure_hist_count += c;
+	}
+}
+
+static int camera_exposure_hist_extract_brightness_8b(camera_ctx *ctx) {
+	/* test for over-exposed image: */
+	int value = CONFIG_CAMERA_EXPOSURE_BIN_COUNT - 1;
+	if ((uint32_t)ctx->exposure_bins[value] * 100u >
+	   ((uint32_t)ctx->exposure_hist_count) * CONFIG_CAMERA_EXTREME_OVEREXPOSE_RATIO) {
+		return 256;
+	}
+	/* find the bin where the outliers have been ignored: */
+	uint32_t pix_rem = ((uint32_t)ctx->exposure_hist_count * (uint32_t)CONFIG_CAMERA_OUTLIER_RATIO) / 100u;
+	while (ctx->exposure_bins[value] < pix_rem && value > 0) {
+		pix_rem -= ctx->exposure_bins[value];
+		value--;
+	}
+	/* expand to 8bits: */
+	uint32_t bin_size = 1 << (8u - CONFIG_CAMERA_EXPOSURE_BIN_BITS);
+	value  = value * bin_size;
+	/* interpolate linear: */
+	if (ctx->exposure_bins[value] > 0) {
+		value += bin_size - 1 - (((bin_size - 1) * pix_rem) / ctx->exposure_bins[value]);
+	} else {
+		value += bin_size - 1;
+	}
+	return value;
+}
+
 void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t size) {
 	camera_ctx *ctx = (camera_ctx *)usr;
 	if (ctx->startup_discard_frame_count != 0) {
 		return;
 	}
 	if (ctx->receiving_frame) {
+		camera_update_exposure_hist(ctx, buffer, size);
 		// check if we have a target buffer:
 		if (ctx->target_buffer != NULL) {
 			uint32_t_memcpy((uint32_t *)((uint8_t *)ctx->target_buffer->buffer + ctx->cur_frame_pos), 
@@ -170,6 +222,7 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 		// check if we are done:
 		if (ctx->cur_frame_pos >= ctx->cur_frame_size) {
 			// frame done!
+			ctx->sensor->notify_readout_end(ctx->sensor->usr);
 			if (ctx->target_buffer_index >= 0) {
 				// put back into available buffers (in the front)
 				camera_buffer_fifo_push_at(ctx, 0, &ctx->target_buffer_index, 1);
@@ -182,6 +235,48 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 				// snapshot has been taken!
 				ctx->snapshot_cb();
 				ctx->seq_snapshot_active = false;
+			}
+			/* handle auto-exposure: */
+			if (ctx->exposure_sampling_stride > 0) {
+				float exposure = (float)ctx->cur_frame_param.exposure * ctx->cur_frame_param.analog_gain;
+				// analyze histogram:
+				int brightness = camera_exposure_hist_extract_brightness_8b(ctx);
+				ctx->last_brightness = brightness;
+				if (brightness >= 256) {
+					// extremely over-exposed! halve the integration time:
+					exposure = exposure * 0.33f;
+				} else {
+					if (brightness < CONFIG_CAMERA_DESIRED_EXPOSURE_8B / 3) {
+						// extremely under-exposed! double the integration time:
+						exposure =  exposure * 3.f;
+					} else {
+						// determine optimal exposure for next frame:
+						exposure = (exposure * CONFIG_CAMERA_DESIRED_EXPOSURE_8B) / brightness;
+					}
+				}
+				/* clip the value within bounds: */
+				if (exposure < (float)ctx->exposure_min_clks) {
+					exposure = ctx->exposure_min_clks;
+				} else if (exposure > (float)ctx->exposure_max_clks * ctx->analog_gain_max) {
+					exposure = (float)ctx->exposure_max_clks * ctx->analog_gain_max;
+				}
+				ctx->exposure_smoothing = CONFIG_CAMERA_EXPOSURE_SMOOTHING_K * ctx->exposure_smoothing + 
+								  (1.0f - CONFIG_CAMERA_EXPOSURE_SMOOTHING_K) * exposure;
+				/* update the exposure and analog gain values: */
+				if (ctx->exposure_smoothing > ctx->exposure_max_clks) {
+					ctx->exposure = ctx->exposure_max_clks;
+					ctx->analog_gain = ctx->exposure_smoothing / (float)ctx->exposure_max_clks;
+				} else {
+					ctx->exposure = ctx->exposure_smoothing;
+					ctx->analog_gain = 1;
+				}
+				/* update the sensor! */
+				if (!ctx->seq_updating_sensor) {
+					/* update it ourself! */
+					ctx->sensor->update_exposure_param(ctx->sensor->usr, ctx->exposure, ctx->analog_gain);
+				} else {
+					ctx->seq_repeat_updating_sensor = true;
+				}
 			}
 			// reset state:
 			ctx->target_buffer = NULL;
@@ -196,21 +291,19 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 		// update the sensor: (this might trigger some I2C transfers)
 		ctx->sensor->notify_readout_start(ctx->sensor->usr);
 		// get current sensor parameter:
-		camera_img_param cparam;
 		bool img_data_valid;
-		ctx->sensor->get_current_param(ctx->sensor->usr, &cparam, &img_data_valid);
+		ctx->sensor->get_current_param(ctx->sensor->usr, &ctx->cur_frame_param, &img_data_valid);
 		// update the receiving variables:
 		ctx->cur_frame_index += 1;
 		ctx->receiving_frame = true;
 		ctx->target_buffer   = NULL;
-		ctx->cur_frame_size  = (uint32_t)cparam.size.x * (uint32_t)cparam.size.y;
+		ctx->cur_frame_size  = (uint32_t)ctx->cur_frame_param.p.size.x * (uint32_t)ctx->cur_frame_param.p.size.y;
 		ctx->cur_frame_pos   = size;
 		ctx->target_buffer_index = -1;
 		if (!ctx->seq_snapshot_active) {
 			// check that the size parameters match to the img stream:
-			if (cparam.size.x  == ctx->img_stream_param.size.x &&
-				cparam.size.y  == ctx->img_stream_param.size.y &&
-				cparam.binning == ctx->img_stream_param.binning) {
+			if (ctx->cur_frame_param.p.size.x  == ctx->img_stream_param.p.size.x &&
+				ctx->cur_frame_param.p.size.y  == ctx->img_stream_param.p.size.y) {
 				if (img_data_valid) {
 					// get least recently used buffer from the available buffers:
 					camera_buffer_fifo_remove_back(ctx, &ctx->target_buffer_index, 1);
@@ -219,9 +312,9 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 			}
 		} else {
 			// check that the size parameters match to the snapshot parameters:
-			if (cparam.size.x  == ctx->snapshot_param.size.x &&
-				cparam.size.y  == ctx->snapshot_param.size.y &&
-				cparam.binning == ctx->snapshot_param.binning) {
+			if (ctx->cur_frame_param.p.size.x  == ctx->snapshot_param.p.size.x &&
+				ctx->cur_frame_param.p.size.y  == ctx->snapshot_param.p.size.y &&
+				ctx->cur_frame_param.p.binning == ctx->snapshot_param.p.binning) {
 				if (img_data_valid) {
 					// get the buffer:
 					ctx->target_buffer   = ctx->snapshot_buffer;
@@ -234,10 +327,25 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 		if (ctx->target_buffer != NULL) {
 			ctx->target_buffer->timestamp    = get_boot_time_us();
 			ctx->target_buffer->frame_number = ctx->cur_frame_index;
-			ctx->target_buffer->param        = cparam;
+			ctx->target_buffer->param        = ctx->cur_frame_param;
 			// write data to it: (at position 0)
 			uint32_t_memcpy((uint32_t *)ctx->target_buffer->buffer, buf, size_w);
 		}
+		// initialize exposure measuring:
+		if (img_data_valid) {
+			/* make sure no more than 65536 pixels are sampled: */
+			uint16_t skip = ctx->cur_frame_size / 65536u + 1;
+			if (skip < 4) {
+				skip = 4;
+			}
+			ctx->exposure_sampling_stride = skip;
+			// reset histogram:
+			ctx->exposure_hist_count = 0;
+			memset(ctx->exposure_bins, 0, sizeof(ctx->exposure_bins));
+		} else {
+			ctx->exposure_sampling_stride = 0;
+		}
+		camera_update_exposure_hist(ctx, (const uint8_t *)buf, size);
 	}
 }
 
@@ -254,6 +362,37 @@ void camera_transport_frame_done_fn(void *usr) {
 	}
 }
 
+void camera_reconfigure_general(camera_ctx *ctx) {
+	if (!ctx->seq_snapshot_active && !ctx->seq_pend_reconfigure_general) {
+		ctx->sensor->reconfigure_general(ctx->sensor->usr);
+	} else {
+		ctx->seq_pend_reconfigure_general = true;
+	}
+}
+
+static bool camera_update_sensor_param(camera_ctx *ctx, const camera_img_param *img_param, camera_img_param_ex *ptoup) {
+	camera_img_param_ex p = *ptoup;
+	p.p = *img_param;
+	bool result = false;
+	do {
+		ctx->seq_updating_sensor = true;
+		ctx->seq_repeat_updating_sensor = false;
+		/* update exposure and analog gain: */
+		p.exposure    = ctx->exposure;
+		p.analog_gain = ctx->analog_gain;
+		/* write: */
+		if (ctx->sensor->prepare_update_param(ctx->sensor->usr, &p)) {
+			*ptoup = p;
+			result = true;
+		} else {
+			/* restore previous: */
+			p = *ptoup;
+		}
+		ctx->seq_updating_sensor = false;
+	} while (ctx->seq_repeat_updating_sensor);
+	return result;
+}
+
 bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param) {
 	uint32_t img_size = (uint32_t)img_param->size.x * (uint32_t)img_param->size.y;
 	if (img_size % ctx->transport->transfer_size != 0 || img_size / ctx->transport->transfer_size < 2) {
@@ -267,14 +406,11 @@ bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_p
 			return false;
 		}
 	}
-	if (!ctx->seq_snapshot_active && !ctx->seq_img_stream_param_pending) {
-		if (ctx->sensor->prepare_update_param(ctx->sensor->usr, img_param)) {
-			ctx->img_stream_param = *img_param;
-			return true;
-		}
+	if (!ctx->seq_snapshot_active && !ctx->seq_pend_img_stream_param) {
+		return camera_update_sensor_param(ctx, img_param, &ctx->img_stream_param);
 	} else {
-		ctx->img_stream_param = *img_param;
-		ctx->seq_img_stream_param_pending = true;
+		ctx->pend_img_stream_param = *img_param;
+		ctx->seq_pend_img_stream_param = true;
 		return true;
 	}
 	return false;
@@ -291,23 +427,21 @@ bool camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param
 		return false;
 	}
 	if (!ctx->seq_snapshot_active) {
-		if (ctx->sensor->prepare_update_param(ctx->sensor->usr, img_param)) {
-			ctx->snapshot_param  = *img_param;
-			ctx->snapshot_buffer = dst;
-			ctx->snapshot_cb     = cb;
-			ctx->seq_snapshot_active = true;
-			return true;
-		}
+		return camera_update_sensor_param(ctx, img_param, &ctx->snapshot_param);
 	}
 	return false;
 }
 
 void camera_snapshot_acknowledge(camera_ctx *ctx) {
 	if (!ctx->seq_snapshot_active) {
-		if (ctx->seq_img_stream_param_pending) {
-			ctx->seq_img_stream_param_pending = false;
+		if (ctx->seq_pend_reconfigure_general) {
+			ctx->seq_pend_reconfigure_general = false;
+			ctx->sensor->reconfigure_general(ctx->sensor->usr);
+		}
+		if (ctx->seq_pend_img_stream_param) {
+			ctx->seq_pend_img_stream_param = false;
 			/* write the pending changes to the sensor: */
-			ctx->sensor->prepare_update_param(ctx->sensor->usr, &ctx->img_stream_param);
+			camera_update_sensor_param(ctx, &ctx->pend_img_stream_param, &ctx->img_stream_param);
 		}
 	}
 }

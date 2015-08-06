@@ -119,13 +119,13 @@ void system_receive_fn(void) {
 const camera_image_buffer *previous_image = NULL;
 
 void mavlink_send_image(const camera_image_buffer *image) {
-	uint32_t img_size = (uint32_t)image->param.size.x * (uint32_t)image->param.size.y;
+	uint32_t img_size = (uint32_t)image->param.p.size.x * (uint32_t)image->param.p.size.y;
 	mavlink_msg_data_transmission_handshake_send(
 			MAVLINK_COMM_2,
 			MAVLINK_DATA_STREAM_IMG_RAW8U,
 			img_size,
-			image->param.size.x,
-			image->param.size.y,
+			image->param.p.size.x,
+			image->param.p.size.y,
 			img_size / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1,
 			MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN,
 			100);
@@ -158,16 +158,17 @@ void send_params_fn(void) {
 	communication_parameter_send();
 }
 
-/*void switch_params_fn(void) {
+void switch_params_fn(void) {
 	switch (img_stream_param.binning) {
 		case 1: img_stream_param.binning = 4; break;
 		case 2: img_stream_param.binning = 1; break;
 		case 4: img_stream_param.binning = 2; break;
 	}
 	camera_img_stream_schedule_param_change(&cam_ctx, &img_stream_param);
-}*/
+}
 
-volatile bool snap_capture_done = false;
+static volatile bool snap_capture_done = false;
+static bool snap_ready = true;
 
 void snapshot_captured_fn() {
 	LEDToggle(LED_COM);
@@ -175,24 +176,30 @@ void snapshot_captured_fn() {
 }
 
 void take_snapshot_fn(void) {
-	if (global_data.param[PARAM_USB_SEND_VIDEO] && global_data.param[PARAM_VIDEO_ONLY]) {
+	if (global_data.param[PARAM_USB_SEND_VIDEO] && global_data.param[PARAM_VIDEO_ONLY] && snap_ready) {
 		static camera_img_param snapshot_param;
 		snapshot_param.size.x = 128;
 		snapshot_param.size.y = 128;
 		snapshot_param.binning = 1;
-		camera_snapshot_schedule(&cam_ctx, &snapshot_param, &snapshot_buffer, snapshot_captured_fn);
+		if (camera_snapshot_schedule(&cam_ctx, &snapshot_param, &snapshot_buffer, snapshot_captured_fn)) {
+			snap_ready = false;
+		}
 	}
+}
+
+void notify_changed_camera_parameters() {
+	camera_reconfigure_general(&cam_ctx);
 }
 
 #define FLOW_IMAGE_SIZE (64)
 
-uint8_t image_buffer_8bit_1[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
-uint8_t image_buffer_8bit_2[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
-uint8_t image_buffer_8bit_3[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
-uint8_t image_buffer_8bit_4[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
-uint8_t image_buffer_8bit_5[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+static uint8_t image_buffer_8bit_1[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+static uint8_t image_buffer_8bit_2[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+static uint8_t image_buffer_8bit_3[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+static uint8_t image_buffer_8bit_4[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+static uint8_t image_buffer_8bit_5[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
 
-flow_klt_image flow_klt_images[2] __attribute__((section(".ccm")));
+static flow_klt_image flow_klt_images[2] __attribute__((section(".ccm")));
 
 /**
   * @brief  Main function.
@@ -242,6 +249,7 @@ int main(void)
 			BuildCameraImageBuffer(image_buffer_8bit_5)
 		};
 		camera_init(&cam_ctx, mt9v034_get_sensor_interface(), dcmi_get_transport_interface(), 
+					mt9v034_get_clks_per_row(64, 4) * 1, mt9v034_get_clks_per_row(64, 4) * 64, 2.0,
 					&img_stream_param, buffers, 5);
 	}
 
@@ -267,6 +275,7 @@ int main(void)
 	timer_register(send_params_fn, PARAMS_MS);
 	timer_register(send_video_fn, global_data.param[PARAM_VIDEO_RATE]);
 	timer_register(take_snapshot_fn, 500);
+	timer_register(switch_params_fn, 2000);
 
 	/* variables */
 	uint32_t counter = 0;
@@ -290,6 +299,7 @@ int main(void)
 		if (snap_capture_done) {
 			snap_capture_done = false;
 			camera_snapshot_acknowledge(&cam_ctx);
+			snap_ready = true;
 			/* send the snapshot! */
 			LEDToggle(LED_COM);
 			mavlink_send_image(&snapshot_buffer);
@@ -341,7 +351,7 @@ int main(void)
 					// the image is new. apply pre-processing:
 					/* filter the new image */
 					if (global_data.param[PARAM_ALGORITHM_IMAGE_FILTER]) {
-						filter_image(frames[i]->buffer, frames[i]->param.size.x);
+						filter_image(frames[i]->buffer, frames[i]->param.p.size.x);
 					}
 					/* update meta data to mark it as an up-to date image: */
 					frames[i]->meta = frames[i]->frame_number;
@@ -476,6 +486,8 @@ int main(void)
 
 				mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "TIMING", get_boot_time_us(), computaiton_time_us, fps, fps_skip);
 			}
+			mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "EXPOSURE", get_boot_time_us(), 
+					frames[0]->param.exposure, frames[0]->param.analog_gain, cam_ctx.last_brightness);
 			
 			/* calculate the output values */
 			result_accumulator_output_flow output_flow;
