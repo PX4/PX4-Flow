@@ -196,7 +196,12 @@ void mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
 	bool update_exposure;
 	bool update_gain;
-	int context_idx = ctx->desired_context;
+	int context_idx;
+	if (ctx->do_switch_context) {
+		context_idx = ctx->desired_context;
+	} else {
+		context_idx = ctx->cur_context;
+	}
 	camera_img_param_ex *ctx_param = &ctx->context_p[context_idx];
 	
 	/* image dimensions */

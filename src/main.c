@@ -158,14 +158,14 @@ void send_params_fn(void) {
 	communication_parameter_send();
 }
 
-void switch_params_fn(void) {
+/*void switch_params_fn(void) {
 	switch (img_stream_param.binning) {
 		case 1: img_stream_param.binning = 4; break;
 		case 2: img_stream_param.binning = 1; break;
 		case 4: img_stream_param.binning = 2; break;
 	}
 	camera_img_stream_schedule_param_change(&cam_ctx, &img_stream_param);
-}
+}*/
 
 static volatile bool snap_capture_done = false;
 static bool snap_ready = true;
@@ -274,7 +274,7 @@ int main(void)
 	timer_register(send_params_fn, PARAMS_MS);
 	timer_register(send_video_fn, global_data.param[PARAM_VIDEO_RATE]);
 	timer_register(take_snapshot_fn, 500);
-	timer_register(switch_params_fn, 2000);
+	//timer_register(switch_params_fn, 2000);
 
 	/* variables */
 	uint32_t counter = 0;

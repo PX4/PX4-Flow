@@ -197,12 +197,6 @@ static int camera_exposure_hist_extract_brightness_8b(camera_ctx *ctx) {
 	/* expand to 8bits: */
 	uint32_t bin_size = 1 << (8u - CONFIG_CAMERA_EXPOSURE_BIN_BITS);
 	value  = value * bin_size;
-	/* interpolate linear: */
-	if (ctx->exposure_bins[value] > 0) {
-		value += bin_size - 1 - (((bin_size - 1) * pix_rem) / ctx->exposure_bins[value]);
-	} else {
-		value += bin_size - 1;
-	}
 	return value;
 }
 
@@ -382,8 +376,8 @@ static bool camera_update_sensor_param(camera_ctx *ctx, const camera_img_param *
 	p.p = *img_param;
 	bool result = false;
 	do {
-		ctx->seq_updating_sensor = true;
 		ctx->seq_repeat_updating_sensor = false;
+		ctx->seq_updating_sensor = true;
 		/* update exposure and analog gain: */
 		p.exposure    = ctx->exposure;
 		p.analog_gain = ctx->analog_gain;
