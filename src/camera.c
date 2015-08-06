@@ -70,6 +70,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 	ctx->exposure          = ctx->exposure_min_clks;
 	ctx->exposure_smoothing = ctx->exposure_min_clks;
 	ctx->exposure_sampling_stride = 0;
+	ctx->exposure_skip_frame_cnt = 0;
 	memset(ctx->exposure_bins, 0, sizeof(ctx->exposure_bins));
 	ctx->exposure_hist_count = 0;
 	ctx->img_stream_param.p = *img_param;
@@ -331,17 +332,23 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 			// write data to it: (at position 0)
 			uint32_t_memcpy((uint32_t *)ctx->target_buffer->buffer, buf, size_w);
 		}
-		// initialize exposure measuring:
-		if (img_data_valid) {
-			/* make sure no more than 65536 pixels are sampled: */
-			uint16_t skip = ctx->cur_frame_size / 65536u + 1;
-			if (skip < 4) {
-				skip = 4;
+		// initialize exposure measuring (do not process snapshot images)
+		if (img_data_valid && !ctx->seq_snapshot_active) {
+			ctx->exposure_skip_frame_cnt++;
+			if (ctx->exposure_skip_frame_cnt >= CONFIG_CAMERA_EXPOSURE_UPDATE_INTERVAL) {
+				ctx->exposure_skip_frame_cnt = 0;
+				/* make sure no more than 65535 pixels are sampled: */
+				uint16_t skip = ctx->cur_frame_size / 65536u + 1;
+				if (skip < 6) {
+					skip = 6;
+				}
+				ctx->exposure_sampling_stride = skip;
+				// reset histogram:
+				ctx->exposure_hist_count = 0;
+				memset(ctx->exposure_bins, 0, sizeof(ctx->exposure_bins));
+			} else {
+				ctx->exposure_sampling_stride = 0;
 			}
-			ctx->exposure_sampling_stride = skip;
-			// reset histogram:
-			ctx->exposure_hist_count = 0;
-			memset(ctx->exposure_bins, 0, sizeof(ctx->exposure_bins));
 		} else {
 			ctx->exposure_sampling_stride = 0;
 		}
@@ -427,7 +434,12 @@ bool camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param
 		return false;
 	}
 	if (!ctx->seq_snapshot_active) {
-		return camera_update_sensor_param(ctx, img_param, &ctx->snapshot_param);
+		if (camera_update_sensor_param(ctx, img_param, &ctx->snapshot_param)) {
+			ctx->snapshot_buffer = dst;
+			ctx->snapshot_cb     = cb;
+			ctx->seq_snapshot_active = true;
+			return true;
+		}
 	}
 	return false;
 }

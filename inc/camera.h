@@ -46,7 +46,8 @@
 #define CONFIG_CAMERA_EXTREME_OVEREXPOSE_RATIO (40u)
 #define CONFIG_CAMERA_OUTLIER_RATIO (5u)
 #define CONFIG_CAMERA_DESIRED_EXPOSURE_8B (200u)
-#define CONFIG_CAMERA_EXPOSURE_SMOOTHING_K (0.95f)
+#define CONFIG_CAMERA_EXPOSURE_SMOOTHING_K (0.85f)
+#define CONFIG_CAMERA_EXPOSURE_UPDATE_INTERVAL (4u)
 
 struct _camera_sensor_interface;
 typedef struct _camera_sensor_interface camera_sensor_interface;
@@ -215,6 +216,7 @@ struct _camera_sensor_interface {
 	void (*reconfigure_general)(void *usr);
 	/**
 	 * Immediately switches back to the previous parameters.
+	 * This function may only be called when it is guaranteed that notify_readout_start and notify_readout_end cannot start to run.
 	 * @param usr		User pointer from this struct.
 	 */
 	void (*restore_previous_param)(void *usr);
@@ -307,6 +309,8 @@ struct _camera_ctx {
 	uint32_t exposure;
 	
 	float exposure_smoothing;
+	
+	int exposure_skip_frame_cnt;
 	
 	uint16_t exposure_sampling_stride;
 	uint16_t exposure_bins[CONFIG_CAMERA_EXPOSURE_BIN_COUNT];

@@ -70,6 +70,8 @@ uint32_t mt9v034_get_clks_per_row(uint16_t width, int binning);
  */
 #define CONFIG_CLOCK_INVERSION_WORKAROUND {false, true, true}
 
+#define CONFIG_MTV_VERTICAL_BLANKING_INTROWS (64)
+
 /* Constants */
 #define TIMEOUT_MAX      				10000
 

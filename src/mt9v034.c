@@ -235,12 +235,12 @@ void mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 	 * Default: 0x01E0
 	 */
 	uint16_t coarse_sw_total = exposure / row_time;
-	//uint16_t fine_sw_total   = img_param->exposure % row_time;
+	uint16_t fine_sw_total   = exposure % row_time;
 	/* ensure minimum: */
-	if (coarse_sw_total < 1) {
-		coarse_sw_total = 1;
+	if (coarse_sw_total < 1 && fine_sw_total < 260) {
+		fine_sw_total = 260;
 	}
-	uint32_t real_exposure = coarse_sw_total * row_time;
+	uint32_t real_exposure = coarse_sw_total * row_time + fine_sw_total;
 	if (ctx_param->exposure != real_exposure) {
 		update_exposure = true;
 	}
@@ -261,21 +261,50 @@ void mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 		update_gain = true;
 	}
 	
+	uint16_t sw_for_blanking = coarse_sw_total;
+	if (sw_for_blanking < ctx_param->p.size.y) {
+		sw_for_blanking = ctx_param->p.size.y;
+	}
+	/* 
+	 * Vertical Blanking
+	 * Number of blank rows in a frame. V-Blank value must meet the following minimums:
+	 * Linear Mode:
+	 * V-Blank (min) = SW_total - R0x08 + 7
+	 * R0x08 (Coarse Shutter Width 1)
+	 * If manual exposure    then SW_total = R0x0B. (Coarse Shutter Width Total)
+	 * If auto-exposure mode then SW_total = R0xAD. (Maximum Coarse Shutter Width)
+	 * 
+	 * If Auto-Knee Point enabled, then V-Blank (min) = (t2 + t3 + 7).
+	 * t2 = Tint_tot * (1/2) ^ T2 Ratio -> 4
+	 * t3 = Tint_tot * (1/2) ^ T3 Ratio -> 1
+	 */
+	uint16_t ver_blanking = (sw_for_blanking >> 4) + (sw_for_blanking >> 6) + 7;
+
 	switch (context_idx) {
 		case 0:
 			if (update_exposure) {
 				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_A, coarse_sw_total);
+				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_A, fine_sw_total);
 			}
 			if (update_gain) {
 				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_A, analog_gain);
+			}
+			if (ver_blanking != ctx->ver_blnk_ctx_a_reg) {
+				ctx->ver_blnk_ctx_a_reg = ver_blanking;
+				mt9v034_WriteReg(MTV_VER_BLANKING_REG_A, ctx->ver_blnk_ctx_a_reg);
 			}
 			break;
 		case 1:
 			if (update_exposure) {
 				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_B, coarse_sw_total);
+				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_B, fine_sw_total);
 			}
 			if (update_gain) {
 				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_B, analog_gain);
+			}
+			if (ver_blanking != ctx->ver_blnk_ctx_b_reg) {
+				ctx->ver_blnk_ctx_b_reg = ver_blanking;
+				mt9v034_WriteReg(MTV_VER_BLANKING_REG_B, ctx->ver_blnk_ctx_b_reg);
 			}
 			break;
 	}
@@ -287,11 +316,22 @@ void mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 
 void mt9v034_restore_previous_param(void *usr) {
 	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
-	/* deassert pending context switch command: */
-	ctx->do_switch_context = false;
-	/* switch back to previous context */
-	ctx->desired_context   = ctx->previous_context;
-	ctx->do_switch_context = true;
+	/* switch back to previous context: */
+	if (!ctx->seq_i2c_in_use) {
+		/* update chip control register bit 15: */
+		int desired_ctx_idx = ctx->previous_context;
+		switch(desired_ctx_idx) {
+			case 0: ctx->chip_control_reg &= 0x7FFF; break;
+			case 1: ctx->chip_control_reg |= 0x8000; break;
+		}
+		mt9v034_WriteReg(MTV_CHIP_CONTROL_REG, ctx->chip_control_reg);
+		/* done. */
+		ctx->cur_context       = desired_ctx_idx;
+		ctx->do_switch_context = false;
+	} else {
+		ctx->desired_context   = ctx->previous_context;
+		ctx->do_switch_context = true;
+	}
 }
 
 void mt9v034_notify_readout_start(void *usr) {
@@ -318,17 +358,14 @@ void mt9v034_notify_readout_start(void *usr) {
 	if (ctx->do_switch_context && !ctx->seq_i2c_in_use) {
 		/* update chip control register bit 15: */
 		int desired_ctx_idx = ctx->desired_context;
-		camera_img_param_ex *ctx_param = &ctx->context_p[desired_ctx_idx];
 		switch(desired_ctx_idx) {
 			case 0: ctx->chip_control_reg &= 0x7FFF; break;
 			case 1: ctx->chip_control_reg |= 0x8000; break;
 		}
 		mt9v034_WriteReg(MTV_CHIP_CONTROL_REG, ctx->chip_control_reg);
-		/* update pixel count for AGC and AEC: */
-		mt9v034_WriteReg(MTV_AGC_AEC_PIXEL_COUNT_REG, (uint32_t)ctx_param->p.size.x * (uint32_t)ctx_param->p.size.y);
 		/* done. */
-		ctx->do_switch_context = false;
 		ctx->cur_context       = desired_ctx_idx;
+		ctx->do_switch_context = false;
 	}
 }
 
@@ -338,7 +375,8 @@ void mt9v034_notify_readout_end(void *usr) {
 	if (!ctx->seq_i2c_in_use) {
 		bool inv_clk = false;
 		const static bool invert_conf[3] = CONFIG_CLOCK_INVERSION_WORKAROUND;
-		switch (ctx->cur_param.p.binning) {
+		camera_img_param_ex *cur_ctx_param = &ctx->context_p[ctx->cur_context];
+		switch (cur_ctx_param->p.binning) {
 			case 1: inv_clk = invert_conf[0]; break;
 			case 2: inv_clk = invert_conf[1]; break;
 			case 4: inv_clk = invert_conf[2]; break;
@@ -585,12 +623,12 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 	 * Default: 0x01E0
 	 */
 	uint16_t coarse_sw_total = img_param->exposure / row_time;
-	//uint16_t fine_sw_total   = img_param->exposure % row_time;
+	uint16_t fine_sw_total   = img_param->exposure % row_time;
 	/* ensure minimum: */
-	if (coarse_sw_total < 1) {
-		coarse_sw_total = 1;
+	if (coarse_sw_total < 1 && fine_sw_total < 260) {
+		fine_sw_total = 260;
 	}
-	uint32_t real_exposure = coarse_sw_total * row_time;
+	uint32_t real_exposure = coarse_sw_total * row_time + fine_sw_total;
 	if (ctx_param->exposure != real_exposure) {
 		update_exposure = true;
 	}
@@ -599,7 +637,7 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 	 * [6:0] Analog Gain:		Range 16 - 64
 	 *  [15] Force 0.75X:       0 = Disabled.
      */
-	uint16_t analog_gain = img_param->analog_gain * 16;
+	uint16_t analog_gain = img_param->analog_gain * 16 + 0.5;
 	/* limit: */
 	if (analog_gain < 16) {
 		analog_gain = 16;
@@ -611,6 +649,10 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 		update_gain = true;
 	}
 	
+	uint16_t sw_for_blanking = coarse_sw_total;
+	if (sw_for_blanking < img_param->p.size.y) {
+		sw_for_blanking = img_param->p.size.y;
+	}
 	/* 
 	 * Vertical Blanking
 	 * Number of blank rows in a frame. V-Blank value must meet the following minimums:
@@ -624,7 +666,7 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 	 * t2 = Tint_tot * (1/2) ^ T2 Ratio -> 4
 	 * t3 = Tint_tot * (1/2) ^ T3 Ratio -> 1
 	 */
-	uint16_t ver_blanking = (height >> 4) + (height >> 6) + 7;
+	uint16_t ver_blanking = (sw_for_blanking >> 4) + (sw_for_blanking >> 6) + 7;
 
 	/*
 	 * Read Mode
@@ -660,6 +702,7 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 			}
 			if (update_exposure) {
 				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_A, coarse_sw_total);
+				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_A, fine_sw_total);
 			}
 			if (update_gain) {
 				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_A, analog_gain);
@@ -680,6 +723,7 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 			}
 			if (update_exposure) {
 				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_B, coarse_sw_total);
+				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_B, fine_sw_total);
 			}
 			if (update_gain) {
 				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_B, analog_gain);

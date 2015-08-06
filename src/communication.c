@@ -50,6 +50,8 @@
 
 extern void systemreset(bool to_bootloader);
 
+extern void notify_changed_camera_parameters();
+
 mavlink_system_t mavlink_system;
 
 static uint32_t m_parameter_i = 0;
@@ -233,13 +235,11 @@ void handle_mavlink_message(mavlink_channel_t chan,
 								&& global_data.param_access[i])
 						{
 							global_data.param[i] = set.param_value;
-
-
 							/* handle low light mode and noise correction */
 							if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR || i == PARAM_IMAGE_TEST_PATTERN)
 							{
+								notify_changed_camera_parameters();
 							}
-
 							/* handle calibration on/off */
 							else if(i == PARAM_VIDEO_ONLY)
 							{
@@ -248,13 +248,10 @@ void handle_mavlink_message(mavlink_channel_t chan,
 								else
 									debug_string_message_buffer("Calibration Mode Off");
 							}
-
-							/* handle sensor position */
 							else if(i == PARAM_GYRO_SENSITIVITY_DPS)
 							{
 								l3gd20_config();
 							}
-
 							else
 							{
 								debug_int_message_buffer("Parameter received, param id =", i);

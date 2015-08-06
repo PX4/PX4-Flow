@@ -171,7 +171,6 @@ static volatile bool snap_capture_done = false;
 static bool snap_ready = true;
 
 void snapshot_captured_fn() {
-	LEDToggle(LED_COM);
 	snap_capture_done = true;
 }
 
