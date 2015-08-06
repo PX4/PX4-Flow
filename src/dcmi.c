@@ -172,7 +172,7 @@ static void dcmi_dma_it_init() {
 
 	/* Enable the DCMI global Interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = DCMI_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 5;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
@@ -181,7 +181,7 @@ static void dcmi_dma_it_init() {
 	
 	/* Enable the DMA global Interrupt */
 	NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream1_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 5;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
