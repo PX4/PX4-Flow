@@ -241,12 +241,14 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 					// extremely over-exposed! halve the integration time:
 					exposure = exposure * 0.33f;
 				} else {
-					if (brightness < CONFIG_CAMERA_DESIRED_EXPOSURE_8B / 3) {
+					uint8_t desired_bright = CONFIG_CAMERA_DESIRED_EXPOSURE_8B;
+					desired_bright &= (0xFF << (8u - CONFIG_CAMERA_EXPOSURE_BIN_BITS));
+					if (brightness < desired_bright / 3) {
 						// extremely under-exposed! double the integration time:
 						exposure =  exposure * 3.f;
 					} else {
 						// determine optimal exposure for next frame:
-						exposure = (exposure * CONFIG_CAMERA_DESIRED_EXPOSURE_8B) / brightness;
+						exposure = (exposure * desired_bright) / brightness;
 					}
 				}
 				/* clip the value within bounds: */
