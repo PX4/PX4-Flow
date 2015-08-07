@@ -168,10 +168,12 @@ void send_params_fn(void) {
 }*/
 
 static volatile bool snap_capture_done = false;
+static volatile bool snap_capture_success = false;
 static bool snap_ready = true;
 
-void snapshot_captured_fn() {
+void snapshot_captured_fn(bool success) {
 	snap_capture_done = true;
+	snap_capture_success = success;
 }
 
 void take_snapshot_fn(void) {
@@ -299,9 +301,11 @@ int main(void)
 			snap_capture_done = false;
 			camera_snapshot_acknowledge(&cam_ctx);
 			snap_ready = true;
-			/* send the snapshot! */
-			LEDToggle(LED_COM);
-			mavlink_send_image(&snapshot_buffer);
+			if (snap_capture_success) {
+				/* send the snapshot! */
+				LEDToggle(LED_COM);
+				mavlink_send_image(&snapshot_buffer);
+			}
 		}
 
 		/* calculate focal_length in pixel */

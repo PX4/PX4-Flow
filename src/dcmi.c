@@ -48,6 +48,7 @@
 #include "stm32f4xx_tim.h"
 #include "misc.h"
 #include "stm32f4xx.h"
+//#include "led.h"
 
 struct _dcmi_transport_ctx;
 typedef struct _dcmi_transport_ctx dcmi_transport_ctx;
@@ -85,9 +86,14 @@ static void dcmi_dma_enable();
 static void dcmi_dma_it_init();
 
 struct _dcmi_transport_ctx {
+	/* assets */
 	camera_transport_transfer_done_cb transfer_done_cb;
 	camera_transport_frame_done_cb frame_done_cb;
 	void *cb_usr;
+	
+	/* IRQ monitoring: */
+	volatile uint32_t last_dma_irq_t;
+	uint32_t last_dma_irq_pause_t;
 };
 
 static dcmi_transport_ctx dcmi_ctx;
@@ -113,6 +119,8 @@ bool dcmi_init(void *usr,
 	ctx->transfer_done_cb = transfer_done_cb;
 	ctx->frame_done_cb    = frame_done_cb;
 	ctx->cb_usr           = cb_usr;
+	ctx->last_dma_irq_t   = get_boot_time_us();
+	ctx->last_dma_irq_pause_t = 1000000;
 	/* initialize hardware: */
 	dcmi_clock_init();
 	dcmi_hw_init();
@@ -141,8 +149,14 @@ void DCMI_IRQHandler(void) {
 		DCMI_ClearITPendingBit(DCMI_IT_FRAME);
 		/* get context: */
 		dcmi_transport_ctx *ctx = &dcmi_ctx;
+		/* calculate time delta to the end of DMA2_Stream1_IRQHandler: 
+		 * this should be almost zero because normally the DCMI interrupt will happen after the DMA interrupt */
+		uint32_t dt = get_time_delta_us(ctx->last_dma_irq_t);
+		/* take the last pause between DMA request as a basis to calculate the maximum allowed delta time: */
+		uint32_t allowed_dt = ctx->last_dma_irq_pause_t / 4;
+		if (allowed_dt < 10) allowed_dt = 10;
 		/* typedef void (*camera_transport_frame_done_cb)(void *usr); */
-		ctx->frame_done_cb(ctx->cb_usr);
+		ctx->frame_done_cb(ctx->cb_usr, dt > allowed_dt);
 	}
 }
 
@@ -154,6 +168,7 @@ void DMA2_Stream1_IRQHandler(void) {
 	if (DMA_GetITStatus(DMA2_Stream1, DMA_IT_TCIF1) != RESET) {
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
 		/* get the buffer that has been completed: */
+		//LEDOn(LED_ACT);
 		void *buffer;
 		if (DMA_GetCurrentMemoryTarget(DMA2_Stream1) == 0) {
 			buffer = dcmi_dma_buffer_2;
@@ -162,8 +177,13 @@ void DMA2_Stream1_IRQHandler(void) {
 		}
 		/* get context: */
 		dcmi_transport_ctx *ctx = &dcmi_ctx;
+		/* calculate the pause-time: */
+		ctx->last_dma_irq_pause_t = get_time_delta_us(ctx->last_dma_irq_t);
 		/* typedef void (*camera_transport_transfer_done_cb)(void *usr, const void *buffer, size_t size); */
 		ctx->transfer_done_cb(ctx->cb_usr, buffer, CONFIG_DCMI_DMA_BUFFER_SIZE);
+		/* store the time when the function finished. */
+		ctx->last_dma_irq_t       = get_boot_time_us();
+		//LEDOff(LED_ACT);
 	}
 }
 

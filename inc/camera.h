@@ -132,9 +132,10 @@ typedef struct _camera_image_buffer {
 /**
  * Callback which is called when a snapshot capture has finished.
  * @note This callback may be called from an interrupt handler.
- * @param Pointer to buffer which contains the snapshot.
+ * @param success True when capture was successful, false if it failed due to desynchronization. 
+ *				  You should retry in the mainloop after calling camera_snapshot_acknowledge.
  */
-typedef void (*camera_snapshot_done_cb)();
+typedef void (*camera_snapshot_done_cb)(bool success);
 
 /**
  * Initializes the camera driver.
@@ -217,6 +218,8 @@ void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer *buff
  * @param cb		Callback function which is called when the snapshot has been taken.
  *					Note that the callback is called from the interrupt context and should only do minimal stuff
  *					like setting a flag to notify the main loop. Calling camera_* functions is not allowed.
+ *					camera_snapshot_acknowledge must be called as soon as possible afterwards in the mainloop 
+ *					regardless of the success status of the snapshot.
  * @return			True when snapshot has been successfully scheduled.
  */
 bool camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param, camera_image_buffer *dst, camera_snapshot_done_cb cb);
@@ -323,9 +326,12 @@ typedef void (*camera_transport_transfer_done_cb)(void *usr, const void *buffer,
 
 /**
  * Callback for notifying the camera driver about a completed frame.
+ * This callback should be called AFTER the last camera_transport_transfer_done_cb call of the frame.
  * @param usr		The user data pointer that has been specified in the init function. (cb_usr)
+ * @param probably_infront_dma A hint to the camera driver that the frame done call might be just in front of the transfer done call.
+ *					It is up to the camera driver to interpret it.
  */
-typedef void (*camera_transport_frame_done_cb)(void *usr);
+typedef void (*camera_transport_frame_done_cb)(void *usr, bool probably_infront_dma);
 
 /** Camera image transport interface.
  */
@@ -357,7 +363,7 @@ struct _camera_transport_interface {
  */
 struct _camera_ctx {
 	/* startup control */
-	volatile int startup_discard_frame_count;				///< Number of frames to discard at startup.
+	volatile int resync_discard_frame_count;				///< Number of frames to discard at startup.
 	
 	/* assets of the camera driver */
 	
@@ -411,6 +417,8 @@ struct _camera_ctx {
 	uint32_t cur_frame_pos;									///< The current byte position inside the frame that is beeing received.
 	
 	/* sequencing */
+	
+	int frame_done_infront_count;
 	
 	volatile bool seq_frame_receiving;						///< True when we are currently receiving a frame.
 	volatile bool seq_updating_sensor;						///< True when the mainloop is currently calling sensor functions to update the sensor context.

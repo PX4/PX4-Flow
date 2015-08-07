@@ -49,7 +49,7 @@
 
 
 void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t size);
-void camera_transport_frame_done_fn(void *usr);
+void camera_transport_frame_done_fn(void *usr, bool probably_infront_dma);
 
 bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const camera_transport_interface *transport,
 				 uint32_t exposure_min_clks, uint32_t exposure_max_clks, float analog_gain_max,
@@ -68,7 +68,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 		return false;
 	}
 	// initialize state:
-	ctx->startup_discard_frame_count = -1;
+	ctx->resync_discard_frame_count = -1;
 	ctx->exposure_min_clks = exposure_min_clks;
 	ctx->exposure_max_clks = exposure_max_clks;
 	ctx->analog_gain_max   = analog_gain_max;
@@ -104,6 +104,8 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 	
 	ctx->snapshot_buffer = NULL;
 	
+	ctx->frame_done_infront_count = 0;
+	
 	ctx->cur_frame_number = buffer_count + 1;
 	ctx->seq_frame_receiving = false;
 	ctx->cur_frame_target_buf   = NULL;
@@ -121,7 +123,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 		return false;
 	}
 	/* after initialization start the discard count down! */
-	ctx->startup_discard_frame_count = 16;
+	ctx->resync_discard_frame_count = 16;
 	return true;
 }
 
@@ -206,7 +208,7 @@ static int camera_exposure_hist_extract_brightness_8b(camera_ctx *ctx) {
 
 void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t size) {
 	camera_ctx *ctx = (camera_ctx *)usr;
-	if (ctx->startup_discard_frame_count != 0) {
+	if (ctx->resync_discard_frame_count != 0) {
 		return;
 	}
 	if (ctx->seq_frame_receiving) {
@@ -232,7 +234,7 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 				ctx->new_frame_arrived = true;
 			} else if (ctx->seq_snapshot_active && ctx->cur_frame_target_buf != NULL) {
 				// snapshot has been taken!
-				ctx->snapshot_cb();
+				ctx->snapshot_cb(true);
 				ctx->seq_snapshot_active = false;
 			}
 			/* handle auto-exposure: */
@@ -287,10 +289,6 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 		}
 	} else {
 		// no frame currently as the target frame. it must be the beginning of a new frame then!
-		// empty the DMA buffer as quickly as possible:
-		size_t size_w = size / 4;
-		uint32_t buf[size_w];
-		uint32_t_memcpy(buf, (const uint32_t *)buffer, size_w);
 		// update the sensor: (this might trigger some I2C transfers)
 		ctx->sensor->notify_readout_start(ctx->sensor->usr);
 		// get current sensor parameter:
@@ -336,7 +334,7 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 			ctx->cur_frame_target_buf->frame_number = ctx->cur_frame_number;
 			ctx->cur_frame_target_buf->param        = ctx->cur_frame_param;
 			// write data to it: (at position 0)
-			uint32_t_memcpy((uint32_t *)ctx->cur_frame_target_buf->buffer, buf, size_w);
+			uint32_t_memcpy((uint32_t *)ctx->cur_frame_target_buf->buffer, (uint32_t *)buffer, size / 4);
 		}
 		// initialize exposure measuring (do not process snapshot images)
 		if (img_data_valid && !ctx->seq_snapshot_active) {
@@ -358,19 +356,56 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 		} else {
 			ctx->exposure_sampling_stride = 0;
 		}
-		camera_update_exposure_hist(ctx, (const uint8_t *)buf, size);
+		camera_update_exposure_hist(ctx, (const uint8_t *)buffer, size);
 	}
 }
 
-void camera_transport_frame_done_fn(void *usr) {
+void camera_transport_frame_done_fn(void *usr, bool probably_infront_dma) {
 	camera_ctx *ctx = (camera_ctx *)usr;
-	int fdc = ctx->startup_discard_frame_count;
+	/* we will only pay attention to the probably_infront_dma flag if we are in normal operating mode. */
+	int fdc = ctx->resync_discard_frame_count;
 	if (fdc > 0) {
 		fdc--;
-		ctx->startup_discard_frame_count = fdc;
+		ctx->resync_discard_frame_count = fdc;
 		/* re-initialize the transport twice */
 		if (fdc == 0 || fdc == 1) {
+			LEDOff(LED_ERR);
 			ctx->transport->reset(ctx->transport->usr);
+		}
+	} else {
+		/* we trust the probably infront DMA flag 3 times in a row. */
+		if (!probably_infront_dma || ctx->frame_done_infront_count > 3) {
+			ctx->frame_done_infront_count = 0;
+			/* if we don't trust it anymore we trigger a re-sync */
+			if (ctx->seq_frame_receiving || probably_infront_dma) {
+				/* we are out of sync! abort current frame: */
+				if (ctx->cur_frame_target_buf_idx >= 0) {
+					// put back into available buffers (in the back)
+					uint16_t ac_b = ctx->buf_avail_count;
+					camera_buffer_fifo_push_at(ctx, ac_b, &ctx->cur_frame_target_buf_idx, 1);
+					// set frame number something much older than the last frame:
+					if (ac_b > 0) {
+						int last_b  = ctx->buf_avail[ac_b - 1];
+						int this_b = ctx->buf_avail[ac_b];
+						ctx->buffers[this_b].frame_number = ctx->buffers[last_b].frame_number - ctx->buffer_count - 1;
+					} else {
+						ctx->new_frame_arrived = false;
+					}
+				} else if (ctx->seq_snapshot_active && ctx->cur_frame_target_buf != NULL) {
+					// snapshot abort!
+					ctx->snapshot_cb(false);
+					ctx->seq_snapshot_active = false;
+				}
+				// reset state:
+				ctx->cur_frame_target_buf = NULL;
+				ctx->seq_frame_receiving = false;
+				/* initiate resynchronization: */
+				ctx->resync_discard_frame_count = 2;
+
+				LEDOn(LED_ERR);
+			}
+		} else {
+			ctx->frame_done_infront_count++;
 		}
 	}
 }
