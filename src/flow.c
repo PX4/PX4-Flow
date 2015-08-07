@@ -40,6 +40,7 @@
 #include <math.h>
 
 #include "mavlink_bridge_header.h"
+#include "settings.h"
 #include <mavlink.h>
 #include "flow.h"
 #include "dcmi.h"
@@ -50,7 +51,6 @@
 #define __ASM asm
 #include "core_cm4_simd.h"
 
-#define FRAME_SIZE	global_data.param[PARAM_IMAGE_WIDTH]
 #define SEARCH_SIZE	global_data.param[PARAM_FLOW_MAX_PIXEL] // maximum offset to search: 4 + 1/2 pixels
 #define TILE_SIZE	8               						// x & y tile size
 #define NUM_BLOCKS	5 // x & y number of tiles to check
@@ -395,7 +395,7 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 {
 	/* constants */
 	const uint16_t search_size = SEARCH_SIZE;
-	const uint16_t frame_size = FRAME_SIZE;
+	const uint16_t frame_size = FLOW_FRAME_SIZE;
 	const int16_t winmin = -search_size;
 	const int16_t winmax = search_size;
 
@@ -493,22 +493,25 @@ uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_ra
 	return result_count;
 }
 
-void klt_preprocess_image(uint8_t *image) {
+void klt_preprocess_image(uint8_t *image, flow_klt_image *klt_image) {
 	uint16_t i, j;
 
+	klt_image->image = image;
+	
 	/*
 	 * compute image pyramid for current frame
 	 * there is 188*120 bytes per buffer, we are only using 64*64 per buffer,
 	 * so just add the pyramid levels after the image
 	 */
 	//first compute the offsets in the memory for the pyramid levels
-	uint16_t lvl_ofs[PYR_LVLS];
-	uint16_t frame_size = (uint16_t)(FRAME_SIZE+0.5);
-	uint16_t s = frame_size;
+	uint8_t *lvl_base[PYR_LVLS];
+	uint16_t frame_size = (uint16_t)(FLOW_FRAME_SIZE+0.5);
+	uint16_t s = frame_size / 2;
 	uint16_t off = 0;
-	for (int l = 0; l < PYR_LVLS; l++)
+	lvl_base[0] = image;
+	for (int l = 1; l < PYR_LVLS; l++)
 	{
-		lvl_ofs[l] = off;
+		lvl_base[l] = klt_image->preprocessed + off;
 		off += s*s;
 		s /= 2;
 	}
@@ -518,8 +521,8 @@ void klt_preprocess_image(uint8_t *image) {
 	{
 		uint16_t src_size = frame_size >> (l-1);
 		uint16_t tar_size = frame_size >> l;
-		uint8_t *source = &image[lvl_ofs[l-1]]; //pointer to the beginning of the previous level
-		uint8_t *target = &image[lvl_ofs[l]];   //pointer to the beginning of the current level
+		uint8_t *source = lvl_base[l-1]; //pointer to the beginning of the previous level
+		uint8_t *target = lvl_base[l];   //pointer to the beginning of the current level
 		for (j = 0; j < tar_size; j++) {
 			for (i = 0; i < tar_size; i+=2)
 			{
@@ -536,7 +539,7 @@ void klt_preprocess_image(uint8_t *image) {
 	}
 }
 
-uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
+uint16_t compute_klt(flow_klt_image *image1, flow_klt_image *image2, float x_rate, float y_rate, float z_rate,
 					 flow_raw_result *out, uint16_t max_out)
 {
 	/* variables */
@@ -553,13 +556,17 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	 * so just add the pyramid levels after the image
 	 */
 	//first compute the offsets in the memory for the pyramid levels
-	uint16_t lvl_ofs[PYR_LVLS];
-	uint16_t frame_size = (uint16_t)(FRAME_SIZE+0.5);
-	uint16_t s = frame_size;
+	uint8_t *lvl_base1[PYR_LVLS];
+	uint8_t *lvl_base2[PYR_LVLS];
+	uint16_t frame_size = (uint16_t)(FLOW_FRAME_SIZE+0.5);
+	uint16_t s = frame_size / 2;
 	uint16_t off = 0;
-	for (int l = 0; l < PYR_LVLS; l++)
+	lvl_base1[0] = image1->image;
+	lvl_base2[0] = image2->image;
+	for (int l = 1; l < PYR_LVLS; l++)
 	{
-		lvl_ofs[l] = off;
+		lvl_base1[l] = image1->preprocessed + off;
+		lvl_base2[l] = image2->preprocessed + off;
 		off += s*s;
 		s /= 2;
 	}
@@ -621,7 +628,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			uint16_t j = js[k] >> l;
 
 			uint16_t iwidth = frame_size >> l;
-			uint8_t *base1 = image1 + lvl_ofs[l] + j * iwidth + i;
+			uint8_t *base1 = lvl_base1[l] + j * iwidth + i;
 
 			float JTJ[4];   //the 2x2 Hessian
 			JTJ[0] = 0;
@@ -681,7 +688,7 @@ uint16_t compute_klt(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 					float JTe_x = 0;  //accumulators for Jac transposed times error
 					float JTe_y = 0;
 
-					uint8_t *base2 = image2 + lvl_ofs[l] + (uint16_t)v * iwidth + (uint16_t)u;
+					uint8_t *base2 = lvl_base2[l] + (uint16_t)v * iwidth + (uint16_t)u;
 
 					//extract bilinearly filtered pixel values for the current location in image2
 					float dX = u - floorf(u);

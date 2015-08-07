@@ -40,8 +40,7 @@
 #include <stdbool.h>
 #include <math.h>
 
-#define __INLINE inline
-#define __ASM asm
+#include "stm32f4xx_conf.h"
 #include "core_cm4_simd.h"
 
 #include "filter.h"
@@ -49,7 +48,7 @@
 void filter_image(uint8_t *image, uint16_t width) {
 	uint16_t ext_width = width + 2;
 	/* first we make a copy of the image and extend it beyond the edges by 1 pixel */
-	uint8_t *img_ext = image + width * width;
+	uint8_t img_ext[ext_width * ext_width];
 	#define IMG_PX(x, y) (*(image + width * (y) + (x)))
 	#define EXT_PX(x, y) (*(img_ext + ext_width * (y) + (x)))
 	int y, x;

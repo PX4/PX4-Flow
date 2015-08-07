@@ -36,19 +36,44 @@
 
 #include <stdint.h>
 #include "settings.h"
+#include "camera.h"
+
+/**
+ * Returns the sensor interface that can be passed to the camera driver.
+ * @return The initialized sensor interface struct.
+ */
+const camera_sensor_interface *mt9v034_get_sensor_interface();
+
+uint32_t mt9v034_get_clks_per_row(uint16_t width, int binning);
+
+/**
+ * Configures the maximum exposure time in number of image rows.
+ * Exposure should not affect frame time.
+ * Set to number of rows in the image.
+ */
+#define CONFIG_MAX_EXPOSURE_ROWS (64)
+/**
+ * Configures the maximum analog gain.
+ * Range: 1x - 4x => 16 - 64.
+ * Higher gain means more noise.
+ */
+#define CONFIG_MAX_ANALOG_GAIN (64)
+/**
+ * Configures the workaround to eliminate corrupted pixel data.
+ * According to the datasheet the image data should be sampled at the rising edge of the clock.
+ * In binning mode 2 and 4 however this occasionally causes corrupted pixel data.
+ * If we sample on the falling edge of the clock there will be corrupted pixels in no binning mode.
+ * 
+ * This workaround inverts the pixel clock at the correct time when switching binning modes.
+ * 
+ * Provide 3 booleans which tell whether to invert the pixel clock for 1x, 2x and 4x binning mode.
+ */
+#define CONFIG_CLOCK_INVERSION_WORKAROUND {false, true, true}
+
+#define CONFIG_MTV_VERTICAL_BLANKING_INTROWS (64)
 
 /* Constants */
 #define TIMEOUT_MAX      				10000
-
-#define BINNING_ROW_A					4
-#define BINNING_COLUMN_A				4
-#define BINNING_ROW_B					2
-#define BINNING_COLUMN_B				2
-#define MINIMUM_HORIZONTAL_BLANKING		91 // see datasheet
-#define MAX_IMAGE_HEIGHT				480
-#define MAX_IMAGE_WIDTH					752
-#define MINIMUM_COLUMN_START			1
-#define MINIMUM_ROW_START				4
 
 /* Camera I2C registers */
 #define mt9v034_DEVICE_WRITE_ADDRESS    0xB8
@@ -130,33 +155,5 @@
 #define MTV_AGC_GAIN_OUT_REG			0xBA
 #define MTV_AEC_EXPOSURE_REG			0xBB
 #define MTV_AGC_AEC_CUR_BIN_REG			0xBC
-
-
-/*
- * Resolution:
- * ROW_SIZE * BINNING_ROW <= MAX_IMAGE_WIDTH
- * COLUMN_SIZE * BINNING_COLUMN <= MAX_IMAGE_HEIGHT
- */
-
-#define FULL_IMAGE_SIZE (188*120)
-#define FULL_IMAGE_ROW_SIZE (188)
-#define FULL_IMAGE_COLUMN_SIZE (120)
-
-/* Functions */
-
-/**
-  * @brief  Configures the mt9v034 camera with two context (binning 4 and binning 2).
-  */
-void mt9v034_context_configuration(void);
-
-/**
-  * @brief  Changes sensor context based on settings
-  */
-void mt9v034_set_context(void);
-
-uint16_t mt9v034_ReadReg16(uint8_t address);
-uint8_t mt9v034_WriteReg16(uint16_t address, uint16_t Data);
-uint8_t mt9v034_ReadReg(uint16_t Addr);
-uint8_t mt9v034_WriteReg(uint16_t Addr, uint8_t Data);
 
 #endif /* MT9V34_H_ */

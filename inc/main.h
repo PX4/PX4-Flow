@@ -34,7 +34,4 @@
 #ifndef __PX4_FLOWBOARD_H
 #define __PX4_FLOWBOARD_H
 
-extern uint32_t get_time_between_images(void);
-void buffer_reset(void);
-
 #endif /* __PX4_FLOWBOARD_H */

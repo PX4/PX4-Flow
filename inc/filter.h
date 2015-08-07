@@ -38,7 +38,7 @@
 
 /**
  * @brief Filters the image to improve the flow processing
- * @note  It uses the space after the image in the image buffer to work on the image.
+ * @note  It uses a temporary buffer on the stack to work on the image.
  */
 void filter_image(uint8_t *image, uint16_t width);
 

@@ -5,6 +5,7 @@
  *   		 Dominik Honegger <dominik.honegger@inf.ethz.ch>
  *   		 Petri Tanskanen <tpetri@inf.ethz.ch>
  *   		 Samuel Zihlmann <samuezih@ee.ethz.ch>
+ *           Simon Laube <simon@leitwert.ch>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -72,24 +73,13 @@
 #endif
 
 
-/* prototypes */
-void buffer_reset(void);
-
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
-
-/* fast image buffers for calculations */
-uint8_t image_buffer_8bit_1[FULL_IMAGE_SIZE] __attribute__((section(".ccm")));
-uint8_t image_buffer_8bit_2[FULL_IMAGE_SIZE] __attribute__((section(".ccm")));
-uint8_t buffer_reset_needed;
 
 /* timer constants */
 #define SONAR_POLL_MS	 	100	/* steps in milliseconds ticks */
 #define SYSTEM_STATE_MS		1000/* steps in milliseconds ticks */
 #define PARAMS_MS			100	/* steps in milliseconds ticks */
 #define LPOS_TIMER_COUNT 	100	/* steps in milliseconds ticks */
-
-static uint8_t *current_image;
-static uint8_t *previous_image;
 
 /* local position estimate without orientation, useful for unit testing w/o FMU */
 struct lpos_t {
@@ -101,7 +91,13 @@ struct lpos_t {
 	float vz;
 } lpos = {0};
 
+static camera_ctx cam_ctx;
+static camera_img_param img_stream_param;
 
+uint8_t snapshot_buffer_mem[128 * 128];
+
+static camera_image_buffer snapshot_buffer;
+	
 void sonar_update_fn(void) {
 	sonar_trigger();
 }
@@ -120,39 +116,36 @@ void system_receive_fn(void) {
 	communication_receive_usb();
 }
 
+const camera_image_buffer *previous_image = NULL;
+
+void mavlink_send_image(const camera_image_buffer *image) {
+	uint32_t img_size = (uint32_t)image->param.p.size.x * (uint32_t)image->param.p.size.y;
+	mavlink_msg_data_transmission_handshake_send(
+			MAVLINK_COMM_2,
+			MAVLINK_DATA_STREAM_IMG_RAW8U,
+			img_size,
+			image->param.p.size.x,
+			image->param.p.size.y,
+			img_size / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1,
+			MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN,
+			100);
+	uint16_t frame = 0;
+	for (frame = 0; frame < img_size / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1; frame++) {
+		mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *)image->buffer)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
+	}
+}
+
 void send_video_fn(void) {
 	/* update the rate */
 	timer_update(send_video_fn, global_data.param[PARAM_VIDEO_RATE]);
 
+	if (previous_image == NULL) return;
+	
 	/*  transmit raw 8-bit image */
 	if (global_data.param[PARAM_USB_SEND_VIDEO] && !global_data.param[PARAM_VIDEO_ONLY])
 	{
-		/* get size of image to send */
-		uint16_t image_size_send;
-		uint16_t image_width_send;
-		uint16_t image_height_send;
-
-		uint16_t image_size = global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT];
-
-		image_size_send = image_size;
-		image_width_send = global_data.param[PARAM_IMAGE_WIDTH];
-		image_height_send = global_data.param[PARAM_IMAGE_HEIGHT];
-
-		mavlink_msg_data_transmission_handshake_send(
-				MAVLINK_COMM_2,
-				MAVLINK_DATA_STREAM_IMG_RAW8U,
-				image_size_send,
-				image_width_send,
-				image_height_send,
-				image_size_send / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1,
-				MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN,
-				100);
+		mavlink_send_image(previous_image);
 		LEDToggle(LED_COM);
-		uint16_t frame = 0;
-		for (frame = 0; frame < image_size_send / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1; frame++)
-		{
-			mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
-		}
 	}
 	else if (!global_data.param[PARAM_USB_SEND_VIDEO])
 	{
@@ -165,46 +158,57 @@ void send_params_fn(void) {
 	communication_parameter_send();
 }
 
-void buffer_reset(void) {
-	buffer_reset_needed = 1;
-}
-
-void enter_image_calibration_mode() {
-	while(global_data.param[PARAM_VIDEO_ONLY])
-	{
-		dcmi_restart_calibration_routine();
-
-		/* waiting for first quarter of image */
-		while(get_frame_counter() < 2){}
-		dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 1);
-
-		/* waiting for second quarter of image */
-		while(get_frame_counter() < 3){}
-		dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 1);
-
-		/* waiting for all image parts */
-		while(get_frame_counter() < 4){}
-
-		send_calibration_image(&previous_image, &current_image);
-
-		/* check timers */
-		timer_check();
-
-		LEDToggle(LED_COM);
+/*void switch_params_fn(void) {
+	switch (img_stream_param.binning) {
+		case 1: img_stream_param.binning = 4; break;
+		case 2: img_stream_param.binning = 1; break;
+		case 4: img_stream_param.binning = 2; break;
 	}
+	camera_img_stream_schedule_param_change(&cam_ctx, &img_stream_param);
+}*/
 
-	dcmi_restart_calibration_routine();
-	LEDOff(LED_COM);
+static volatile bool snap_capture_done = false;
+static volatile bool snap_capture_success = false;
+static bool snap_ready = true;
+
+void snapshot_captured_fn(bool success) {
+	snap_capture_done = true;
+	snap_capture_success = success;
 }
+
+void take_snapshot_fn(void) {
+	if (global_data.param[PARAM_USB_SEND_VIDEO] && global_data.param[PARAM_VIDEO_ONLY] && snap_ready) {
+		static camera_img_param snapshot_param;
+		snapshot_param.size.x = 128;
+		snapshot_param.size.y = 128;
+		snapshot_param.binning = 1;
+		if (camera_snapshot_schedule(&cam_ctx, &snapshot_param, &snapshot_buffer, snapshot_captured_fn)) {
+			snap_ready = false;
+		}
+	}
+}
+
+void notify_changed_camera_parameters() {
+	camera_reconfigure_general(&cam_ctx);
+}
+
+#define FLOW_IMAGE_SIZE (64)
+
+static uint8_t image_buffer_8bit_1[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+static uint8_t image_buffer_8bit_2[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+static uint8_t image_buffer_8bit_3[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+static uint8_t image_buffer_8bit_4[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+static uint8_t image_buffer_8bit_5[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
+
+static flow_klt_image flow_klt_images[2] __attribute__((section(".ccm")));
 
 /**
   * @brief  Main function.
   */
 int main(void)
 {
-	current_image  = image_buffer_8bit_1;
-	previous_image = image_buffer_8bit_2;
-
+	snapshot_buffer = BuildCameraImageBuffer(snapshot_buffer_mem);
+	
 	/* load settings and parameters */
 	global_data_reset_param_defaults();
 	global_data_reset();
@@ -233,18 +237,25 @@ int main(void)
 	/* init mavlink */
 	communication_init();
 
-	/* enable image capturing */
-	enable_image_capture();
+	/* initialize camera: */
+	img_stream_param.size.x = FLOW_IMAGE_SIZE;
+	img_stream_param.size.y = FLOW_IMAGE_SIZE;
+	img_stream_param.binning = 4;
+	{
+		camera_image_buffer buffers[5] = {
+			BuildCameraImageBuffer(image_buffer_8bit_1),
+			BuildCameraImageBuffer(image_buffer_8bit_2),
+			BuildCameraImageBuffer(image_buffer_8bit_3),
+			BuildCameraImageBuffer(image_buffer_8bit_4),
+			BuildCameraImageBuffer(image_buffer_8bit_5)
+		};
+		camera_init(&cam_ctx, mt9v034_get_sensor_interface(), dcmi_get_transport_interface(), 
+					mt9v034_get_clks_per_row(64, 4) * 1, mt9v034_get_clks_per_row(64, 4) * 64, 2.0,
+					&img_stream_param, buffers, 5);
+	}
 
 	/* gyro config */
 	gyro_config();
-
-	/* init and clear fast image buffers */
-	for (int i = 0; i < global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]; i++)
-	{
-		image_buffer_8bit_1[i] = 0;
-		image_buffer_8bit_2[i] = 0;
-	}
 
 	/* usart config*/
 	usart_init();
@@ -264,6 +275,8 @@ int main(void)
 	timer_register(system_receive_fn, SYSTEM_STATE_MS / 2);
 	timer_register(send_params_fn, PARAMS_MS);
 	timer_register(send_video_fn, global_data.param[PARAM_VIDEO_RATE]);
+	timer_register(take_snapshot_fn, 500);
+	//timer_register(switch_params_fn, 2000);
 
 	/* variables */
 	uint32_t counter = 0;
@@ -275,32 +288,25 @@ int main(void)
 	uint32_t fps_timing_start = get_boot_time_us();
 	uint16_t fps_counter = 0;
 	uint16_t fps_skipped_counter = 0;
+	
+	uint32_t last_frame_index = 0;
+	
 	/* main loop */
 	while (1)
 	{
 		/* check timers */
 		timer_check();
-
-		/* reset flow buffers if needed */
-		if(buffer_reset_needed)
-		{
-			buffer_reset_needed = 0;
-			if(!global_data.param[PARAM_VIDEO_ONLY]) {
-				/* get two new fresh images: */
-				dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 1);
-				dma_copy_image_buffers(&current_image, &previous_image, FULL_IMAGE_SIZE, 1);
+		
+		if (snap_capture_done) {
+			snap_capture_done = false;
+			camera_snapshot_acknowledge(&cam_ctx);
+			snap_ready = true;
+			if (snap_capture_success) {
+				/* send the snapshot! */
+				LEDToggle(LED_COM);
+				mavlink_send_image(&snapshot_buffer);
 			}
-			continue;
 		}
-
-		/* calibration routine */
-		if(global_data.param[PARAM_VIDEO_ONLY])
-		{
-			enter_image_calibration_mode();
-			continue;
-		}
-
-		uint16_t image_size = global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT];
 
 		/* calculate focal_length in pixel */
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 0.006f); //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
@@ -326,29 +332,67 @@ int main(void)
 		bool use_klt = global_data.param[PARAM_ALGORITHM_CHOICE] != 0;
 
 		uint32_t start_computations = 0;
-
-		/* copy recent image to faster ram */
-		int skipped_frames = 0;
-		int loop_count = 0;		//< make sure that we dont end up in an infinite loop inside here ..
-		do { 
-			skipped_frames = dma_copy_image_buffers(&current_image, &previous_image, image_size, (int)(global_data.param[PARAM_IMAGE_INTERVAL] + 0.5));
-
-			start_computations = get_boot_time_us();
-
-			/* filter the new image */
-			if (global_data.param[PARAM_ALGORITHM_IMAGE_FILTER]) {
-				filter_image(current_image, global_data.param[PARAM_IMAGE_WIDTH]);
+		
+		/* get recent images */
+		camera_image_buffer *frames[2];
+		camera_img_stream_get_buffers(&cam_ctx, frames, 2, true);
+		
+		start_computations = get_boot_time_us();
+		
+		int frame_delta = ((int32_t)frames[0]->frame_number - (int32_t)last_frame_index);
+		last_frame_index = frames[0]->frame_number;
+		fps_skipped_counter += frame_delta - 1;
+		
+		flow_klt_image *klt_images[2] = {NULL, NULL};
+		{
+			/* make sure that the new images get the correct treatment */
+			/* this algorithm will still work if both images are new */
+			int i;
+			bool used_klt_image[2] = {false, false};
+			for (i = 0; i < 2; ++i) {
+				if (frames[i]->frame_number != frames[i]->meta) {
+					// the image is new. apply pre-processing:
+					/* filter the new image */
+					if (global_data.param[PARAM_ALGORITHM_IMAGE_FILTER]) {
+						filter_image(frames[i]->buffer, frames[i]->param.p.size.x);
+					}
+					/* update meta data to mark it as an up-to date image: */
+					frames[i]->meta = frames[i]->frame_number;
+				} else {
+					// the image has the preprocessing already applied.
+					if (use_klt) {
+						int j;
+						/* find the klt image that matches: */
+						for (j = 0; j < 2; ++j) {
+							if (flow_klt_images[j].meta == frames[i]->frame_number) {
+								used_klt_image[j] = true;
+								klt_images[i] = &flow_klt_images[j];
+							}
+						}
+					}
+				}
 			}
-
-			/* Preprocessing needed by the klt algorithm: */
 			if (use_klt) {
-				klt_preprocess_image(current_image);
+				/* only for KLT: */
+				/* preprocess the images if they are not yet preprocessed */
+				for (i = 0; i < 2; ++i) {
+					if (klt_images[i] == NULL) {
+						// need processing. find unused KLT image:
+						int j;
+						for (j = 0; j < 2; ++j) {
+							if (!used_klt_image[j]) {
+								used_klt_image[j] = true;
+								klt_images[i] = &flow_klt_images[j];
+								break;
+							}
+						}
+						klt_preprocess_image(frames[i]->buffer, klt_images[i]);
+					}
+				}
 			}
-			/* make sure no frames have been skipped. request a new image if a frame was skipped to ensure minimal time delta between images */
-			fps_skipped_counter += skipped_frames;
-			loop_count++;
-		} while (skipped_frames > 0 && loop_count < 2);
-		float frame_dt = get_time_between_images() * 0.000001f;
+		}
+		
+		float frame_dt = (frames[0]->timestamp - frames[1]->timestamp) * 0.000001f;
 
 		/* compute gyro rate in pixels and change to image coordinates */
 		float x_rate_px = - y_rate * (focal_length_px * frame_dt);
@@ -359,9 +403,9 @@ int main(void)
 		flow_raw_result flow_rslt[32];
 		uint16_t flow_rslt_count = 0;
 		if (!use_klt) {
-			flow_rslt_count = compute_flow(previous_image, current_image, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
+			flow_rslt_count = compute_flow(frames[1]->buffer, frames[0]->buffer, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
 		} else {
-			flow_rslt_count =  compute_klt(previous_image, current_image, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
+			flow_rslt_count =  compute_klt(klt_images[1], klt_images[0], x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
 		}
 
 		/* calculate flow value from the raw results */
@@ -382,20 +426,25 @@ int main(void)
 		/* create flow image if needed (previous_image is not needed anymore)
 		 * -> can be used for debugging purpose
 		 */
+		previous_image = frames[1];
 		if (global_data.param[PARAM_USB_SEND_VIDEO])
 		{
 			uint16_t frame_size = global_data.param[PARAM_IMAGE_WIDTH];
+			uint8_t *prev_img = previous_image->buffer;
 			for (int i = 0; i < flow_rslt_count; i++) {
 				if (flow_rslt[i].quality > 0) {
-					previous_image[flow_rslt[i].at_y * frame_size + flow_rslt[i].at_x] = 255;
+					prev_img[flow_rslt[i].at_y * frame_size + flow_rslt[i].at_x] = 255;
 					int ofs = (int)floor(flow_rslt[i].at_y + flow_rslt[i].y * 2 + 0.5f) * frame_size + (int)floor(flow_rslt[i].at_x + flow_rslt[i].x * 2 + 0.5f);
 					if (ofs >= 0 && ofs < frame_size * frame_size) {
-						previous_image[ofs] = 200;
+						prev_img[ofs] = 200;
 					}
 				}
 			}
 		}
 
+		/* return the image buffers */
+		camera_img_stream_return_buffers(&cam_ctx, frames, 2);
+		
 		/* decide which distance to use */
 		float ground_distance = 0.0f;
 
@@ -408,7 +457,7 @@ int main(void)
 			ground_distance = sonar_distance_raw;
 		}
 
-		/* update I2C transmitbuffer */
+		/* update I2C transmit buffer */
 		update_TX_buffer(frame_dt, 
 						 x_rate, y_rate, z_rate, gyro_temp, 
 						 qual, pixel_flow_x, pixel_flow_y, 1.0f / focal_length_px, 
@@ -440,6 +489,8 @@ int main(void)
 
 				mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "TIMING", get_boot_time_us(), computaiton_time_us, fps, fps_skip);
 			}
+			mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "EXPOSURE", get_boot_time_us(), 
+					frames[0]->param.exposure, frames[0]->param.analog_gain, cam_ctx.last_brightness);
 			
 			/* calculate the output values */
 			result_accumulator_output_flow output_flow;
