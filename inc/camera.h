@@ -39,14 +39,51 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/**
+ * The maximum number of buffers the camera driver supports.
+ */
 #define CONFIG_CAMERA_MAX_BUFFER_COUNT 5
 
+/**
+ * Number of bits to use for the histogram bins.
+ * This affects the speed of the algorithm as well as the possible granularity of the other configuration options.
+ */
 #define CONFIG_CAMERA_EXPOSURE_BIN_BITS (5u)
 #define CONFIG_CAMERA_EXPOSURE_BIN_COUNT (1u << CONFIG_CAMERA_EXPOSURE_BIN_BITS)
-#define CONFIG_CAMERA_EXTREME_OVEREXPOSE_RATIO (40u)
+/**
+ * The ratio of pixels (in percent) that need to fall in the highest histogram bin to trigger
+ * the extreme overexpose condition. This is intended to quickly react to highly over-exposed images 
+ * by decreasing the exposure time quickly.
+ */
+#define CONFIG_CAMERA_EXTREME_OVEREXPOSE_RATIO (20u)
+/**
+ * The ratio of pixels (in percent) that are rejected as outliers when evaluating the histogram starting from
+ * the brightest pixel.
+ */
 #define CONFIG_CAMERA_OUTLIER_RATIO (5u)
+/**
+ * The value that the algorithm uses as a target pixel intensity when adjusting the exposure time.
+ * The algorithm compares the extracted value from the histogram (after outlier rejection) to this value
+ * and adjusts the exposure time accordingly.
+ */
 #define CONFIG_CAMERA_DESIRED_EXPOSURE_8B (200u)
-#define CONFIG_CAMERA_EXPOSURE_SMOOTHING_K (0.85f)
+/**
+ * The size of the exposure tolerance band.
+ * If there is a certain amount of change in the image brightness the tolerance band will decide after
+ * how much brightness delta the exposure algorithm will start to re-adjust the exposure time.
+ */
+#define CONFIG_CAMERA_DESIRED_EXPOSURE_TOL_8B (24u)
+/**
+ * The smoothing factor of the exposure time. This is the constant of an exponential filter.
+ * 
+ * new = old * K + (1 - K) * new
+ * 
+ * This constant influences the speed with which the algorithm reacts to brightness changes.
+ */
+#define CONFIG_CAMERA_EXPOSURE_SMOOTHING_K (0.83f)
+/**
+ * The interval between updating the exposure value in number of frames. Snapshot and invalid frames are skipped.
+ */
 #define CONFIG_CAMERA_EXPOSURE_UPDATE_INTERVAL (4u)
 
 struct _camera_sensor_interface;
@@ -105,8 +142,8 @@ typedef void (*camera_snapshot_done_cb)();
  * @param sensor	The sensor interface to use.
  * @param transport	The sensor data transport interface to use.
  * @param exposure_min_clks Minimum exposure in clocks.
- * @param exposure_max_clks Maximum exposrue in clocks.
- * @param analog_gain_max Maximum analog gain.
+ * @param exposure_max_clks Maximum exposure in clocks.
+ * @param analog_gain_max Maximum analog gain. > 1 depending on what the sensor supports. (mt9v034: 1-4)
  * @param img_param	The initial image parameters to use for img_stream operation mode.
  * @param buffers	Array of initialized buffers to use for buffering the images in img_stream mode.
  *					In each camera_image_buffer the buffer and buffer_size members must be correctly set.
@@ -120,7 +157,7 @@ typedef void (*camera_snapshot_done_cb)();
  * @return			True when successful.
  */
 bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const camera_transport_interface *transport,
-				 uint16_t exposure_min_clks, uint16_t exposure_max_clks, float analog_gain_max,
+				 uint32_t exposure_min_clks, uint32_t exposure_max_clks, float analog_gain_max,
 				 const camera_img_param *img_param,
 				 camera_image_buffer buffers[], size_t buffer_count);
 
@@ -191,7 +228,37 @@ bool camera_snapshot_schedule(camera_ctx *ctx, const camera_img_param *img_param
  */
 void camera_snapshot_acknowledge(camera_ctx *ctx);
 
-/** Camera sensor configuration interface.
+/** 
+ * Camera sensor configuration interface.
+ * 
+ * The functions inside this interface are divided into two sets of function classes:
+ * 
+ * A)  init, prepare_update_param, reconfigure_general
+ * These functions may only be called from the mainloop and have a possible long run-time. They may be interrupted by any of the class B functions.
+ * The sensor interface has to make sure that there will be no conflict when a class B function starts to run while a class A function is not finished yet.
+ * 
+ * B)  restore_previous_param, notify_readout_start, notify_readout_end, update_exposure_param, get_current_param
+ * These functions may be called from an interrupt context and may interrupt class A functions. They have to make sure to not access resources in use 
+ * by class A functions.
+ * 
+ * The camera driver will make sure that only one function of each class is entered at the same time and that class B functions are never interrupted by class A functions.
+ * 
+ * 
+ * The sequence of functions that are called is the following one:
+ * 
+ * === First buffer of a new frame has arrived ===
+ * notify_readout_start()
+ * get_current_param() -> returned parameters are used to calculate the number of buffers we need to receive for this frame.
+ * restore_previous_param() (optional if switching back to the previous parameters is desired)
+ * 
+ * === ... receiving the buffers between the first and the last ... ===
+ * 
+ * === Last buffer of the current frame has arrived ===
+ * notify_readout_end()
+ * update_exposure_param() (optional if the exposure parameters have been updated)
+ * 
+ *  ==> repeat
+ * 
  */
 struct _camera_sensor_interface {
 	void *usr;		///< User pointer that should be passed to the following interface functions.
@@ -216,7 +283,6 @@ struct _camera_sensor_interface {
 	void (*reconfigure_general)(void *usr);
 	/**
 	 * Immediately switches back to the previous parameters.
-	 * This function may only be called when it is guaranteed that notify_readout_start and notify_readout_end cannot start to run.
 	 * @param usr		User pointer from this struct.
 	 */
 	void (*restore_previous_param)(void *usr);
@@ -235,10 +301,9 @@ struct _camera_sensor_interface {
 	void (*notify_readout_end)(void *usr);
 	/**
 	 * Called at the end of the readout after notify_readout_end to update the exposure parameters of the current context.
-	 * This should only be called when it is guaranteed that no other sensor function will be called during the time this function executes.
-	 * It should be treated like prepare_update_param except that notify_readout_start and notify_readout_end may not run at the same time.
+	 * @return Return true if it was possible to perform the update.
 	 */
-	void (*update_exposure_param)(void *usr, uint32_t exposure, float gain);
+	bool (*update_exposure_param)(void *usr, uint32_t exposure, float gain);
 	/**
 	 * Called to retrieve the image parameters of the current frame that is being output.
 	 * This function is called after notify_readout_start to retrieve the
@@ -299,34 +364,36 @@ struct _camera_ctx {
 	const camera_sensor_interface *sensor;					///< Sensor interface.
 	const camera_transport_interface *transport;			///< Transport interface.
 	
-	uint32_t exposure_min_clks;
-	uint32_t exposure_max_clks;
-	float analog_gain_max;
+	uint32_t exposure_min_clks;								///< Minimum exposure in clocks.
+	uint32_t exposure_max_clks;								///< Maximum exposure in clocks.
+	float analog_gain_max;									///< Maximum gain.
 	
 	/* exposure control */
 	
-	float analog_gain;
-	uint32_t exposure;
+	float analog_gain;										///< Current analog gain.
+	uint32_t exposure;										///< Current exposure in clocks.
 	
-	float exposure_smoothing;
+	float exposure_smoothing;								///< Exposure smoothing variable.
 	
-	int exposure_skip_frame_cnt;
+	int exposure_skip_frame_cnt;							///< Counter to skip frames between exposure calculations.
 	
-	uint16_t exposure_sampling_stride;
-	uint16_t exposure_bins[CONFIG_CAMERA_EXPOSURE_BIN_COUNT];
-	uint16_t exposure_hist_count;
-	int last_brightness;
+	uint16_t exposure_sampling_stride;						///< Image sampling stride used for calculating exposure.
+	uint16_t exposure_bins[CONFIG_CAMERA_EXPOSURE_BIN_COUNT];///< Histogram of the sampled pixels.
+	uint16_t exposure_hist_count;							///< Number of sampled pixels in the histogram.
+	int last_brightness;									///< The last brightness value that has been extracted from the histogram.
 	
 	/* image streaming buffer and parameters */
 	
-	camera_img_param_ex img_stream_param;						///< The parameters of the image streaming mode.
-	camera_img_param pend_img_stream_param;					///< The pending image streaming mode parameters.
-	camera_image_buffer buffers[CONFIG_CAMERA_MAX_BUFFER_COUNT];	///< The image buffers for image stream mode.
+	camera_img_param_ex img_stream_param;					///< The parameters of the image streaming mode.
+	camera_img_param img_stream_param_pend;					///< The pending image streaming mode parameters.
+	camera_image_buffer buffers[CONFIG_CAMERA_MAX_BUFFER_COUNT];///< The image buffers for image stream mode.
 	int buffer_count;										///< Total number of buffers.
-	volatile uint8_t avail_bufs[CONFIG_CAMERA_MAX_BUFFER_COUNT];	///< Indexes to the buffers that are available. Ordered in the MRU order.
-	volatile uint8_t avail_buf_count;						///< Number of buffer indexes in the avail_bufs array.
-	volatile uint8_t put_back_buf_pos;						///< Position where to put back the reserved buffers.
+	volatile uint8_t buf_avail[CONFIG_CAMERA_MAX_BUFFER_COUNT];///< Indexes to the buffers that are available. Ordered in the MRU order.
+	volatile uint8_t buf_avail_count;						///< Number of buffer indexes in the avail_bufs array.
+	volatile uint8_t buf_put_back_pos;						///< Position where to put back the reserved buffers.
+	
 	volatile bool new_frame_arrived;						///< Flag which is set by the interrupt handler to notify that a new frame has arrived.
+	volatile bool buffers_are_reserved;						///< True when buffers have been reserved by the camera_img_stream_get_buffers function and need to be returned.
 	
 	/* image snapshot buffer and parameters */
 	
@@ -334,30 +401,26 @@ struct _camera_ctx {
 	camera_image_buffer *snapshot_buffer;					///< Pointer to buffer which receives the snapshot. NULL when no snapshot is pending.
 	camera_snapshot_done_cb snapshot_cb;					///< Callback pointer which is called when the snapshot is complete.
 	
-	/* retrieving buffers */
-	
-	volatile bool buffers_are_reserved;						///< True when buffers have been reserved by the camera_img_stream_get_buffers function and need to be returned.
-	uint32_t last_read_frame_index;							///< The frame index of the last frame that has been read in streaming mode
-	
 	/* frame acquisition */
 	
-	camera_img_param_ex cur_frame_param;
-	uint32_t cur_frame_index;
-	bool receiving_frame;
-	camera_image_buffer *target_buffer;
-	int target_buffer_index;
-	uint32_t cur_frame_size;
-	uint32_t cur_frame_pos;
+	camera_img_param_ex cur_frame_param;					///< Parameters of the frame we are currently receiving.
+	uint32_t cur_frame_number;								///< Number of the frame we are currently receiving.
+	camera_image_buffer *cur_frame_target_buf;				///< Target buffer of the frame we are currently receiving. When NULL we are discarding the frame.
+	int cur_frame_target_buf_idx;							///< When the target buffer points to one of the image stream buffers this is set to the index of that buffer. -1 otherwise.
+	uint32_t cur_frame_size;								///< The number of bytes that need to be received until the frame is complete.
+	uint32_t cur_frame_pos;									///< The current byte position inside the frame that is beeing received.
 	
 	/* sequencing */
 	
-	volatile bool seq_updating_sensor;
-	volatile bool seq_repeat_updating_sensor;
+	volatile bool seq_frame_receiving;						///< True when we are currently receiving a frame.
+	volatile bool seq_updating_sensor;						///< True when the mainloop is currently calling sensor functions to update the sensor context.
+	volatile bool seq_repeat_updating_sensor;				/**< This variable is set when the interrupt hanlder could not update the exposure settings because seq_updating_sensor was set.
+															 *   After the mainloop has finished updating the sensor context, it should repeat it immediatly with new exposure settings. */
 	volatile bool seq_snapshot_active;						/**< Flag that is asserted as long as a snapshot is not finished.
 															 *   While asserted the camera_img_stream_schedule_param_change function
-															 *   should not update the sensor. It should write the new parameters to the pend_img_stream_param variable. */
-	volatile bool seq_pend_reconfigure_general;				/**< Flag signalling that a general reconfiguration is pending. */
-	volatile bool seq_pend_img_stream_param;				/**< Flag that is set when pending img stream parameter updates are in the pend_img_stream_param variable.
+															 *   should not update the sensor. It should write the new parameters to the img_stream_param_pend variable. */
+	volatile bool seq_pend_reconfigure_general;				/**< Flag signalling that a general reconfiguration is pending because seq_snapshot_active was active. */
+	volatile bool seq_pend_img_stream_param;				/**< Flag that is set when pending img stream parameter updates are in the img_stream_param_pend variable.
 															 *   These updates will be written to the sensor in the camera_snapshot_acknowledge function. */
 };
 

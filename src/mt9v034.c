@@ -43,6 +43,8 @@
 
 #include <string.h>
 
+#define DEBUG_TEST_WORSTCASE_LATENCY (false)
+
 struct _mt9v034_sensor_ctx;
 typedef struct _mt9v034_sensor_ctx mt9v034_sensor_ctx;
 
@@ -52,7 +54,7 @@ void mt9v034_reconfigure_general(void *usr);
 void mt9v034_restore_previous_param(void *usr);
 void mt9v034_notify_readout_start(void *usr);
 void mt9v034_notify_readout_end(void *usr);
-void mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain);
+bool mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain);
 void mt9v034_get_current_param(void *usr, camera_img_param_ex *img_param, bool *img_data_valid);
 
 static bool mt9v034_init_hw(mt9v034_sensor_ctx *ctx);
@@ -150,6 +152,7 @@ bool mt9v034_init(void *usr, const camera_img_param_ex *img_param) {
 	/* init hardware: */
 	if (!mt9v034_init_hw(ctx)) return false;
 	/* configure sensor: */
+	ctx->seq_i2c_in_use = true;
 	mt9v034_configure_context(ctx, 0, img_param, true);
 	mt9v034_configure_context(ctx, 1, img_param, true);
 	mt9v034_configure_general(ctx, true);
@@ -159,6 +162,7 @@ bool mt9v034_init(void *usr, const camera_img_param_ex *img_param) {
 	ctx->cur_param_data_valid = false;
 	/* do a forced context update next. */
 	ctx->do_switch_context = true;
+	ctx->seq_i2c_in_use = false;
 	return true;
 }
 
@@ -192,8 +196,13 @@ bool mt9v034_prepare_update_param(void *usr, const camera_img_param_ex *img_para
 	return true;
 }
 
-void mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
+bool mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
+	/* check whether i2c is in use: */
+	if (ctx->seq_i2c_in_use) {
+		return false;
+	}
+	
 	bool update_exposure;
 	bool update_gain;
 	int context_idx;
@@ -245,7 +254,7 @@ void mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 	if (coarse_sw_total < 1 && fine_sw_total < 260) {
 		fine_sw_total = 260;
 	}
-	uint32_t real_exposure = coarse_sw_total * row_time + fine_sw_total;
+	uint32_t real_exposure = coarse_sw_total * (uint32_t)row_time + fine_sw_total;
 	if (ctx_param->exposure != real_exposure) {
 		update_exposure = true;
 	}
@@ -287,27 +296,27 @@ void mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 
 	switch (context_idx) {
 		case 0:
-			if (update_exposure) {
+			if (update_exposure || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_A, coarse_sw_total);
 				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_A, fine_sw_total);
 			}
-			if (update_gain) {
+			if (update_gain || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_A, analog_gain);
 			}
-			if (ver_blanking != ctx->ver_blnk_ctx_a_reg) {
+			if (ver_blanking != ctx->ver_blnk_ctx_a_reg || DEBUG_TEST_WORSTCASE_LATENCY) {
 				ctx->ver_blnk_ctx_a_reg = ver_blanking;
 				mt9v034_WriteReg(MTV_VER_BLANKING_REG_A, ctx->ver_blnk_ctx_a_reg);
 			}
 			break;
 		case 1:
-			if (update_exposure) {
+			if (update_exposure || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_B, coarse_sw_total);
 				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_B, fine_sw_total);
 			}
-			if (update_gain) {
+			if (update_gain || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_B, analog_gain);
 			}
-			if (ver_blanking != ctx->ver_blnk_ctx_b_reg) {
+			if (ver_blanking != ctx->ver_blnk_ctx_b_reg || DEBUG_TEST_WORSTCASE_LATENCY) {
 				ctx->ver_blnk_ctx_b_reg = ver_blanking;
 				mt9v034_WriteReg(MTV_VER_BLANKING_REG_B, ctx->ver_blnk_ctx_b_reg);
 			}
@@ -317,6 +326,8 @@ void mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 	/* update the settings: */
 	ctx_param->exposure = real_exposure;
 	ctx_param->analog_gain = real_analog_gain;
+	
+	return true;
 }
 
 void mt9v034_restore_previous_param(void *usr) {
@@ -388,7 +399,7 @@ void mt9v034_notify_readout_end(void *usr) {
 		}
 		uint16_t reg = ctx->pixel_frame_line_ctrl_reg & ~0x0010;
 		if (inv_clk) reg |= 0x0010;
-		if (reg != ctx->pixel_frame_line_ctrl_reg) {
+		if (reg != ctx->pixel_frame_line_ctrl_reg || DEBUG_TEST_WORSTCASE_LATENCY) {
 			ctx->pixel_frame_line_ctrl_reg = reg;
 			mt9v034_WriteReg(MTV_PIXEL_FRAME_LINE_CTRL_REG, ctx->pixel_frame_line_ctrl_reg);
 		}
@@ -693,7 +704,7 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 	
 	switch (context_idx) {
 		case 0:
-			if (update_size || update_binning) {
+			if (update_size || update_binning || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_WINDOW_WIDTH_REG_A, width);
 				mt9v034_WriteReg(MTV_WINDOW_HEIGHT_REG_A, height);
 				mt9v034_WriteReg(MTV_HOR_BLANKING_REG_A, hor_blanking);
@@ -701,20 +712,20 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 				mt9v034_WriteReg(MTV_COLUMN_START_REG_A, col_start);
 				mt9v034_WriteReg(MTV_ROW_START_REG_A, row_start);
 			}
-			if (ver_blanking != ctx->ver_blnk_ctx_a_reg || full_refresh) {
+			if (ver_blanking != ctx->ver_blnk_ctx_a_reg || full_refresh || DEBUG_TEST_WORSTCASE_LATENCY) {
 				ctx->ver_blnk_ctx_a_reg = ver_blanking;
 				mt9v034_WriteReg(MTV_VER_BLANKING_REG_A, ctx->ver_blnk_ctx_a_reg);
 			}
-			if (update_exposure) {
+			if (update_exposure || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_A, coarse_sw_total);
 				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_A, fine_sw_total);
 			}
-			if (update_gain) {
+			if (update_gain || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_A, analog_gain);
 			}
 			break;
 		case 1:
-			if (update_size || update_binning) {
+			if (update_size || update_binning || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_WINDOW_WIDTH_REG_B, width);
 				mt9v034_WriteReg(MTV_WINDOW_HEIGHT_REG_B, height);
 				mt9v034_WriteReg(MTV_HOR_BLANKING_REG_B, hor_blanking);
@@ -722,15 +733,15 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 				mt9v034_WriteReg(MTV_COLUMN_START_REG_B, col_start);
 				mt9v034_WriteReg(MTV_ROW_START_REG_B, row_start);
 			}
-			if (ver_blanking != ctx->ver_blnk_ctx_b_reg || full_refresh) {
+			if (ver_blanking != ctx->ver_blnk_ctx_b_reg || full_refresh || DEBUG_TEST_WORSTCASE_LATENCY) {
 				ctx->ver_blnk_ctx_b_reg = ver_blanking;
 				mt9v034_WriteReg(MTV_VER_BLANKING_REG_B, ctx->ver_blnk_ctx_b_reg);
 			}
-			if (update_exposure) {
+			if (update_exposure || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_B, coarse_sw_total);
 				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_B, fine_sw_total);
 			}
-			if (update_gain) {
+			if (update_gain || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_B, analog_gain);
 			}
 			break;

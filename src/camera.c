@@ -41,12 +41,18 @@
 
 #include <string.h>
 
+#define abs(x) ({			\
+	typeof(x) __x = (x);	\
+	if (__x < 0) __x = -__x;\
+	__x;					\
+})
+
 
 void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t size);
 void camera_transport_frame_done_fn(void *usr);
 
 bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const camera_transport_interface *transport,
-				 uint16_t exposure_min_clks, uint16_t exposure_max_clks, float analog_gain_max,
+				 uint32_t exposure_min_clks, uint32_t exposure_max_clks, float analog_gain_max,
 				 const  camera_img_param *img_param,
 				 camera_image_buffer buffers[], size_t buffer_count) {
 	memset(ctx, 0, sizeof(camera_ctx));
@@ -90,19 +96,17 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 		ctx->buffers[i].param = ctx->img_stream_param;
 		memset(ctx->buffers[i].buffer, 0, img_size);
 		// init the avail_bufs array:
-		ctx->avail_bufs[i] = i;
+		ctx->buf_avail[i] = i;
 	}
 	ctx->buffer_count    = buffer_count;
-	ctx->avail_buf_count = buffer_count;
+	ctx->buf_avail_count = buffer_count;
 	ctx->new_frame_arrived = false;
 	
 	ctx->snapshot_buffer = NULL;
 	
-	ctx->last_read_frame_index = 0;
-	
-	ctx->cur_frame_index = buffer_count + 1;
-	ctx->receiving_frame = false;
-	ctx->target_buffer   = NULL;
+	ctx->cur_frame_number = buffer_count + 1;
+	ctx->seq_frame_receiving = false;
+	ctx->cur_frame_target_buf   = NULL;
 	
 	ctx->seq_snapshot_active                 = false;
 	ctx->seq_pend_img_stream_param        = false;
@@ -129,43 +133,43 @@ static void uint32_t_memcpy(uint32_t *dst, const uint32_t *src, size_t count) {
 }
 
 static void camera_buffer_fifo_remove_front(camera_ctx *ctx, int *out, size_t count) {
-	size_t bc = ctx->avail_buf_count;
+	size_t bc = ctx->buf_avail_count;
 	size_t i;
 	// read out:
 	for (i = 0; i < count; ++i) {
-		*out++ = ctx->avail_bufs[i];
+		*out++ = ctx->buf_avail[i];
 	}
 	// close gap:
 	for (i = count; i < bc; ++i) {
-		ctx->avail_bufs[i - count] = ctx->avail_bufs[i];
+		ctx->buf_avail[i - count] = ctx->buf_avail[i];
 	}
-	ctx->avail_buf_count = bc - count;
+	ctx->buf_avail_count = bc - count;
 }
 
 static void camera_buffer_fifo_remove_back(camera_ctx *ctx, int *out, size_t count) {
-	size_t bc = ctx->avail_buf_count;
+	size_t bc = ctx->buf_avail_count;
 	size_t i;
 	// read out:
 	for (i = bc - count; i < bc; ++i) {
-		*out++ = ctx->avail_bufs[i];
+		*out++ = ctx->buf_avail[i];
 	}
 	// reduce count:
-	ctx->avail_buf_count = bc - count;
+	ctx->buf_avail_count = bc - count;
 }
 
 static void camera_buffer_fifo_push_at(camera_ctx *ctx, size_t pos, const int *in, size_t count) {
-	size_t bc = ctx->avail_buf_count;
+	size_t bc = ctx->buf_avail_count;
 	size_t i;
 	// move away:
 	for (i = bc; i > pos; --i) {
-		ctx->avail_bufs[i - 1 + count] = ctx->avail_bufs[i - 1];
+		ctx->buf_avail[i - 1 + count] = ctx->buf_avail[i - 1];
 	}
 	// fill in:
 	for (i = pos; i < pos + count; ++i) {
-		ctx->avail_bufs[i] = *in++;
+		ctx->buf_avail[i] = *in++;
 	}
 	// update count:
-	ctx->avail_buf_count = bc + count;
+	ctx->buf_avail_count = bc + count;
 }
 
 static void camera_update_exposure_hist(camera_ctx *ctx, const uint8_t *buffer, size_t size) {
@@ -205,11 +209,11 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 	if (ctx->startup_discard_frame_count != 0) {
 		return;
 	}
-	if (ctx->receiving_frame) {
+	if (ctx->seq_frame_receiving) {
 		camera_update_exposure_hist(ctx, buffer, size);
 		// check if we have a target buffer:
-		if (ctx->target_buffer != NULL) {
-			uint32_t_memcpy((uint32_t *)((uint8_t *)ctx->target_buffer->buffer + ctx->cur_frame_pos), 
+		if (ctx->cur_frame_target_buf != NULL) {
+			uint32_t_memcpy((uint32_t *)((uint8_t *)ctx->cur_frame_target_buf->buffer + ctx->cur_frame_pos), 
 							(const uint32_t *)buffer, size / 4);
 		}
 		// update current position:
@@ -218,15 +222,15 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 		if (ctx->cur_frame_pos >= ctx->cur_frame_size) {
 			// frame done!
 			ctx->sensor->notify_readout_end(ctx->sensor->usr);
-			if (ctx->target_buffer_index >= 0) {
+			if (ctx->cur_frame_target_buf_idx >= 0) {
 				// put back into available buffers (in the front)
-				camera_buffer_fifo_push_at(ctx, 0, &ctx->target_buffer_index, 1);
-				if (ctx->put_back_buf_pos < ctx->avail_buf_count) {
-					ctx->put_back_buf_pos += 1;
+				camera_buffer_fifo_push_at(ctx, 0, &ctx->cur_frame_target_buf_idx, 1);
+				if (ctx->buf_put_back_pos < ctx->buf_avail_count) {
+					ctx->buf_put_back_pos += 1;
 				}
 				// notify camera_img_stream_get_buffers function.
 				ctx->new_frame_arrived = true;
-			} else if (ctx->seq_snapshot_active && ctx->target_buffer != NULL) {
+			} else if (ctx->seq_snapshot_active && ctx->cur_frame_target_buf != NULL) {
 				// snapshot has been taken!
 				ctx->snapshot_cb();
 				ctx->seq_snapshot_active = false;
@@ -241,14 +245,16 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 					// extremely over-exposed! halve the integration time:
 					exposure = exposure * 0.33f;
 				} else {
-					uint8_t desired_bright = CONFIG_CAMERA_DESIRED_EXPOSURE_8B;
+					int desired_bright = CONFIG_CAMERA_DESIRED_EXPOSURE_8B;
 					desired_bright &= (0xFF << (8u - CONFIG_CAMERA_EXPOSURE_BIN_BITS));
-					if (brightness < desired_bright / 3) {
+					if (brightness < desired_bright / 4) {
 						// extremely under-exposed! double the integration time:
-						exposure =  exposure * 3.f;
+						exposure =  exposure * 4.f;
 					} else {
-						// determine optimal exposure for next frame:
-						exposure = (exposure * desired_bright) / brightness;
+						if (abs(desired_bright - brightness) > CONFIG_CAMERA_DESIRED_EXPOSURE_TOL_8B) {
+							// determine optimal exposure for next frame:
+							exposure = (exposure * desired_bright) / brightness;
+						}
 					}
 				}
 				/* clip the value within bounds: */
@@ -276,8 +282,8 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 				}
 			}
 			// reset state:
-			ctx->target_buffer = NULL;
-			ctx->receiving_frame = false;
+			ctx->cur_frame_target_buf = NULL;
+			ctx->seq_frame_receiving = false;
 		}
 	} else {
 		// no frame currently as the target frame. it must be the beginning of a new frame then!
@@ -291,20 +297,24 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 		bool img_data_valid;
 		ctx->sensor->get_current_param(ctx->sensor->usr, &ctx->cur_frame_param, &img_data_valid);
 		// update the receiving variables:
-		ctx->cur_frame_index += 1;
-		ctx->receiving_frame = true;
-		ctx->target_buffer   = NULL;
+		ctx->cur_frame_number += 1;
+		ctx->seq_frame_receiving = true;
+		ctx->cur_frame_target_buf   = NULL;
 		ctx->cur_frame_size  = (uint32_t)ctx->cur_frame_param.p.size.x * (uint32_t)ctx->cur_frame_param.p.size.y;
 		ctx->cur_frame_pos   = size;
-		ctx->target_buffer_index = -1;
+		ctx->cur_frame_target_buf_idx = -1;
 		if (!ctx->seq_snapshot_active) {
 			// check that the size parameters match to the img stream:
 			if (ctx->cur_frame_param.p.size.x  == ctx->img_stream_param.p.size.x &&
 				ctx->cur_frame_param.p.size.y  == ctx->img_stream_param.p.size.y) {
 				if (img_data_valid) {
 					// get least recently used buffer from the available buffers:
-					camera_buffer_fifo_remove_back(ctx, &ctx->target_buffer_index, 1);
-					ctx->target_buffer   = &ctx->buffers[ctx->target_buffer_index];
+					camera_buffer_fifo_remove_back(ctx, &ctx->cur_frame_target_buf_idx, 1);
+					ctx->cur_frame_target_buf   = &ctx->buffers[ctx->cur_frame_target_buf_idx];
+					/* if there are no more buffers in the fifo reset the flag again: */
+					if (ctx->buf_avail_count == 0) {
+						ctx->new_frame_arrived = false;
+					}
 				}
 			}
 		} else {
@@ -314,19 +324,19 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 				ctx->cur_frame_param.p.binning == ctx->snapshot_param.p.binning) {
 				if (img_data_valid) {
 					// get the buffer:
-					ctx->target_buffer   = ctx->snapshot_buffer;
+					ctx->cur_frame_target_buf   = ctx->snapshot_buffer;
 					// initiate switching back to img stream mode:
 					ctx->sensor->restore_previous_param(ctx->sensor->usr);
 				}
 			}
 		}
 		// initialize the target buffer:
-		if (ctx->target_buffer != NULL) {
-			ctx->target_buffer->timestamp    = get_boot_time_us();
-			ctx->target_buffer->frame_number = ctx->cur_frame_index;
-			ctx->target_buffer->param        = ctx->cur_frame_param;
+		if (ctx->cur_frame_target_buf != NULL) {
+			ctx->cur_frame_target_buf->timestamp    = get_boot_time_us();
+			ctx->cur_frame_target_buf->frame_number = ctx->cur_frame_number;
+			ctx->cur_frame_target_buf->param        = ctx->cur_frame_param;
 			// write data to it: (at position 0)
-			uint32_t_memcpy((uint32_t *)ctx->target_buffer->buffer, buf, size_w);
+			uint32_t_memcpy((uint32_t *)ctx->cur_frame_target_buf->buffer, buf, size_w);
 		}
 		// initialize exposure measuring (do not process snapshot images)
 		if (img_data_valid && !ctx->seq_snapshot_active) {
@@ -365,14 +375,6 @@ void camera_transport_frame_done_fn(void *usr) {
 	}
 }
 
-void camera_reconfigure_general(camera_ctx *ctx) {
-	if (!ctx->seq_snapshot_active && !ctx->seq_pend_reconfigure_general) {
-		ctx->sensor->reconfigure_general(ctx->sensor->usr);
-	} else {
-		ctx->seq_pend_reconfigure_general = true;
-	}
-}
-
 static bool camera_update_sensor_param(camera_ctx *ctx, const camera_img_param *img_param, camera_img_param_ex *ptoup) {
 	camera_img_param_ex p = *ptoup;
 	p.p = *img_param;
@@ -396,6 +398,14 @@ static bool camera_update_sensor_param(camera_ctx *ctx, const camera_img_param *
 	return result;
 }
 
+void camera_reconfigure_general(camera_ctx *ctx) {
+	if (!ctx->seq_snapshot_active && !ctx->seq_pend_reconfigure_general) {
+		ctx->sensor->reconfigure_general(ctx->sensor->usr);
+	} else {
+		ctx->seq_pend_reconfigure_general = true;
+	}
+}
+
 bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_param *img_param) {
 	uint32_t img_size = (uint32_t)img_param->size.x * (uint32_t)img_param->size.y;
 	if (img_size % ctx->transport->transfer_size != 0 || img_size / ctx->transport->transfer_size < 2) {
@@ -412,7 +422,7 @@ bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_p
 	if (!ctx->seq_snapshot_active && !ctx->seq_pend_img_stream_param) {
 		return camera_update_sensor_param(ctx, img_param, &ctx->img_stream_param);
 	} else {
-		ctx->pend_img_stream_param = *img_param;
+		ctx->img_stream_param_pend = *img_param;
 		ctx->seq_pend_img_stream_param = true;
 		return true;
 	}
@@ -449,7 +459,7 @@ void camera_snapshot_acknowledge(camera_ctx *ctx) {
 		if (ctx->seq_pend_img_stream_param) {
 			ctx->seq_pend_img_stream_param = false;
 			/* write the pending changes to the sensor: */
-			camera_update_sensor_param(ctx, &ctx->pend_img_stream_param, &ctx->img_stream_param);
+			camera_update_sensor_param(ctx, &ctx->img_stream_param_pend, &ctx->img_stream_param);
 		}
 	}
 }
@@ -469,7 +479,7 @@ static bool camera_img_stream_get_buffers_idx(camera_ctx *ctx, int bidx[], size_
 	}
 	if (consecutive) {
 		/* good! */
-		ctx->put_back_buf_pos = 0;
+		ctx->buf_put_back_pos = 0;
 		ctx->buffers_are_reserved = true;
 	} else {
 		/* not good. put back the buffers: */
@@ -520,9 +530,9 @@ void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer *buff
 	}
 	/* buffer management needs to be performed atomically: */
 	__disable_irq();
-	size_t at_pos = ctx->put_back_buf_pos;
-	if (at_pos > ctx->avail_buf_count) at_pos = ctx->avail_buf_count;
-	camera_buffer_fifo_push_at(ctx, ctx->put_back_buf_pos, bidx, count);
+	size_t at_pos = ctx->buf_put_back_pos;
+	if (at_pos > ctx->buf_avail_count) at_pos = ctx->buf_avail_count;
+	camera_buffer_fifo_push_at(ctx, ctx->buf_put_back_pos, bidx, count);
 	ctx->buffers_are_reserved = false;
 	__enable_irq();
 }
