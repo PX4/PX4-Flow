@@ -23,6 +23,7 @@ SRCS = 		src/main.c \
 			src/settings.c \
 			src/communication.c \
 			src/flow.c \
+			src/flash.c \
 			src/dcmi.c \
 			src/mt9v034.c \
 			src/gyro.c \
@@ -41,6 +42,7 @@ SRCS += 	lib/STM32F4xx_StdPeriph_Driver/src/misc.c \
 			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c \
 			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma.c \
 			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dcmi.c \
+			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_flash.c \
 			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_i2c.c \
 			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.c \
 			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.c \

@@ -83,7 +83,10 @@ void enable_image_capture(void)
 {
 	dcmi_clock_init();
 	dcmi_hw_init();
-	dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]);
+    if(global_data.param[PARAM_VIDEO_ONLY])
+		dcmi_dma_init(FULL_IMAGE_SIZE);
+	else
+		dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]);
 	mt9v034_context_configuration();
 	dcmi_dma_enable();
 }
