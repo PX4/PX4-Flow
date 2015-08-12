@@ -5,8 +5,8 @@
 .cproject
 .project
 px4flow_prototype.px4
-px4flow.px4
-px4flow.bin
+px4flow*.px4
+px4flow*.bin
 .settings
 *.sublime-workspace
 build*/
@@ -16,3 +16,4 @@ CMakeFiles/
 *.cmake
 libperiph.a
 px4flow
+Build/

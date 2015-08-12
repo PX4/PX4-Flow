@@ -1,130 +1,254 @@
 #
-# STM32F4 PX4FLOW board build rules
+#   Copyright (c) 2012-2015 PX4 Development Team. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
+# 3. Neither the name PX4 nor the names of its contributors may be
+#    used to endorse or promote products derived from this software
+#    without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+# OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 #
 
-BINARY		 = px4flow.elf
-BINARY_BIN	 = px4flow.bin
+#
+# Top-level Makefile for building PX4 firmware images.
+#
 
-OPENOCD		?= ../../sat/bin/openocd
-JTAGCONFIG 	?= olimex-jtag-tiny.cfg
-#JTAGCONFIG	?= olimex-arm-usb-tiny-h.cfg
+TARGETS	:= baremetal
+EXPLICIT_TARGET	:= $(filter $(TARGETS),$(MAKECMDGOALS))
+ifneq ($(EXPLICIT_TARGET),)
+    export PX4_TARGET_OS=$(EXPLICIT_TARGET)
+    export GOALS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+endif
 
-MAVLINKBASEDIR = mavlink/include/mavlink/v1.0
-MAVLINKDIR = mavlink/include/mavlink/v1.0/common
-MAVLINKUSERDIR = mavlink/include/mavlink/v1.0/user
+#
+# Get path and tool configuration
+#
+export PX4_BASE		 := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))/
+include $(PX4_BASE)makefiles/setup.mk
 
-AS =		arm-none-eabi-as
-CC =		arm-none-eabi-gcc
-OBJCOPY =	arm-none-eabi-objcopy
+#
+# Get a version string provided by git
+# This assumes that git command is available and that
+# the directory holding this file also contains .git directory
+#
+GIT_DESC := $(shell git log -1 --pretty=format:%H)
+ifneq ($(words $(GIT_DESC)),1)
+    GIT_DESC := "unknown_git_version"
+endif
 
-SRCS = 		src/main.c \
-			src/utils.c \
-			src/led.c \
-			src/settings.c \
-			src/communication.c \
-			src/flow.c \
-			src/dcmi.c \
-			src/mt9v034.c \
-			src/gyro.c \
-			src/usart.c \
-			src/sonar.c \
-			src/debug.c \
-			src/usb_bsp.c \
-			src/usbd_cdc_vcp.c \
-			src/usbd_desc.c \
-			src/usbd_usr.c \
-			src/i2c.c \
-			src/reset.c \
-			src/sonar_mode_filter.c
-SRCS += 	src/system_stm32f4xx.c src/stm32f4xx_it.c lib/startup_stm32f4xx.s
-SRCS += 	lib/STM32F4xx_StdPeriph_Driver/src/misc.c \
-			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c \
-			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma.c \
-			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dcmi.c \
-			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_i2c.c \
-			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.c \
-			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.c \
-			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_usart.c \
-			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_adc.c \
-			lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_gpio.c \
-			lib/STM32_USB_OTG_Driver/src/usb_core.c \
-			lib/STM32_USB_OTG_Driver/src/usb_dcd_int.c \
-			lib/STM32_USB_OTG_Driver/src/usb_dcd.c \
-			lib/STM32_USB_Device_Library/Core/src/usbd_core.c \
-			lib/STM32_USB_Device_Library/Core/src/usbd_req.c \
-			lib/STM32_USB_Device_Library/Core/src/usbd_ioreq.c \
-			lib/STM32_USB_Device_Library/Class/cdc/src/usbd_cdc_core.c
+export GIT_DESC
 
-CFLAGS		 = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
-			-O3 \
-			-ggdb \
-			-std=gnu99 \
-			-Wall -Werror \
-			-MMD \
-			-Iinc \
-			-Ilib \
-			-Ilib/STM32F4xx_StdPeriph_Driver/inc \
-			-Ilib/STM32_USB_Device_Library/Class/cdc/inc \
-			-Ilib/STM32_USB_Device_Library/Core/inc \
-			-Ilib/STM32_USB_HOST_Library/Core/inc \
-			-Ilib/STM32_USB_OTG_Driver/inc \
-			-I$(MAVLINKBASEDIR) \
-			-I$(MAVLINKDIR) \
-			-DMAVLINK_SEND_UART_BYTES=mavlink_send_uart_bytes
+GIT_DESC_SHORT := $(shell echo $(GIT_DESC) | cut -c1-16)
 
-LDFLAGS		 = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
-			-lnosys \
-			-Tstm32f4.ld \
-			-Wl,-gc-sections \
-			-lm
-			
--include $(BINARY:.elf=.d)
+#
+# Canned firmware configurations that we (know how to) build.
+#
+KNOWN_CONFIGS		:= $(subst config_,,$(basename $(notdir $(wildcard $(PX4_MK_DIR)/$(PX4_TARGET_OS)/config_*.mk))))
+CONFIGS			?= $(KNOWN_CONFIGS)
 
-all: px4flow.px4
+#
+# Boards that we (know how to) build NuttX export kits for.
+#
+KNOWN_BOARDS		:= $(subst board_,,$(basename $(notdir $(wildcard $(PX4_MK_DIR)/$(PX4_TARGET_OS)/board_*.mk))))
+BOARDS			?= $(KNOWN_BOARDS)
 
-$(BINARY):	$(SRCS)
-	$(CC) $(CFLAGS) $(SRCS) -o $@ $(LDFLAGS)
+#
+# Canned firmware configurations for bootloader that we (know how to) build.
+#
+KNOWN_BOARDS_WITH_BOOTLOADERS		:=  $(subst _bootloader,, $(filter %_bootloader, $(CONFIGS)))
+BOARDS_WITH_BOOTLOADERS	:= $(filter $(BOARDS), $(KNOWN_BOARDS_WITH_BOOTLOADERS))
 
-px4flow.px4: px4flow.elf
-	@$(OBJCOPY) -O binary px4flow.elf px4flow.bin
-	@python -u Tools/px_mkfw.py --board_id 6 > px4flow_prototype.px4
-	@python -u Tools/px_mkfw.py --prototype px4flow_prototype.px4 --image $(BINARY_BIN) > px4flow.px4
-	
-objcopy: px4flow.px4
+#
+# Debugging
+#
+MQUIET			 = --no-print-directory
+#MQUIET			 = --print-directory
 
+################################################################################
+# No user-serviceable parts below
+################################################################################
+
+#
+# If the user has listed a config as a target, strip it out and override CONFIGS.
+#
+FIRMWARE_GOAL		 = firmware
+EXPLICIT_CONFIGS	:= $(filter $(CONFIGS),$(MAKECMDGOALS))
+ifneq ($(EXPLICIT_CONFIGS),)
+CONFIGS			:= $(EXPLICIT_CONFIGS)
+.PHONY:			$(EXPLICIT_CONFIGS)
+$(EXPLICIT_CONFIGS):	all
+
+#
+# If the user has asked to upload, they must have also specified exactly one
+# config.
+#
+ifneq ($(filter upload,$(MAKECMDGOALS)),)
+ifneq ($(words $(EXPLICIT_CONFIGS)),1)
+$(error In order to upload, exactly one board config must be specified)
+endif
+FIRMWARE_GOAL		 = upload
+.PHONY: upload
+upload:
+	@:
+endif
+endif
+
+ifeq ($(PX4_TARGET_OS),baremetal)
+include $(PX4_BASE)makefiles/baremetal/firmware_baremetal.mk
+endif
+
+#
+# Versioning
+#
+
+GIT_VER_FILE = $(PX4_VERSIONING_DIR).build_git_ver
+GIT_HEADER_FILE = $(PX4_VERSIONING_DIR)build_git_version.h
+
+$(GIT_VER_FILE) :
+	$(Q) if [ ! -f $(GIT_VER_FILE) ]; then \
+		$(MKDIR) -p $(PX4_VERSIONING_DIR); \
+		$(ECHO) "" > $(GIT_VER_FILE); \
+	fi
+
+.PHONY: checkgitversion
+checkgitversion: $(GIT_VER_FILE)
+	$(Q) if [ "$(GIT_DESC)" != "$(shell cat $(GIT_VER_FILE))" ]; then \
+		$(ECHO) "/* Auto Magically Generated file */" > $(GIT_HEADER_FILE); \
+		$(ECHO) "/* Do not edit! */" >> $(GIT_HEADER_FILE); \
+		$(ECHO) "#define PX4_GIT_VERSION_STR  \"$(GIT_DESC)\"" >> $(GIT_HEADER_FILE); \
+		$(ECHO) "#define PX4_GIT_VERSION_BINARY 0x$(GIT_DESC_SHORT)" >> $(GIT_HEADER_FILE); \
+		$(ECHO) $(GIT_DESC) > $(GIT_VER_FILE); \
+	fi
+#
+# Sizes
+#
+
+.PHONY: size
+size:
+	$(Q) for elfs in Build/*; do if [ -f  $$elfs/firmware.elf ]; then  $(SIZE) $$elfs/firmware.elf; fi done
+
+#
+# Submodule Checks
+#
+
+.PHONY: checksubmodules
+checksubmodules:
+	$(Q) ($(PX4_BASE)/Tools/check_submodules.sh)
+
+.PHONY: updatesubmodules
+updatesubmodules:
+	$(Q) (git submodule init)
+	$(Q) (git submodule update)
+
+#
+# Testing targets
+#
+testbuild:
+	$(Q) (cd $(PX4_BASE) && $(MAKE) distclean && $(MAKE) archives && $(MAKE) -j8)
+	$(Q) (zip -r Firmware.zip $(PX4_BASE)/Images)
+
+baremetal: 
+ifeq ($(GOALS),)
+	make PX4_TARGET_OS=$@ $(GOALS)
+else
+	export PX4_TARGET_OS=$@
+endif
+
+#
+# Unittest targets. Builds and runs the host-level
+# unit tests.
+.PHONY: tests
+tests:	
+	$(Q) (mkdir -p $(PX4_BASE)/unittests/build && cd $(PX4_BASE)/unittests/build && cmake .. && $(MAKE) unittests)
+
+.PHONY: format check_format
+check_format:
+	$(Q) (./Tools/check_code_style.sh | sort -n)
+
+#
+# Cleanup targets.  'clean' should remove all built products and force
+# a complete re-compilation, 'distclean' should remove everything
+# that's generated leaving only files that are in source control.
+#
+.PHONY:	clean
 clean:
-	rm -f *.o *.d $(BINARY) $(BINARY_BIN)
+	@echo > /dev/null
+	$(Q) $(RMDIR) $(BUILD_DIR)*.build
+	$(Q) $(RMDIR) $(PX4_VERSIONING_DIR)
+	$(Q) $(REMOVE) $(IMAGE_DIR)*.px4
 
-upload-jtag:		all flash-both
+.PHONY:	distclean
+distclean: clean
+	@echo > /dev/null
 
-flash:
-	$(OPENOCD) --search ../px4_flow -f $(JTAGCONFIG) -f stm32f4x.cfg  -c init -c "reset halt" -c "flash write_image erase px4flow.elf" -c "reset run" -c shutdown
-
-flash-bootloader:
-	$(OPENOCD) --search ../px4_flow -f $(JTAGCONFIG) -f stm32f4x.cfg  -c init -c "reset halt" -c "flash write_image erase px4flow_bl.elf" -c "reset run" -c shutdown
-
-flash-both:
-	$(OPENOCD) --search ../px4_flow -f $(JTAGCONFIG) -f stm32f4x.cfg  -c init -c "reset halt" -c "flash write_image erase px4flow.elf" -c "reset run" -c init -c "reset halt" -c "flash write_image erase px4flow_bl.elf" -c "reset run" -c shutdown
-
-# FOR GDB
-flash-both-no-shutdown:
-	$(OPENOCD) --search ../px4_flow -f $(JTAGCONFIG) -f stm32f4x.cfg  -c init -c "reset halt" -c "flash write_image erase px4flow.elf" -c "reset run" -c init -c "reset halt" -c "flash write_image erase px4flow_bl.elf" -c "reset run"
-
-# serial port defaults by operating system.
-SYSTYPE			 = $(shell uname)
-ifeq ($(SYSTYPE),Darwin)
-SERIAL_PORTS		?= "/dev/tty.usbmodemPX1,/dev/tty.usbmodemPX2,/dev/tty.usbmodemPX3,/dev/tty.usbmodemPX4,/dev/tty.usbmodem1,/dev/tty.usbmodem2,/dev/tty.usbmodem3,/dev/tty.usbmodem4"
+#
+# Print some help text
+#
+.PHONY: help
+help:
+	@$(ECHO) ""
+	@$(ECHO) " PX4 firmware builder"
+	@$(ECHO) " ===================="
+	@$(ECHO) ""
+	@$(ECHO) "  Available targets:"
+	@$(ECHO) "  ------------------"
+	@$(ECHO) ""
+	@$(ECHO) "  all"
+	@$(ECHO) "    Build all firmware configs: $(CONFIGS)"
+	@$(ECHO) "    A limited set of configs can be built with CONFIGS=<list-of-configs>"
+	@$(ECHO) ""
+	@for config in $(CONFIGS); do \
+		$(ECHO) "  $$config"; \
+		$(ECHO) "    Build just the $$config firmware configuration."; \
+		$(ECHO) ""; \
+	done
+	@$(ECHO) "  clean"
+	@$(ECHO) "    Remove all firmware build pieces."
+	@$(ECHO) ""
+ifeq ($(PX4_TARGET_OS),baremetal)
+	@$(ECHO) "  distclean"
+	@$(ECHO) "    Remove all compilation products, including any dsdl."
+	@$(ECHO) ""
+	@$(ECHO) "  upload"
+	@$(ECHO) "    When exactly one config is being built, add this target to upload the"
+	@$(ECHO) "    firmware to the board when the build is complete. Not supported for"
+	@$(ECHO) "    all configurations."
+	@$(ECHO) ""
 endif
-ifeq ($(SYSTYPE),Linux)
-SERIAL_PORTS		?= "/dev/ttyACM5,/dev/ttyACM4,/dev/ttyACM3,/dev/ttyACM2,/dev/ttyACM1,/dev/ttyACM0"
-endif
-ifeq ($(SERIAL_PORTS),)
-SERIAL_PORTS		 = "\\\\.\\COM32,\\\\.\\COM31,\\\\.\\COM30,\\\\.\\COM29,\\\\.\\COM28,\\\\.\\COM27,\\\\.\\COM26,\\\\.\\COM25,\\\\.\\COM24,\\\\.\\COM23,\\\\.\\COM22,\\\\.\\COM21,\\\\.\\COM20,\\\\.\\COM19,\\\\.\\COM18,\\\\.\\COM17,\\\\.\\COM16,\\\\.\\COM15,\\\\.\\COM14,\\\\.\\COM13,\\\\.\\COM12,\\\\.\\COM11,\\\\.\\COM10,\\\\.\\COM9,\\\\.\\COM8,\\\\.\\COM7,\\\\.\\COM6,\\\\.\\COM5,\\\\.\\COM4,\\\\.\\COM3,\\\\.\\COM2,\\\\.\\COM1,\\\\.\\COM0"
+	@$(ECHO) "  testbuild"
+	@$(ECHO) "    Perform a complete clean build of the entire tree."
+	@$(ECHO) ""
+	@$(ECHO) "  Common options:"
+	@$(ECHO) "  ---------------"
+	@$(ECHO) ""
+	@$(ECHO) "  V=1"
+	@$(ECHO) "    If V is set, more verbose output is printed during the build. This can"
+	@$(ECHO) "    help when diagnosing issues with the build or toolchain."
+	@$(ECHO) ""
+ifeq ($(PX4_TARGET_OS),baremetal)
+	@$(ECHO) "  To see help for a specifix target use 'make <target> help' where target is"
+	@$(ECHO) "  one of: "
+	@$(ECHO) "     baremetal"
+	@$(ECHO) ""
 endif
 
-upload-usb: px4flow.px4
-	@echo Attempting to flash PX4FLOW board via USB
-	@python -u Tools/px_uploader.py px4flow.px4 --baud 921600 --port $(SERIAL_PORTS)
-
-.PHONY: all clean objcopy upload-jtag flash flash-bootloader flash-both flash-both-no-shutdown upload-usb
-#-include $(DEPS)

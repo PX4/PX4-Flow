@@ -1,0 +1,12 @@
+{
+    "board_id": 27,
+    "magic": "FLOWv2",
+    "description": "Firmware for the PX4FLowV2 board",
+    "image": "",
+    "build_time": 0,
+    "summary": "PX4FLOWv2",
+    "version": "0.1",
+    "image_size": 0,
+    "git_identity": "",
+    "board_revision": 0
+}
