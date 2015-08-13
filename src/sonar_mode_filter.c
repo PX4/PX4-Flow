@@ -42,19 +42,17 @@
 static float sonar_values[3] = { 0.0f };
 static unsigned insert_index = 0;
 
-static void sonar_bubble_sort(float sonar_values[], unsigned n);
-
-void sonar_bubble_sort(float sonar_values[], unsigned n)
+static void sonar_bubble_sort(float in_out_sonar_values[], unsigned n)
 {
 	float t;
 
 	for (unsigned i = 0; i < (n - 1); i++) {
 		for (unsigned j = 0; j < (n - i - 1); j++) {
-			if (sonar_values[j] > sonar_values[j+1]) {
+			if (in_out_sonar_values[j] > in_out_sonar_values[j+1]) {
 				/* swap two values */
-				t = sonar_values[j];
-				sonar_values[j] = sonar_values[j + 1];
-				sonar_values[j + 1] = t;
+				t = in_out_sonar_values[j];
+				in_out_sonar_values[j] = in_out_sonar_values[j + 1];
+				in_out_sonar_values[j + 1] = t;
 			}
 		}
 	}

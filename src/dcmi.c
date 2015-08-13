@@ -35,6 +35,7 @@
  *
  ****************************************************************************/
 
+#include "no_wanings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "utils.h"
@@ -95,7 +96,7 @@ void dma_reconfigure(void)
 {
 	dcmi_dma_disable();
 
-	if(global_data.param[PARAM_VIDEO_ONLY])
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
 		dcmi_dma_init(FULL_IMAGE_SIZE);
 	else
 		dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]);
@@ -138,7 +139,7 @@ void DMA2_Stream1_IRQHandler(void)
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
 		frame_counter++;
 
-		if(global_data.param[PARAM_VIDEO_ONLY])
+		if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
 		{
 			if (frame_counter >= 4)
 			{
