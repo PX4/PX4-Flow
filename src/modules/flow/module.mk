@@ -16,12 +16,12 @@ INCLUDE_DIRS	 += $(MAVLINK_SRC) \
 									$(ST_LIB)STM32_USB_OTG_Driver/inc \
 
 
-SRCS += 	$(ST_LIB)startup_stm32f4xx.s \
+SRCS = 	$(ST_LIB)startup_stm32f4xx.s \
 					system_stm32f4xx.c \
 					stm32f4xx_it.c 
 					
 
-SRCS = 		main.c \
+SRCS += 		main.c \
           utils.c \
           led.c \
           settings.c \
@@ -58,3 +58,5 @@ SRCS += 	$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/misc.c \
     			$(ST_LIB)STM32_USB_Device_Library/Core/src/usbd_req.c \
     			$(ST_LIB)STM32_USB_Device_Library/Core/src/usbd_ioreq.c \
     			$(ST_LIB)STM32_USB_Device_Library/Class/cdc/src/usbd_cdc_core.c
+
+$(info SRCS=$(SRCS))
