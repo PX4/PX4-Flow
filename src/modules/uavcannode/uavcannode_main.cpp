@@ -32,36 +32,16 @@
 
 #include <px4_config.h>
 
-#ifdef __PX4_NUTTX
-#include <nuttx/clock.h>
-#
-#else
-#include <px4_workqueue.h>
-#endif
+#include <px4_log.h>
 
-#include <cstdlib>
-#include <cstring>
-#include <fcntl.h>
-#include <systemlib/err.h>
-#include <systemlib/systemlib.h>
-#include <systemlib/param/param.h>
-#include <systemlib/mixer/mixer.h>
-#include <systemlib/board_serial.h>
-#include <systemlib/scheduling_priorities.h>
-#include <version/version.h>
-#include <arch/board/board.h>
-#include <arch/chip/chip.h>
-
-#include <drivers/drv_hrt.h>
-#include <drivers/drv_pwm_output.h>
+#include <bsp/board.h>
 
 #include "uavcannode_main.hpp"
-#include "indication_controller.hpp"
-#include "sim_controller.hpp"
-#include "resources.hpp"
-#include "led.hpp"
-
 #include "boot_app_shared.h"
+
+#include <px4_macros.h>
+
+#define FW_GIT STRINGIFY(GIT_VERSION)
 
 /**
  * @file uavcan_main.cpp
@@ -72,18 +52,6 @@
  *         David Sidrane <david_s5@nscdg.com>
  */
 
-#define RESOURCE_DEBUG
-#if defined(RESOURCE_DEBUG)
-#define resources(s) ::syslog(LOG_INFO," %s\n",(s)); \
-	if (UavcanNode::instance()) { \
-		syslog(LOG_INFO,"UAVCAN  getPeakNumUsedBlocks() in bytes %d\n", \
-		       UAVCAN_MEM_POOL_BLOCK_SIZE * UavcanNode::instance()->get_node().getAllocator().getPeakNumUsedBlocks()); \
-	} \
-	free_check(); \
-	stack_check();
-#else
-#define resources(s)
-#endif
 
 /*
  * This is the AppImageDescriptor used
@@ -109,42 +77,16 @@ boot_app_shared_section app_descriptor_t AppDescriptor = {
 UavcanNode *UavcanNode::_instance;
 
 UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &system_clock) :
-	CDev("uavcan", UAVCAN_DEVICE_PATH),
 	active_bitrate(0),
 	_node(can_driver, system_clock),
-	_node_mutex(),
 	_fw_update_listner(_node),
 	_reset_timer(_node)
 {
-	const int res = pthread_mutex_init(&_node_mutex, nullptr);
-
-	if (res < 0) {
-		std::abort();
-	}
 
 }
 
 UavcanNode::~UavcanNode()
 {
-	if (_task != -1) {
-		/* tell the task we want it to go away */
-		_task_should_exit = true;
-
-		unsigned i = 10;
-
-		do {
-			/* wait 5ms - it should wake every 10ms or so worst-case */
-			::usleep(5000);
-
-			/* if we have given up, kill it */
-			if (--i == 0) {
-				task_delete(_task);
-				break;
-			}
-
-		} while (_task != -1);
-	}
-
 	_instance = nullptr;
 
 }
@@ -154,22 +96,10 @@ int UavcanNode::start(uavcan::NodeID node_id, uint32_t bitrate)
 
 
 	if (_instance != nullptr) {
-		warnx("Already started");
+		PX4_INFO("Already started");
 		return -1;
 	}
 
-	/*
-	 * GPIO config.
-	 * Forced pull up on CAN2 is required for Pixhawk v1 where the second interface lacks a transceiver.
-	 * If no transceiver is connected, the RX pin will float, occasionally causing CAN controller to
-	 * fail during initialization.
-	 */
-	stm32_configgpio(GPIO_CAN1_RX);
-	stm32_configgpio(GPIO_CAN1_TX);
-#if defined(GPIO_CAN2_RX)
-	stm32_configgpio(GPIO_CAN2_RX | GPIO_PULLUP);
-	stm32_configgpio(GPIO_CAN2_TX);
-#endif
 	/*
 	 * CAN driver init
 	 */
@@ -180,7 +110,7 @@ int UavcanNode::start(uavcan::NodeID node_id, uint32_t bitrate)
 		const int can_init_res = can.init(bitrate);
 
 		if (can_init_res < 0) {
-			warnx("CAN driver init failed %i", can_init_res);
+		        PX4_ERR("CAN driver init failed %i", can_init_res);
 			return can_init_res;
 		}
 
@@ -193,19 +123,17 @@ int UavcanNode::start(uavcan::NodeID node_id, uint32_t bitrate)
 	_instance = new UavcanNode(can.driver, uavcan_stm32::SystemClock::instance());
 
 	if (_instance == nullptr) {
-		warnx("Out of memory");
+	        PX4_ERR("Out of memory");
 		return -1;
 	}
 
 
-	resources("Before _instance->init:");
 	const int node_init_res = _instance->init(node_id);
-	resources("After _instance->init:");
 
 	if (node_init_res < 0) {
 		delete _instance;
 		_instance = nullptr;
-		warnx("Node init failed %i", node_init_res);
+		PX4_ERR("Node init failed %i", node_init_res);
 		return node_init_res;
 	}
 
@@ -214,19 +142,7 @@ int UavcanNode::start(uavcan::NodeID node_id, uint32_t bitrate)
 
 	_instance->active_bitrate = bitrate;
 
-	/*
-	 * Start the task. Normally it should never exit.
-	 */
-	static auto run_trampoline = [](int, char *[]) {return UavcanNode::_instance->run();};
-	_instance->_task = px4_task_spawn_cmd("uavcan", SCHED_DEFAULT, SCHED_PRIORITY_ACTUATOR_OUTPUTS, StackSize,
-					      static_cast<main_t>(run_trampoline), nullptr);
-
-	if (_instance->_task < 0) {
-		warnx("start failed: %d", errno);
-		return -errno;
-	}
-
-	return OK;
+	return PX4_OK;
 }
 
 void UavcanNode::fill_node_info()
@@ -245,7 +161,7 @@ void UavcanNode::fill_node_info()
 	swver.minor = AppDescriptor.minor_version;
 	swver.image_crc = AppDescriptor.image_crc;
 
-	warnx("SW version vcs_commit: 0x%08x", unsigned(swver.vcs_commit));
+	PX4_INFO("SW version vcs_commit: 0x%08x", unsigned(swver.vcs_commit));
 
 	_node.setSoftwareVersion(swver);
 
@@ -255,8 +171,8 @@ void UavcanNode::fill_node_info()
 	hwver.major = HW_VERSION_MAJOR;
 	hwver.minor = HW_VERSION_MINOR;
 
-	uint8_t udid[12] = {};  // Someone seems to love magic numbers
-	get_board_serial(udid);
+	uint8_t udid[BOARD_SERIALNUMBER_SIZE] = {};
+	board_get_serialnumber(udid);
 	uavcan::copy(udid, udid + sizeof(udid), hwver.unique_id.begin());
 
 	_node.setHardwareVersion(hwver);
@@ -264,8 +180,7 @@ void UavcanNode::fill_node_info()
 
 static void cb_reboot(const uavcan::TimerEvent &)
 {
-	px4_systemreset(false);
-
+    board_reset(false);
 }
 
 void UavcanNode::cb_beginfirmware_update(const uavcan::ReceivedDataStructure<UavcanNode::BeginFirmwareUpdate::Request>
@@ -285,7 +200,7 @@ void UavcanNode::cb_beginfirmware_update(const uavcan::ReceivedDataStructure<Uav
 			shared.bus_speed = active_bitrate;
 			shared.node_id = _node.getNodeID().get();
 			bootloader_app_shared_write(&shared, App);
-			rgb_led(255, 128 , 0 , 5);
+			board_led_rgb(255, 128 , 0 , 5);
 			_reset_timer.setCallback(cb_reboot);
 			_reset_timer.startOneShotWithDelay(uavcan::MonotonicDuration::fromMSec(1000));
 			rsp.error = rsp.ERROR_OK;
@@ -297,14 +212,7 @@ int UavcanNode::init(uavcan::NodeID node_id)
 {
 	int ret = -1;
 
-	// Do regular cdev init
-	ret = CDev::init();
-
-	if (ret != OK) {
-		return ret;
-	}
-
-	_node.setName("org.pixhawk.px4cannode-v1");
+	_node.setName(UAVCAN_NAME);
 
 	_node.setNodeID(node_id);
 
@@ -328,113 +236,32 @@ class RestartRequestHandler: public uavcan::IRestartRequestHandler
 {
 	bool handleRestartRequest(uavcan::NodeID request_source) override
 	{
-		::syslog(LOG_INFO, "UAVCAN: Restarting by request from %i\n", int(request_source.get()));
-		::usleep(20 * 1000 * 1000);
-		px4_systemreset(false);
+		PX4_INFO("UAVCAN: Restarting by request from %i\n", int(request_source.get()));
+		board_reset(false);
 		return true; // Will never be executed BTW
 	}
 } restart_request_handler;
 
-void UavcanNode::node_spin_once()
-{
-	const int spin_res = _node.spin(uavcan::MonotonicTime());
-
-	if (spin_res < 0) {
-		warnx("node spin error %i", spin_res);
-	}
-}
-
-/*
-  add a fd to the list of polled events. This assumes you want
-  POLLIN for now.
- */
-int UavcanNode::add_poll_fd(int fd)
-{
-	int ret = _poll_fds_num;
-
-	if (_poll_fds_num >= UAVCAN_NUM_POLL_FDS) {
-		errx(1, "uavcan: too many poll fds, exiting");
-	}
-
-	_poll_fds[_poll_fds_num] = ::pollfd();
-	_poll_fds[_poll_fds_num].fd = fd;
-	_poll_fds[_poll_fds_num].events = POLLIN;
-	_poll_fds_num += 1;
-	return ret;
-}
-
 
 int UavcanNode::run()
 {
+        static bool once = false;
+        int rv = 0;
+        if (!once) {
+          once = true;
+          get_node().setRestartRequestHandler(&restart_request_handler);
+          _node.setModeOperational();
+        }
 
-	get_node().setRestartRequestHandler(&restart_request_handler);
+        if (!_task_should_exit) {
+            rv = _node.spinOnce();
+        } else {
+            teardown();
+            PX4_INFO("exiting.");
+            rv = 0;
+        }
 
-	while (init_indication_controller(get_node()) < 0) {
-		::syslog(LOG_INFO, "UAVCAN: Indication controller init failed\n");
-		::sleep(1);
-	}
-
-	while (init_sim_controller(get_node()) < 0) {
-		::syslog(LOG_INFO, "UAVCAN: sim controller init failed\n");
-		::sleep(1);
-	}
-
-	(void)pthread_mutex_lock(&_node_mutex);
-
-	const unsigned PollTimeoutMs = 50;
-
-	const int busevent_fd = ::open(uavcan_stm32::BusEvent::DevName, 0);
-
-	if (busevent_fd < 0) {
-		warnx("Failed to open %s", uavcan_stm32::BusEvent::DevName);
-		_task_should_exit = true;
-	}
-
-
-	_node.setModeOperational();
-
-	/*
-	 * This event is needed to wake up the thread on CAN bus activity (RX/TX/Error).
-	 * Please note that with such multiplexing it is no longer possible to rely only on
-	 * the value returned from poll() to detect whether actuator control has timed out or not.
-	 * Instead, all ORB events need to be checked individually (see below).
-	 */
-	add_poll_fd(busevent_fd);
-
-	uint32_t start_tick = clock_systimer();
-
-	while (!_task_should_exit) {
-		// Mutex is unlocked while the thread is blocked on IO multiplexing
-		(void)pthread_mutex_unlock(&_node_mutex);
-
-		const int poll_ret = ::poll(_poll_fds, _poll_fds_num, PollTimeoutMs);
-
-
-		(void)pthread_mutex_lock(&_node_mutex);
-
-		node_spin_once();  // Non-blocking
-
-
-		// this would be bad...
-		if (poll_ret < 0) {
-			log("poll error %d", errno);
-			continue;
-
-		} else {
-			// Do Something
-		}
-
-		if (clock_systimer() - start_tick > TICK_PER_SEC) {
-			start_tick = clock_systimer();
-			resources("Udate:");
-		}
-
-	}
-
-	teardown();
-	warnx("exiting.");
-
-	exit(0);
+	return rv;
 }
 
 int
@@ -443,44 +270,13 @@ UavcanNode::teardown()
 	return 0;
 }
 
-
-
-int
-UavcanNode::ioctl(file *filp, int cmd, unsigned long arg)
-{
-	int ret = OK;
-
-	lock();
-
-	switch (cmd) {
-
-
-
-	default:
-		ret = -ENOTTY;
-		break;
-	}
-
-	unlock();
-
-	if (ret == -ENOTTY) {
-		ret = CDev::ioctl(filp, cmd, arg);
-	}
-
-	return ret;
-}
-
 void
 UavcanNode::print_info()
 {
 	if (!_instance) {
-		warnx("not running, start first");
+		PX4_INFO("not running, start first");
 	}
 
-	(void)pthread_mutex_lock(&_node_mutex);
-
-
-	(void)pthread_mutex_unlock(&_node_mutex);
 }
 
 /*
@@ -488,7 +284,7 @@ UavcanNode::print_info()
  */
 static void print_usage()
 {
-	warnx("usage: \n"
+	PX4_INFO("usage: \n"
 	      "\tuavcannode {start|status|stop|arm|disarm}");
 }
 
@@ -496,11 +292,7 @@ extern "C" __EXPORT int uavcannode_start(int argc, char *argv[]);
 
 int uavcannode_start(int argc, char *argv[])
 {
-	resources("Before app_archinitialize");
-
-	app_archinitialize();
-
-	resources("After app_archinitialize");
+        board_app_initialize();
 
 	// CAN bitrate
 	int32_t bitrate = 0;
@@ -522,23 +314,20 @@ int uavcannode_start(int argc, char *argv[])
 		bootloader_app_shared_invalidate();
 
 	} else {
-
+TODO(Need non vol Paramter sotrage)
 		// Node ID
-		(void)param_get(param_find("UAVCAN_NODE_ID"), &node_id);
-		(void)param_get(param_find("UAVCAN_BITRATE"), &bitrate);
+		node_id = 123;
+		bitrate = 1000;
 	}
 
 	if (node_id < 0 || node_id > uavcan::NodeID::Max || !uavcan::NodeID(node_id).isUnicast()) {
-		warnx("Invalid Node ID %i", node_id);
+		PX4_INFO("Invalid Node ID %li", node_id);
 		::exit(1);
 	}
 
 	// Start
-	warnx("Node ID %u, bitrate %u", node_id, bitrate);
-	int rv = UavcanNode::start(node_id, bitrate);
-	resources("After UavcanNode::start");
-	::sleep(1);
-	return rv;
+	PX4_INFO("Node ID %lu, bitrate %lu", node_id, bitrate);
+	return UavcanNode::start(node_id, bitrate);
 }
 
 extern "C" __EXPORT int uavcannode_main(int argc, char *argv[]);
@@ -546,13 +335,13 @@ int uavcannode_main(int argc, char *argv[])
 {
 	if (argc < 2) {
 		print_usage();
-		::exit(1);
 	}
 
 	if (!std::strcmp(argv[1], "start")) {
 
 		if (UavcanNode::instance()) {
-			errx(1, "already started");
+		    PX4_ERR("already started");
+		    return 1;
 		}
 
 		return uavcannode_start(argc, argv);
@@ -562,19 +351,20 @@ int uavcannode_main(int argc, char *argv[])
 	UavcanNode *const inst = UavcanNode::instance();
 
 	if (!inst) {
-		errx(1, "application not running");
+                PX4_ERR( "application not running");
+                return 1;
 	}
 
 	if (!std::strcmp(argv[1], "status") || !std::strcmp(argv[1], "info")) {
 		inst->print_info();
-		::exit(0);
+		return 0;
 	}
 
 	if (!std::strcmp(argv[1], "stop")) {
 		delete inst;
-		::exit(0);
+                return 0;
 	}
 
 	print_usage();
-	::exit(1);
+        return 1;
 }

@@ -12,8 +12,3 @@ CONFIG_BOARD		 = PX4FLOW_V1
 WUSEPACKED = -Wno-packed
 include $(PX4_MK_DIR)baremetal/toolchain_gnu-arm-eabi.mk
 
-#
-# Bring in common uavcan hardware version definitions
-#
-include $(PX4_MK_DIR)baremetal/uavcan_board_px4flow-v1.mk
-

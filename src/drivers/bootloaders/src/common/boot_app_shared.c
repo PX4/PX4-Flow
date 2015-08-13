@@ -175,7 +175,7 @@ static void bootloader_app_shared_init(bootloader_app_shared_t *pshared, eRole_t
  *            read the application passed data.
  *
  * Returned value:
- *   OK     - Indicates that the internal data has been copied to callers
+ *   PX4_OK - Indicates that the internal data has been copied to callers
  *            bootloader_app_shared_t structure.
  *
  *  -EBADR  - The Role or crc of the internal data was not valid. The copy
@@ -196,7 +196,7 @@ int bootloader_app_shared_read(bootloader_app_shared_t *shared,
 	     : working.signature == BOOTLOADER_COMMON_BOOTLOADER_SIGNATURE)
 	    && (working.crc.ull == calulate_signature(&working))) {
 		*shared = working;
-		rv = OK;
+		rv = PX4_OK;
 	}
 
 	return rv;

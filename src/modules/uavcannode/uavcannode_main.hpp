@@ -35,7 +35,6 @@
 
 #include <px4_config.h>
 #include <uavcan_stm32/uavcan_stm32.hpp>
-#include <drivers/device/device.h>
 #include <uavcan/protocol/file/BeginFirmwareUpdate.hpp>
 #include <uavcan/node/timer.hpp>
 /**
@@ -47,16 +46,10 @@
  *         David Sidrane <david_s5@nscdg.com>
  */
 
-#define NUM_ACTUATOR_CONTROL_GROUPS_UAVCAN	1
-#define UAVCAN_DEVICE_PATH	"/dev/uavcan/node"
-
-// we add two to allow for actuator_direct and busevent
-#define UAVCAN_NUM_POLL_FDS (NUM_ACTUATOR_CONTROL_GROUPS_UAVCAN+2)
-
 /**
  * A UAVCAN node.
  */
-class UavcanNode : public device::CDev
+class UavcanNode
 {
 	/*
 	 * This memory is reserved for uavcan to use as over flow for message
@@ -97,8 +90,6 @@ public:
 
 	virtual		~UavcanNode();
 
-	virtual int	ioctl(file *filp, int cmd, unsigned long arg);
-
 	static int	start(uavcan::NodeID node_id, uint32_t bitrate);
 
 	Node		&get_node() { return _node; }
@@ -118,20 +109,12 @@ public:
 private:
 	void		fill_node_info();
 	int		init(uavcan::NodeID node_id);
-	void		node_spin_once();
 	int		run();
-	int		add_poll_fd(int fd);			///< add a fd to poll list, returning index into _poll_fds[]
 
-
-	int			_task = -1;			///< handle to the OS task
 	bool			_task_should_exit = false;	///< flag to indicate to tear down the CAN driver
 
 	static UavcanNode	*_instance;			///< singleton pointer
 	Node			_node;				///< library instance
-	pthread_mutex_t		_node_mutex;
-
-	pollfd			_poll_fds[UAVCAN_NUM_POLL_FDS] = {};
-	unsigned		_poll_fds_num = 0;
 
 	typedef uavcan::MethodBinder<UavcanNode*,
 	    void (UavcanNode::*) (const uavcan::ReceivedDataStructure<UavcanNode::BeginFirmwareUpdate::Request> &,

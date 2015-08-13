@@ -35,13 +35,69 @@
 #
 
 #
+# For non bootloader builds add the platforms modules
+#
+
+MODULES += platforms/common
+
+#ARCHXXINCLUDES	 += -I. -isystem $(PX4_INCLUDE_DIR) -isystem $(PX4_INCLUDE_DIR)cxx
+
+#
+# Check that the Baremetal archive for the selected board is available.
+#
+BAREMETTAL_ARCHIVE		:= $(wildcard $(ARCHIVE_DIR)$(BOARD).$(BAREMETAL_CONFIG).export)
+$(info BAREMETAL_ARCHIVE=$(BAREMETAL_ARCHIVE) $(ARCHIVE_DIR)$(BOARD).$(BAREMETAL_CONFIG).export)
+ifeq ($(BAREMETTAL_ARCHIVE),)
+$(error The Baremetal export archive $(BOARD).$(CONFIG).export for $(BOARD) with configuration $(BAREMETAL_CONFIG) is missing from $(ARCHIVE_DIR) - try 'make archives' in $(PX4_BASE))
+endif
+
+#
+# The NuttX config header should always be present in the NuttX archive, and
+# if it changes, everything should be rebuilt. So, use it as the trigger to
+# unpack the NuttX archive.
+#
+BAREMETTAL_EXPORT_DIR	 = $(WORK_DIR)baremetal-export/
+$(info %  BAREMETTAL_EXPORT_DIR    = $(BAREMETTAL_EXPORT_DIR))
+
+#
+# Are there any start up files not in the nuttx lib
+#
+
+ifneq ($(START_UP_FILES),"")
+BAREMETTAL_STARTUP = $(addprefix $(BAREMETTAL_EXPORT_DIR)startup/,$(START_UP_FILES:c=o))
+$(info %  BAREMETTAL_STARTUP       = $(BAREMETTAL_STARTUP))
+endif
+
+GLOBAL_DEPS		+= $(BAREMETAL_CONFIG_HEADER)
+
+#
+# Are there any start up files not in the nuttx lib
+#
+
+#
+# Use the linker script from the NuttX export
+#
+LDSCRIPT		+= $(BAREMETTAL_EXPORT_DIR)build/ld.script
+
+#
 # Add directories from the bartmetal to the relevant search paths
 #
-INCLUDE_DIRS		+= 
+
+
+INCLUDE_DIRS		+=  
 
 LIB_DIRS		+= 
 LIBS				+= 
 START_OBJ		+= 
 BAREMETAL_LIBS	= 
 
-LINK_DEPS		+= 
+
+LINK_DEPS		+= $(BAREMETTAL_LIBS)
+
+$(BAREMETAL_CONFIG_HEADER):	$(BAREMETTAL_ARCHIVE)
+	@$(ECHO) %% Unpacking $(BAREMETTAL_ARCHIVE)
+	$(Q) $(UNZIP_CMD) -q -o -d $(WORK_DIR) $(BAREMETTAL_ARCHIVE)
+	$(Q) $(TOUCH) $@
+
+$(LDSCRIPT): $(BAREMETAL_CONFIG_HEADER)
+$(BAREMETTAL_LIBS): $(BAREMETAL_CONFIG_HEADER)

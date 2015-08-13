@@ -24,7 +24,15 @@ SECTIONS
   {
     . = ALIGN(4);
     KEEP(*(.isr_vector)) /* Startup code */
-    . = ALIGN(4);
+     . = ALIGN(8);
+      /*
+       * This section positions the app_descriptor_t used
+       * by the make_can_boot_descriptor.py tool to set
+       * the application image's descriptor so that the
+       * uavcan bootloader has the ability to validate the
+       * image crc, size etc
+      */
+    KEEP(*(.app_descriptor))
   } >FLASH
 
   /* The program code and other data goes into FLASH */

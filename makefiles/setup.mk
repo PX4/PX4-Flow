@@ -51,15 +51,18 @@ endif
 export PX4_INCLUDE_DIR	 = $(abspath $(PX4_BASE)/src/include)/
 export PX4_MODULE_SRC	 = $(abspath $(PX4_BASE)/src)/
 export PX4_LIB_DIR	 = $(abspath $(PX4_BASE)/src/lib)/
+export PX4_PLATFORMS_DIR = $(abspath $(PX4_BASE)/src/platforms)/
 export PX4_TOOLS_DIR	 = $(abspath $(PX4_BASE)/Tools)/
 export PX4_MK_DIR	 = $(abspath $(PX4_BASE)/makefiles)/
-export MAVLINK_SRC	 = $(abspath $(PX4_BASE)/mavlink)/
+export MAVLINK_SRC	 = $(abspath $(PX4_BASE)/mavlink/include/mavlink/v1.0)/
 export UAVCAN_DIR	 = $(abspath $(PX4_BASE)/uavcan)/
 export IMAGE_DIR	 = $(abspath $(PX4_BASE)/Images)/
 export BUILD_DIR	 = $(abspath $(PX4_BASE)/Build)/
+export ARCHIVE_DIR	 = $(abspath $(PX4_BASE)/Archives)/
 export PX4_BOOTLOADER_BASE	 = $(abspath $(PX4_BASE)/src/drivers/bootloaders)/
 export PX4_VERSIONING_DIR = $(BUILD_DIR)versioning/
 
+export ST_LIB_DIR	 = $(PX4_LIB_DIR)stm32/st/
 
 #
 # Default include paths
@@ -68,7 +71,7 @@ export INCLUDE_DIRS	:= $(PX4_MODULE_SRC) \
 			   $(PX4_MODULE_SRC)modules/ \
 			   $(PX4_INCLUDE_DIR) \
 			   $(PX4_LIB_DIR) \
-			   $(PX4_LIB_DIR)stm32/lib \
+			   $(PX4_PLATFORMS_DIR) \
 			   $(PX4_VERSIONING_DIR)
 
 #
@@ -76,20 +79,21 @@ export INCLUDE_DIRS	:= $(PX4_MODULE_SRC) \
 #
 export MKFW		 			= $(PX4_TOOLS_DIR)px_mkfw.py
 export UPLOADER		 	= $(PX4_TOOLS_DIR)px_uploader.py
-export COPY		 = cp
-export COPYDIR		 = cp -Rf
-export REMOVE		 = rm -f
-export RMDIR		 = rm -rf
-export TOUCH		 = touch
-export MKDIR		 = mkdir
-export FIND		 = find
-export ECHO		 = echo
-export UNZIP_CMD	 = unzip
-export PYTHON		 = python
-export OPENOCD		 = openocd
-export GREP		 = grep
-export PATCH		 = patch
-export SIZE		 = size
+export COPY		 			= cp
+export COPYDIR		 	= cp -Rf
+export REMOVE		 		= rm -f
+export RMDIR		 		= rm -rf
+export TOUCH		 		= touch
+export MKDIR		 		= mkdir
+export FIND		 			= find
+export ECHO		 			= echo
+export UNZIP_CMD	 	= unzip
+export ZIP_CMD	  	= zip
+export PYTHON		 		= python
+export OPENOCD		 	= openocd
+export GREP		 			= grep
+export PATCH				= patch
+export SIZE		 			= size
 
 #
 # Host-specific paths, hacks and fixups

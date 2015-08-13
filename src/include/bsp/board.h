@@ -98,11 +98,12 @@
  * Included Files
  ****************************************************************************/
 
-
 #include <stdint.h>
-
-#include <compiler.h>
-
+__BEGIN_DECLS
+/****************************************************************************
+ * Pre-processor Definitions
+ ****************************************************************************/
+#define BOARD_SERIALNUMBER_SIZE
 /****************************************************************************
  * Public Function Prototypes
  *
@@ -159,6 +160,22 @@ int board_app_initialize(void);
  ****************************************************************************/
 
 int board_reset(int status);
+
+/****************************************************************************
+ * Name: board_get_serialnumber
+ *
+ * Description:
+ *   Get the Boards notion of it's unique serial number
+ *
+ * Input Parameters:
+ *   serial - Array to hold the serial number.
+ *
+ * Returned Value:
+ *   The length of the serial number.
+ *
+ ****************************************************************************/
+
+int board_get_serialnumber(uint8_t serial[BOARD_SERIALNUMBER_SIZE]);
 
 
 /****************************************************************************
@@ -251,6 +268,26 @@ void board_led_on(int led);
 void board_led_off(int led);
 
 /****************************************************************************
+ * Name: board_led_rgb
+ *
+ * Description:
+ *
+ * Input Parameters:
+ *
+ *  red   - intensity of the red led
+ *  green - intensity of the green led
+ *  blue  - intensity of the blue led
+ *  hz    - number of flashes per second
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+void board_led_rgb(uint16_t red, uint16_t green , uint16_t blue,
+                   uint16_t hz);
+
+/****************************************************************************
  * Name: board_crashdump
  *
  * Description:
@@ -277,5 +314,5 @@ void board_led_off(int led);
 
 void board_crashdump(uint32_t currentsp, void *tcb, uint8_t *filename,
                      int lineno);
-
+__END_DECLS
 #endif /* __INCLUDE_NUTTX_BOARD_H */

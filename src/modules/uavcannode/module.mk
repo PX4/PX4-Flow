@@ -2,6 +2,7 @@
 #
 #   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
 #   Author: Pavel Kirienko <pavel.kirienko@gmail.com>
+#           David Sidrane <david)s5@nscdg.com>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -33,7 +34,7 @@
 ############################################################################
 
 #
-# UAVCAN <--> some Simple Sensor
+# UAVCAN <--> Flow
 #
 
 MODULE_COMMAND = uavcannode
@@ -45,12 +46,6 @@ MODULE_STACKSIZE = 1024
 
 # Main
 SRCS += uavcannode_main.cpp       \
-        uavcannode_clock.cpp      \
-        indication_controller.cpp \
-        sim_controller.cpp        \
-        led.cpp                   \
-        resources.cpp             \
-        uavcannode_params.c
 
 
 # Sensors
@@ -77,7 +72,7 @@ include $(PX4_LIB_DIR)uavcan/libuavcan_drivers/stm32/driver/include.mk
 # Use the relitive path to keep the genrated files in the BUILD_DIR
 SRCS += $(subst  $(PX4_MODULE_SRC),../../,$(LIBUAVCAN_STM32_SRC))
 INCLUDE_DIRS += $(LIBUAVCAN_STM32_INC)
-override EXTRADEFINES += -DUAVCAN_STM32_NUTTX -DUAVCAN_STM32_NUM_IFACES=1
+override EXTRADEFINES += -DUAVCAN_STM32_BAREMETAL -DUAVCAN_STM32_NUM_IFACES=1
 
 #
 # Invoke DSDL compiler

@@ -1,7 +1,7 @@
-/****************************************************************************
- * include/nuttx/compiler.h
+/************************************************************************
+ * libc/string/lib_strppy.c
  *
- *   Copyright (C) 2007-2009, 2012-2013, 2015 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,16 +31,37 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- ****************************************************************************/
+ ************************************************************************/
 
-#pragma once
-
-/****************************************************************************
+/************************************************************************
  * Included Files
- ****************************************************************************/
+ ************************************************************************/
 
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-#define __LINUX_ERRNO_EXTENSIONS__
-#define OK 0
+#include <nuttx/config.h>
+
+#include <string.h>
+
+/************************************************************************
+ * Public Functions
+ ************************************************************************/
+
+/************************************************************************
+ * Name: stpcpy
+ *
+ * Description:
+ *   Copies the string pointed to by 'src' (including the terminating NUL
+ *   character) into the array pointed to by 'dest'.
+ *
+ * Returned value:
+ *   The stpcpy() function returns a pointer to the terminating NUL
+ *   character copied into the 'dest' buffer
+ *
+ ************************************************************************/
+
+#ifndef CONFIG_ARCH_STPCPY
+FAR char *stpcpy(FAR char *dest, FAR const char *src)
+{
+  while ((*dest++ = *src++) != '\0');
+  return --dest;
+}
+#endif
