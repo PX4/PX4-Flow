@@ -44,3 +44,4 @@
 #define __LINUX_ERRNO_EXTENSIONS__
 #define PX4_OK  0
 #define FAR
+#define CONFIG_MEMSET_OPTSPEED 1

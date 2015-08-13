@@ -42,6 +42,7 @@ DEFAULT_VISIBILITY=default
 # Main
 
 STRINGSRCS =  string/lib_strncmp.c      \
+							string/lib_strcmp.c       \
       				string/lib_memcpy.c       \
      					string/lib_memset.c       \
       				string/lib_strcpy.c       \
