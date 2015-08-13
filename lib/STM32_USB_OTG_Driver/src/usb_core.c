@@ -1194,7 +1194,10 @@ void USB_OTG_InitDevSpeed(USB_OTG_CORE_HANDLE *pdev , uint8_t speed)
 USB_OTG_STS USB_OTG_CoreInitDev (USB_OTG_CORE_HANDLE *pdev)
 {
   USB_OTG_STS             status       = USB_OTG_OK;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
   USB_OTG_DEPCTL_TypeDef  depctl;
+#pragma GCC diagnostic pop
   uint32_t i;
   USB_OTG_DCFG_TypeDef    dcfg;
   USB_OTG_FSIZ_TypeDef    nptxfifosize;
@@ -1330,7 +1333,10 @@ USB_OTG_STS USB_OTG_CoreInitDev (USB_OTG_CORE_HANDLE *pdev)
   }
   for (i = 0; i <  pdev->cfg.dev_endpoints; i++)
   {
-    USB_OTG_DEPCTL_TypeDef  depctl;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+      USB_OTG_DEPCTL_TypeDef  depctl;
+#pragma GCC diagnostic pop
     depctl.d32 = USB_OTG_READ_REG32(&pdev->regs.OUTEP_REGS[i]->DOEPCTL);
     if (depctl.b.epena)
     {
