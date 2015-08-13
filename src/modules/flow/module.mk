@@ -16,27 +16,10 @@ INCLUDE_DIRS	 += $(MAVLINK_SRC) \
 									$(ST_LIB)STM32_USB_OTG_Driver/inc \
 
 
-SRCS += 	system_stm32f4xx.c \
-					stm32f4xx_it.c \
-					$(ST_LIB)startup_stm32f4xx.s
-
-SRCS += 	$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/misc.c \
-    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c \
-    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma.c \
-    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dcmi.c \
-    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_i2c.c \
-    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.c \
-    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.c \
-    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_usart.c \
-    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_adc.c \
-    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_gpio.c \
-    			$(ST_LIB)STM32_USB_OTG_Driver/src/usb_core.c \
-    			$(ST_LIB)STM32_USB_OTG_Driver/src/usb_dcd_int.c \
-    			$(ST_LIB)STM32_USB_OTG_Driver/src/usb_dcd.c \
-    			$(ST_LIB)STM32_USB_Device_Library/Core/src/usbd_core.c \
-    			$(ST_LIB)STM32_USB_Device_Library/Core/src/usbd_req.c \
-    			$(ST_LIB)STM32_USB_Device_Library/Core/src/usbd_ioreq.c \
-    			$(ST_LIB)STM32_USB_Device_Library/Class/cdc/src/usbd_cdc_core.c
+SRCS += 	$(ST_LIB)startup_stm32f4xx.s \
+					system_stm32f4xx.c \
+					stm32f4xx_it.c 
+					
 
 SRCS = 		main.c \
           utils.c \
@@ -58,3 +41,20 @@ SRCS = 		main.c \
           reset.c \
           sonar_mode_filter.c
 
+SRCS += 	$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/misc.c \
+    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c \
+    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma.c \
+    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dcmi.c \
+    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_i2c.c \
+    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.c \
+    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.c \
+    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_usart.c \
+    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_adc.c \
+    			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_gpio.c \
+    			$(ST_LIB)STM32_USB_OTG_Driver/src/usb_core.c \
+    			$(ST_LIB)STM32_USB_OTG_Driver/src/usb_dcd_int.c \
+    			$(ST_LIB)STM32_USB_OTG_Driver/src/usb_dcd.c \
+    			$(ST_LIB)STM32_USB_Device_Library/Core/src/usbd_core.c \
+    			$(ST_LIB)STM32_USB_Device_Library/Core/src/usbd_req.c \
+    			$(ST_LIB)STM32_USB_Device_Library/Core/src/usbd_ioreq.c \
+    			$(ST_LIB)STM32_USB_Device_Library/Class/cdc/src/usbd_cdc_core.c
