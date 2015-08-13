@@ -38,5 +38,11 @@
 #include "stm32f4xx_conf.h"
 #include "stm32f4xx.h"
 
-TODO(Need to inject board.h or board_config.h via symlink)
+TODO(Need to inject board.h or board_config.h via symlink);
+
 #define STM32_PCLK1_FREQUENCY (168000000ul/4)
+#define STM32_TIMCLK1          (2*STM32_PCLK1_FREQUENCY)
+
+TODO(STM32_SYSMEM_FSIZE should be in the SPL);
+#define STM32_SYSMEM_UID     0x1fff7a10     /* The 96-bit unique device identifier */
+

@@ -50,10 +50,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <debug.h>
 #include <errno.h>
 
 #include <px4_macros.h>
+
+#include <chip.h>
+#include "stm32f4xx_gpio.h"
 
 #include "board_config.h"
 #include <bsp/board.h>
@@ -92,15 +96,20 @@ __EXPORT void board_initialize(void)
 {
 
   /*
-     * GPIO config.
-     * Forced pull up on CAN2 is required for Pixhawk v1 where the second interface lacks a transceiver.
-     * If no transceiver is connected, the RX pin will float, occasionally causing CAN controller to
-     * fail during initialization.
-     */
-TODO( Code stm32_configgpio(GPIO_CAN1_RX));
-//    stm32_configgpio(GPIO_CAN1_RX);
-//    stm32_configgpio(GPIO_CAN1_TX);
+   * GPIO config.
+    */
 
+    GPIO_PinAFConfig(GPIOD, GPIO_PinSource0, GPIO_AF_CAN1);
+    GPIO_PinAFConfig(GPIOD, GPIO_PinSource1, GPIO_AF_CAN1);
+
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0|GPIO_Pin_1;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOD, &GPIO_InitStructure);
 }
 
 /****************************************************************************
@@ -144,6 +153,26 @@ __EXPORT int board_reset(int status)
   volatile int j = 0;
   j++;
   return 0;
+}
+
+/****************************************************************************
+ * Name: board_get_serialnumber
+ *
+ * Description:
+ *   Get the Boards notion of it's unique serial number
+ *
+ * Input Parameters:
+ *   serial - Array to hold the serial number.
+ *
+ * Returned Value:
+ *   The length of the serial number.
+ *
+ ****************************************************************************/
+
+int board_get_serialnumber(uint8_t serial[BOARD_SERIALNUMBER_SIZE])
+{
+  memcpy(serial, (void *) STM32_SYSMEM_UID, BOARD_SERIALNUMBER_SIZE);
+  return BOARD_SERIALNUMBER_SIZE;
 }
 
 /****************************************************************************
@@ -243,6 +272,30 @@ __EXPORT void board_led_off(int led)
 {
 
 }
+
+/****************************************************************************
+ * Name: board_led_rgb
+ *
+ * Description:
+ *
+ * Input Parameters:
+ *
+ *  red   - intensity of the red led
+ *  green - intensity of the green led
+ *  blue  - intensity of the blue led
+ *  hz    - number of flashes per second
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+void board_led_rgb(uint16_t red, uint16_t green , uint16_t blue,
+                   uint16_t hz)
+{
+
+}
+
 
 /****************************************************************************
  * Name: board_crashdump
