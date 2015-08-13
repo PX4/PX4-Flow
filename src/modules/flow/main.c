@@ -35,6 +35,8 @@
  *
  ****************************************************************************/
 
+#include <px4_config.h>
+#include <px4_macros.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -70,6 +72,11 @@
 #endif
 
 
+#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
+int uavcannode_main(int argc, char *argv[]);
+int uavcannode_run();
+int uavcannode_publish(/* data please*/);
+#endif
 
 /* prototypes */
 void delay(unsigned msec);
@@ -327,10 +334,19 @@ int main(void)
 	static uint32_t lasttime = 0;
 	uint32_t time_since_last_sonar_update= 0;
 
+#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
+	char *argv[2] = {"you","start"};
+	int argc  = arraySize(argv[2]);
+	int rv = uavcannode_main(argc, argv);
+	UNUSED(rv);
+#endif
 
 	/* main loop */
 	while (1)
 	{
+#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
+	        uavcannode_run();
+#endif
 		/* reset flow buffers if needed */
 		if(buffer_reset_needed)
 		{
@@ -489,6 +505,10 @@ int main(void)
 			{
 				ground_distance = sonar_distance_raw;
 			}
+
+#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
+			uavcannode_publish(/* data please*/);
+#endif
 
 			//update I2C transmitbuffer
 			if(valid_frame_count>0)

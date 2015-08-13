@@ -71,6 +71,20 @@ boot_app_shared_section app_descriptor_t AppDescriptor = {
 	.reserved = {0xff , 0xff , 0xff , 0xff , 0xff , 0xff }
 };
 
+
+__EXPORT uint64_t hrt_absolute_time(void)
+{
+  return uavcan_stm32::clock::getUtc().toUSec();
+}
+
+static UavcanNode::CanInitHelper can;
+
+static UavcanNode * newNode()
+{
+  static UavcanNode node(can.driver, uavcan_stm32::SystemClock::instance());
+  return &node;
+}
+
 /*
  * UavcanNode
  */
@@ -103,11 +117,15 @@ int UavcanNode::start(uavcan::NodeID node_id, uint32_t bitrate)
 	/*
 	 * CAN driver init
 	 */
-	static CanInitHelper can;
 	static bool can_initialized = false;
 
 	if (!can_initialized) {
-		const int can_init_res = can.init(bitrate);
+
+	    // Confgure the HW IO
+
+	    board_initialize();
+
+	    const int can_init_res = can.init(bitrate);
 
 		if (can_init_res < 0) {
 		        PX4_ERR("CAN driver init failed %i", can_init_res);
@@ -120,18 +138,11 @@ int UavcanNode::start(uavcan::NodeID node_id, uint32_t bitrate)
 	/*
 	 * Node init
 	 */
-	_instance = new UavcanNode(can.driver, uavcan_stm32::SystemClock::instance());
-
-	if (_instance == nullptr) {
-	        PX4_ERR("Out of memory");
-		return -1;
-	}
-
+	_instance = newNode();
 
 	const int node_init_res = _instance->init(node_id);
 
 	if (node_init_res < 0) {
-		delete _instance;
 		_instance = nullptr;
 		PX4_ERR("Node init failed %i", node_init_res);
 		return node_init_res;
@@ -317,12 +328,12 @@ int uavcannode_start(int argc, char *argv[])
 TODO(Need non vol Paramter sotrage)
 		// Node ID
 		node_id = 123;
-		bitrate = 1000;
+		bitrate = 1000000;
 	}
 
 	if (node_id < 0 || node_id > uavcan::NodeID::Max || !uavcan::NodeID(node_id).isUnicast()) {
 		PX4_INFO("Invalid Node ID %li", node_id);
-		::exit(1);
+		return 1;
 	}
 
 	// Start
@@ -330,7 +341,36 @@ TODO(Need non vol Paramter sotrage)
 	return UavcanNode::start(node_id, bitrate);
 }
 
+__BEGIN_DECLS
+extern "C" __EXPORT int uavcannode_run();
+extern "C" __EXPORT int uavcannode_publish();
 extern "C" __EXPORT int uavcannode_main(int argc, char *argv[]);
+__END_DECLS
+__EXPORT int uavcannode_publish()
+{
+
+  UavcanNode *const inst = UavcanNode::instance();
+
+    if (!inst) {
+            PX4_ERR( "application not running");
+            return 1;
+    }
+
+}
+
+__EXPORT int uavcannode_run()
+{
+  UavcanNode *const inst = UavcanNode::instance();
+
+  if (!inst) {
+          PX4_ERR( "application not running");
+          return 1;
+  }
+  inst->run();
+
+}
+
+
 int uavcannode_main(int argc, char *argv[])
 {
 	if (argc < 2) {

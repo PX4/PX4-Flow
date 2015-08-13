@@ -100,6 +100,7 @@ public:
 
 	static UavcanNode *instance() { return _instance; }
 
+        int             run();
 
 	/* The bit rate that can be passed back to the bootloader */
 
@@ -109,7 +110,6 @@ public:
 private:
 	void		fill_node_info();
 	int		init(uavcan::NodeID node_id);
-	int		run();
 
 	bool			_task_should_exit = false;	///< flag to indicate to tear down the CAN driver
 
