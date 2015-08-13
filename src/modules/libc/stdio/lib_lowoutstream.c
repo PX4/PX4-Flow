@@ -37,7 +37,7 @@
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
+#include <px4_config.h>
 
 #ifdef CONFIG_ARCH_LOWPUTC
 

@@ -38,9 +38,27 @@ INCLUDE_DIRS += $(CLIB_INC) $(CLIB_INC)syslog
  
 $(info INCLUDE_DIRS=$(INCLUDE_DIRS))
 DEFAULT_VISIBILITY=default
+
 # Main
-SRCS += string/lib_strncmp.c       \
-				stdio/lib_printf.c         \
+
+STRINGSRCS =  string/lib_strncmp.c      \
+      				string/lib_memcpy.c       \
+     					string/lib_memset.c       \
+      				string/lib_strcpy.c       \
+      				string/lib_strncpy.c      \
+      				string/lib_strlen.c       \
+      				string/lib_strncat.c      \
+      				string/lib_skipspace.c    \
+      				string/lib_isbasedigit.c  \
+      				
+STDIOSRCS =   stdio/lib_printf.c         \
+
+STDLIBSRCS=   stdlib/lib_strtol.c        \
+							stdlib/lib_strtoul.c       \
+      				stdlib/lib_checkbase.c    \
 
 
-
+SRCS = init.c \
+			 $(STRINGSRCS) \
+			 $(STDIOSRCS)		\
+			 $(STDLIBSRCS)

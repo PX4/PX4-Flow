@@ -37,11 +37,15 @@
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
+#include <px4_config.h>
 
 #include <string.h>
-#include <ctype.h>
 #include "lib_internal.h"
+
+#define isspace(c) \
+  ((c) == ' '  || (c) == '\t' || (c) == '\n' || \
+   (c) == '\r' || (c) == '\f' || c== '\v')
+
 
 /****************************************************************************
  * Private Functions
@@ -58,7 +62,7 @@
  *   Skip over leading whitespace
  *
  ****************************************************************************/
-
+#pragma GCC diagnostic ignored "-Wchar-subscripts"
 void lib_skipspace(const char **pptr)
 {
    const char *ptr = *pptr;
