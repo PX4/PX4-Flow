@@ -79,7 +79,7 @@ float v_post = 0.0f; // m/s
 float sonar_raw = 0.0f;  // m
 
 float sonar_mode = 0.0f;
-float sonar_valid = false;				/**< the mode of all sonar measurements */
+bool sonar_valid = false;				/**< the mode of all sonar measurements */
 
 /**
   * @brief  Triggers the sonar to measure the next value
