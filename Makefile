@@ -2,8 +2,14 @@
 # STM32F4 PX4FLOW board build rules
 #
 
+
 BINARY		 = px4flow.elf
 BINARY_BIN	 = px4flow.bin
+
+# Provide defaults, but allow for module override
+WUSEPACKED ?= -Wpacked
+WFRAME_LARGER_THAN ?= 1024
+
 
 OPENOCD		?= ../../sat/bin/openocd
 JTAGCONFIG 	?= olimex-jtag-tiny.cfg
@@ -55,11 +61,41 @@ SRCS += 	lib/STM32F4xx_StdPeriph_Driver/src/misc.c \
 			lib/STM32_USB_Device_Library/Core/src/usbd_ioreq.c \
 			lib/STM32_USB_Device_Library/Class/cdc/src/usbd_cdc_core.c
 
+#
+# PX4 Build system warnings
+#
+ARCHWARNINGS		 = -Wall \
+			   -Wextra \
+			   -Werror \
+			   -Wdouble-promotion \
+			   -Wshadow \
+			   -Wfloat-equal \
+			   -Wframe-larger-than=$(WFRAME_LARGER_THAN) \
+			   -Wpointer-arith \
+			   -Wlogical-op \
+			   -Wmissing-declarations \
+			    $(WUSEPACKED) \
+			   -Wno-unused-parameter \
+			   -Werror=format-security \
+			   -Werror=array-bounds \
+			   -Wfatal-errors \
+			   -Wformat=1 \
+			   -Werror=unused-but-set-variable \
+			   -Werror=unused-variable \
+			   -Werror=double-promotion \
+			   -Werror=reorder \
+			   -Werror=uninitialized \
+			   -Werror=init-self
+#   -Werror=float-conversion - works, just needs to be phased in with some effort and needs GCC 4.9+
+#   -Wcast-qual  - generates spurious noreturn attribute warnings, try again later
+#   -Wconversion - would be nice, but too many "risky-but-safe" conversions in the code
+#   -Wcast-align - would help catch bad casts in some cases, but generates too many false positives
+
 CFLAGS		 = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 \
 			-O3 \
 			-ggdb \
 			-std=gnu99 \
-			-Wall -Werror \
+			$(ARCHWARNINGS) \
 			-MMD \
 			-Iinc \
 			-Ilib \
