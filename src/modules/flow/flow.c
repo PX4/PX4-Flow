@@ -39,6 +39,7 @@
 #include <stdbool.h>
 #include <math.h>
 
+#include "no_wanings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "dcmi.h"
@@ -547,7 +548,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		/* check if there is a peak value in histogram */
 		if (1) //(histx[maxpositionx] > meancount / 6 && histy[maxpositiony] > meancount / 6)
 		{
-			if (global_data.param[PARAM_BOTTOM_FLOW_HIST_FILTER])
+			if (FLOAT_AS_BOOL(global_data.param[PARAM_BOTTOM_FLOW_HIST_FILTER]))
 			{
 
 				/* use histogram filter peek value */
@@ -616,16 +617,16 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				float hist_y_value = 0.0f;
 				float hist_y_weight = 0.0f;
 
-				for (uint8_t i = hist_x_min; i < hist_x_max+1; i++)
+				for (uint8_t h = hist_x_min; h < hist_x_max+1; h++)
 				{
-					hist_x_value += (float) (i*histx[i]);
-					hist_x_weight += (float) histx[i];
+					hist_x_value += (float) (h*histx[h]);
+					hist_x_weight += (float) histx[h];
 				}
 
-				for (uint8_t i = hist_y_min; i<hist_y_max+1; i++)
+				for (uint8_t h = hist_y_min; h<hist_y_max+1; h++)
 				{
-					hist_y_value += (float) (i*histy[i]);
-					hist_y_weight += (float) histy[i];
+					hist_y_value += (float) (h*histy[h]);
+					hist_y_weight += (float) histy[h];
 				}
 
 				histflowx = (hist_x_value/hist_x_weight - (winmax-winmin+1)) / 2.0f ;
@@ -639,18 +640,18 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				uint32_t meancount_x = 0;
 				uint32_t meancount_y = 0;
 
-				for (uint8_t i = 0; i < meancount; i++)
+				for (uint8_t h = 0; h < meancount; h++)
 				{
 					float subdirx = 0.0f;
-					if (subdirs[i] == 0 || subdirs[i] == 1 || subdirs[i] == 7) subdirx = 0.5f;
-					if (subdirs[i] == 3 || subdirs[i] == 4 || subdirs[i] == 5) subdirx = -0.5f;
-					histflowx += (float)dirsx[i] + subdirx;
+					if (subdirs[h] == 0 || subdirs[h] == 1 || subdirs[h] == 7) subdirx = 0.5f;
+					if (subdirs[h] == 3 || subdirs[h] == 4 || subdirs[h] == 5) subdirx = -0.5f;
+					histflowx += (float)dirsx[h] + subdirx;
 					meancount_x++;
 
 					float subdiry = 0.0f;
-					if (subdirs[i] == 5 || subdirs[i] == 6 || subdirs[i] == 7) subdiry = -0.5f;
-					if (subdirs[i] == 1 || subdirs[i] == 2 || subdirs[i] == 3) subdiry = 0.5f;
-					histflowy += (float)dirsy[i] + subdiry;
+					if (subdirs[h] == 5 || subdirs[h] == 6 || subdirs[h] == 7) subdiry = -0.5f;
+					if (subdirs[h] == 1 || subdirs[h] == 2 || subdirs[h] == 3) subdiry = 0.5f;
+					histflowy += (float)dirsy[h] + subdiry;
 					meancount_y++;
 				}
 
@@ -672,7 +673,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			 * -y_rate gives x flow
 			 * x_rates gives y_flow
 			 */
-			if (global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION])
+			if (FLOAT_AS_BOOL(global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION]))
 			{
 				if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
 				{

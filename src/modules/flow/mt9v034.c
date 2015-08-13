@@ -35,6 +35,7 @@
  *
  ****************************************************************************/
 
+#include "no_wanings.h"
 #include "stm32f4xx_dcmi.h"
 #include "stm32f4xx_dma.h"
 #include "stm32f4xx_rcc.h"
@@ -66,7 +67,7 @@ void mt9v034_context_configuration(void)
 
 	uint16_t new_control;
 
-	if (global_data.param[PARAM_VIDEO_ONLY])
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
 		new_control = 0x8188; // Context B
 	else
 		new_control = 0x0188; // Context A
@@ -123,7 +124,7 @@ void mt9v034_context_configuration(void)
 	uint16_t agc_low_pass = 0x02; // default VALID RANGE: 0-2
 
 
-	if(global_data.param[PARAM_IMAGE_LOW_LIGHT])
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_LOW_LIGHT]))
 	{
 		min_exposure = 0x0001;
 		max_exposure = 0x0040;
@@ -153,12 +154,12 @@ void mt9v034_context_configuration(void)
 	uint16_t row_noise_correction = 0x0000; // default
 	uint16_t test_data = 0x0000; // default
 
-	if(global_data.param[PARAM_IMAGE_ROW_NOISE_CORR]&&!global_data.param[PARAM_IMAGE_TEST_PATTERN])
+	if(FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_ROW_NOISE_CORR]) && !FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_TEST_PATTERN]))
 		row_noise_correction = 0x0101;
 	else
 		row_noise_correction = 0x0000;
 
-	if(global_data.param[PARAM_IMAGE_TEST_PATTERN])
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_TEST_PATTERN]))
 		test_data = 0x3000; //enable vertical gray shade pattern
 	else
 		test_data = 0x0000;
@@ -226,7 +227,7 @@ void mt9v034_context_configuration(void)
 void mt9v034_set_context()
 {
 	uint16_t new_control;
-	if (global_data.param[PARAM_VIDEO_ONLY])
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
 		new_control = 0x8188; // Context B
 	else
 		new_control = 0x0188; // Context A

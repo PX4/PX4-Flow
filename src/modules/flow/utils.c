@@ -50,8 +50,11 @@ char *ftoa(float f) //, int *status)
 	static char outbuf[15];
 
 	//*status = 0;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
 	if (f == 0.0f)
 	{
+#pragma GCC diagnostic pop
 		outbuf[0] = '0';
 		outbuf[1] = '.';
 		outbuf[2] = '0';
@@ -127,6 +130,7 @@ char *ftoa(float f) //, int *status)
 
 	return outbuf;
 }
+
 
 void ltoa(char *buf, unsigned long i, int base)
 {

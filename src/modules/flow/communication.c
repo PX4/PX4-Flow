@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "no_wanings.h"
 #include "usbd_cdc_vcp.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
@@ -105,7 +106,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 		len = mavlink_msg_to_send_buffer(buf, msg);
 		mavlink_send_uart_bytes(MAVLINK_COMM_0, buf, len);
 
-		if(global_data.param[PARAM_USB_SEND_FORWARD])
+		if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_FORWARD]))
 			mavlink_send_uart_bytes(MAVLINK_COMM_2, buf, len);
 
 		return;
@@ -138,7 +139,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 			{
 				char* key = (char*) set.param_id;
 
-				if (set.param_id[0] != -1)
+				if (set.param_id[0] != (char)-1)
 				{
 					/* Choose parameter based on index */
 					if ((set.param_index >= 0) && (set.param_index < ONBOARD_PARAM_COUNT))
@@ -228,7 +229,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 						 * AND only write if new value is NOT "not-a-number"
 						 * AND is NOT infinity
 						 */
-						if (global_data.param[i] != set.param_value
+						if (!FLOAT_EQ_FLOAT(global_data.param[i], set.param_value)
 								&& !isnan(set.param_value)
 								&& !isinf(set.param_value)
 								&& global_data.param_access[i])
@@ -259,7 +260,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 								dma_reconfigure();
 								buffer_reset();
 
-								if(global_data.param[PARAM_VIDEO_ONLY])
+								if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
 									debug_string_message_buffer("Calibration Mode On");
 								else
 									debug_string_message_buffer("Calibration Mode Off");

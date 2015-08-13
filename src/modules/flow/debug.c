@@ -32,6 +32,7 @@
  ****************************************************************************/
 
 #include <stdbool.h>
+#include "no_wanings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "utils.h"
@@ -194,7 +195,7 @@ void debug_message_send_one(void)
 
 	mavlink_msg_statustext_send(MAVLINK_COMM_0, 0, msg);
 
-	if (global_data.param[PARAM_USB_SEND_DEBUG])
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_DEBUG]))
 		mavlink_msg_statustext_send(MAVLINK_COMM_2, 0, msg);
 }
 

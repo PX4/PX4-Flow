@@ -43,6 +43,7 @@
 #include "stm32f4xx_conf.h"
 #include "stm32f4xx.h"
 
+#include "no_wanings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "settings.h"
@@ -67,6 +68,7 @@
 #ifndef SCB_CPACR
 #define SCB_CPACR (*((uint32_t*) (((0xE000E000UL) + 0x0D00UL) + 0x088)))
 #endif
+
 
 
 /* prototypes */
@@ -114,14 +116,14 @@ bool send_image_now = true;
 bool send_lpos_now = true;
 
 /* local position estimate without orientation, useful for unit testing w/o FMU */
-struct lpos_t {
+static struct lpos_t {
 	float x;
 	float y;
 	float z;
 	float vx;
 	float vy;
 	float vz;
-} lpos = {0};
+} lpos;
 
 /**
   * @brief  Increment boot_time_ms variable and decrement timer array.
@@ -343,9 +345,9 @@ int main(void)
 		}
 
 		/* calibration routine */
-		if(global_data.param[PARAM_VIDEO_ONLY])
+		if(FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
 		{
-			while(global_data.param[PARAM_VIDEO_ONLY])
+			while(FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
 			{
 				dcmi_restart_calibration_routine();
 
@@ -362,7 +364,7 @@ int main(void)
 
 				send_calibration_image(&previous_image, &current_image);
 
-				if (global_data.param[PARAM_SYSTEM_SEND_STATE])
+				if (FLOAT_AS_BOOL(global_data.param[PARAM_SYSTEM_SEND_STATE]))
 					communication_system_state_send();
 
 				communication_receive_usb();
@@ -401,7 +403,7 @@ int main(void)
 		}
 
 		/* compute optical flow */
-		if(global_data.param[PARAM_SENSOR_POSITION] == BOTTOM)
+		if (FLOAT_EQ_INT(global_data.param[PARAM_SENSOR_POSITION], BOTTOM))
 		{
 			/* copy recent image to faster ram */
 			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
@@ -472,14 +474,14 @@ int main(void)
 
 		counter++;
 
-		if(global_data.param[PARAM_SENSOR_POSITION] == BOTTOM)
+		if (FLOAT_EQ_INT(global_data.param[PARAM_SENSOR_POSITION], BOTTOM))
 		{
 			/* send bottom flow if activated */
 
 			float ground_distance = 0.0f;
 
 
-			if(global_data.param[PARAM_SONAR_FILTERED])
+			if(FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]))
 			{
 				ground_distance = sonar_distance_filtered;
 			}
@@ -507,7 +509,7 @@ int main(void)
 				float flow_comp_m_x = 0.0f;
 				float flow_comp_m_y = 0.0f;
 
-				if(global_data.param[PARAM_BOTTOM_FLOW_LP_FILTERED])
+				if(FLOAT_AS_BOOL(global_data.param[PARAM_BOTTOM_FLOW_LP_FILTERED]))
 				{
 					flow_comp_m_x = velocity_x_lp;
 					flow_comp_m_y = velocity_y_lp;
@@ -539,7 +541,7 @@ int main(void)
 						time_since_last_sonar_update,ground_distance);
 
 				/* send approximate local position estimate without heading */
-				if (global_data.param[PARAM_SYSTEM_SEND_LPOS])
+				if (FLOAT_AS_BOOL(global_data.param[PARAM_SYSTEM_SEND_LPOS]))
 				{
 					/* rough local position estimate for unit testing */
 					lpos.x += ground_distance*accumulated_flow_x;
@@ -560,7 +562,7 @@ int main(void)
 					lpos.vz = 0;
 				}
 
-				if (global_data.param[PARAM_USB_SEND_FLOW])
+				if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_FLOW]))
 				{
 					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
@@ -575,7 +577,7 @@ int main(void)
 				}
 
 
-				if(global_data.param[PARAM_USB_SEND_GYRO])
+				if(FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_GYRO]))
 				{
 					mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_us(), x_rate, y_rate, z_rate);
 				}
@@ -608,7 +610,7 @@ int main(void)
 		if (send_system_state_now)
 		{
 			/* every second */
-			if (global_data.param[PARAM_SYSTEM_SEND_STATE])
+			if (FLOAT_AS_BOOL(global_data.param[PARAM_SYSTEM_SEND_STATE]))
 			{
 				communication_system_state_send();
 			}
@@ -635,7 +637,7 @@ int main(void)
 		/* send local position estimate, for testing only, doesn't account for heading */
 		if (send_lpos_now)
 		{
-			if (global_data.param[PARAM_SYSTEM_SEND_LPOS])
+			if (FLOAT_AS_BOOL(global_data.param[PARAM_SYSTEM_SEND_LPOS]))
 			{
 				mavlink_msg_local_position_ned_send(MAVLINK_COMM_2, timer_ms, lpos.x, lpos.y, lpos.z, lpos.vx, lpos.vy, lpos.vz);
 			}
@@ -643,7 +645,7 @@ int main(void)
 		}
 
 		/*  transmit raw 8-bit image */
-		if (global_data.param[PARAM_USB_SEND_VIDEO] && send_image_now)
+		if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO])&& send_image_now)
 		{
 			/* get size of image to send */
 			uint16_t image_size_send;
@@ -672,7 +674,7 @@ int main(void)
 
 			send_image_now = false;
 		}
-		else if (!global_data.param[PARAM_USB_SEND_VIDEO])
+		else if (!FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))
 		{
 			LEDOff(LED_COM);
 		}
