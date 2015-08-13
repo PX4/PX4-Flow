@@ -216,6 +216,10 @@ vpath %.S $(MODULE_SRC)
 $(filter %.S.o,$(OBJS)): %.S.o: %.S $(GLOBAL_DEPS)
 	$(call ASSEMBLE,$<,$@)
 
+vpath %.s $(MODULE_SRC)
+$(filter %.s.o,$(OBJS)): %.s.o: %.s $(GLOBAL_DEPS)
+	$(call ASSEMBLE,$<,$@)
+
 #
 # Built product rules
 #
