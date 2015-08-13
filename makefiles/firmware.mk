@@ -145,6 +145,7 @@ endif
 export CONFIG
 include $(CONFIG_FILE)
 $(info %  CONFIG              = $(CONFIG))
+$(info %  PX4_TARGET_OS       = $(PX4_TARGET_OS))
 
 #
 # Sanity-check the BOARD variable and then get the board config.

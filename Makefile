@@ -200,7 +200,7 @@ clean:
 .PHONY:	distclean
 distclean: clean
 	@echo > /dev/null
-
+	$(Q) $(REMOVE) $(ARCHIVE_DIR)*.export
 #
 # Print some help text
 #

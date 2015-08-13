@@ -24,7 +24,8 @@ $(STAGED_FIRMWARES): $(IMAGE_DIR)%.px4: $(BUILD_DIR)%.build/firmware.px4
 #
 .PHONY: $(FIRMWARES)
 $(BUILD_DIR)%.build/firmware.px4: config   = $(patsubst $(BUILD_DIR)%.build/firmware.px4,%,$@)
-$(BUILD_DIR)%.build/firmware.px4: work_dir = $(BUILD_DIR)$(config).$(PX4_TARGET_OS) .build/
+$(BUILD_DIR)%.build/firmware.px4: BAREMETAL_CONFIG = $(if $(findstring bootloader,$@),bootloader,baremetal)
+$(BUILD_DIR)%.build/firmware.px4: work_dir = $(BUILD_DIR)$(config).build/
 $(FIRMWARES): $(BUILD_DIR)%.build/firmware.px4:	checkgitversion checksubmodules
 	@$(ECHO) %%%%
 	@$(ECHO) %%%% Building $(config) on $(PX4_TARGET_OS) in $(work_dir)
@@ -34,7 +35,7 @@ $(FIRMWARES): $(BUILD_DIR)%.build/firmware.px4:	checkgitversion checksubmodules
 		-f $(PX4_MK_DIR)firmware.mk \
 		CONFIG=$(config) \
 		WORK_DIR=$(work_dir) \
-		BAREMETAL_CONFIG=$(PX4_TARGET_OS)  \
+		BAREMETAL_CONFIG=$(BAREMETAL_CONFIG)  \
 		$(FIRMWARE_GOAL)
 
 
@@ -50,7 +51,7 @@ $(FIRMWARES): $(BUILD_DIR)%.build/firmware.px4:	checkgitversion checksubmodules
 #     downloads of the prebuilt archives as well...
 #
 BAREMETTAL_BOOTLOADER_ARCHIVES  = $(foreach board,$(BOARDS_WITH_BOOTLOADERS),$(ARCHIVE_DIR)$(board).bootloader.export)
-BAREMETTAL_ARCHIVES		 = $(BAREMETTAL_BOOTLOADER_ARCHIVES) $(foreach board,$(BOARDS),$(ARCHIVE_DIR)$(board).nsh.export)
+BAREMETTAL_ARCHIVES		 = $(BAREMETTAL_BOOTLOADER_ARCHIVES) $(foreach board,$(BOARDS),$(ARCHIVE_DIR)$(board).$(PX4_TARGET_OS).export)
 .PHONY:			archives
 archives:		checksubmodules $(BAREMETTAL_ARCHIVES)
 

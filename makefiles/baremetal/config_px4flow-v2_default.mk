@@ -39,12 +39,12 @@ MODULES		+= modules/libcxx
 MODULES		+= modules/libc
 
 # Flow
-MODULES		+= src
+MODULES		+= modules/flow
 
 
 
 # Generate parameter XML file
-GEN_PARAM_XML = 1
+#GEN_PARAM_XML = 1
 
 #
 # Make this UAVCAN boot loadable
