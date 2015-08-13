@@ -49,6 +49,7 @@
 #include "settings.h"
 #include "sonar.h"
 #include "sonar_mode_filter.h"
+#include "i2c_frame.h"
 
 #define SONAR_SCALE	1000.0f
 #define SONAR_MIN	0.12f		/** 0.12m sonar minimum distance */
@@ -77,9 +78,7 @@ float x_post = 0.0f; // m
 float v_post = 0.0f; // m/s
 
 float sonar_raw = 0.0f;  // m
-
-float sonar_mode = 0.0f;
-float sonar_valid = false;				/**< the mode of all sonar measurements */
+float sonar_mode = 0.0f;  /**< the mode of all sonar measurements */
 
 /**
   * @brief  Triggers the sonar to measure the next value
@@ -134,11 +133,10 @@ void UART4_IRQHandler(void)
 					dt = ((float)(measure_time - last_measure_time)) / 1000000.0f;
 
 					valid_data = temp;
-					sonar_mode = insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
+					if (global_data.param[PARAM_SONAR_MODE_FLT]) {
+						sonar_mode = insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
+					}
 					new_value = 1;
-					sonar_valid = true;
-				} else {
-					sonar_valid = false;
 				}
 			}
 
@@ -165,7 +163,13 @@ void sonar_filter()
 	x_pred = x_post + dt * v_pred;
 	v_pred = v_post;
 
-	float x_new = sonar_mode;
+	float x_new = 0;
+
+	if (global_data.param[PARAM_SONAR_MODE_FLT]) {
+		x_new = sonar_mode;
+	} else {
+		x_new = valid_data/SONAR_SCALE;
+	}
 	sonar_raw = x_new;
 	x_post = x_pred + global_data.param[PARAM_SONAR_KALMAN_L1] * (x_new - x_pred);
 	v_post = v_pred + global_data.param[PARAM_SONAR_KALMAN_L2] * (x_new - x_pred);
@@ -179,7 +183,7 @@ void sonar_filter()
   * @param  sonar_value_filtered Filtered return value
   * @param  sonar_value_raw Raw return value
   */
-bool sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
+uint8_t sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
 {
 	/* getting new data with only around 10Hz */
 	if (new_value) {
@@ -187,16 +191,21 @@ bool sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
 		new_value = 0;
 		sonar_measure_time = get_boot_time_us();
 	}
+	uint8_t sonar_status = SONAR_STAT_UNINIT;
 
 	/* catch post-filter out of band values */
-	if (x_post < SONAR_MIN || x_post > SONAR_MAX) {
-		sonar_valid = false;
+	if (x_post < SONAR_MIN) {
+		sonar_status = SONAR_STAT_CLOSE;
+	} else if (x_post > SONAR_MAX) {
+		sonar_status = SONAR_STAT_FAR;
+	} else {
+		sonar_status = SONAR_STAT_NOMINAL;
 	}
 
 	*sonar_value_filtered = x_post;
 	*sonar_value_raw = sonar_raw;
 
-	return sonar_valid;
+	return sonar_status;
 }
 
 /**

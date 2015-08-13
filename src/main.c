@@ -53,6 +53,7 @@
 #include "mt9v034.h"
 #include "gyro.h"
 #include "i2c.h"
+#include "i2c_frame.h"
 #include "usart.h"
 #include "sonar.h"
 #include "communication.h"
@@ -288,7 +289,7 @@ int main(void)
 	/* sonar config*/
 	float sonar_distance_filtered = 0.0f; // distance in meter
 	float sonar_distance_raw = 0.0f; // distance in meter
-	bool distance_valid = false;
+	uint8_t sonar_status = SONAR_STAT_UNINIT;
 	sonar_config();
 
 	/* reset/start timers */
@@ -392,13 +393,7 @@ int main(void)
 		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
 		/* get sonar data */
-		distance_valid = sonar_read(&sonar_distance_filtered, &sonar_distance_raw);
-
-		/* reset to zero for invalid distances */
-		if (!distance_valid) {
-			sonar_distance_filtered = 0.0f;
-			sonar_distance_raw = 0.0f;
-		}
+		sonar_status = sonar_read(&sonar_distance_filtered, &sonar_distance_raw);
 
 		/* compute optical flow */
 		if(global_data.param[PARAM_SENSOR_POSITION] == BOTTOM)
@@ -418,7 +413,7 @@ int main(void)
 			float flow_compy = pixel_flow_y / focal_length_px / (get_time_between_images() / 1000000.0f);
 
 			/* integrate velocity and output values only if distance is valid */
-			if (distance_valid)
+			if (sonar_status == SONAR_STAT_NOMINAL)
 			{
 				/* calc velocity (negative of flow values scaled with distance) */
 				float new_velocity_x = - flow_compx * sonar_distance_filtered;
@@ -491,13 +486,17 @@ int main(void)
 			//update I2C transmitbuffer
 			if(valid_frame_count>0)
 			{
-				update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_sum/valid_frame_count, velocity_y_sum/valid_frame_count, qual,
-						ground_distance, x_rate, y_rate, z_rate, gyro_temp);
+				update_TX_buffer(pixel_flow_x, pixel_flow_y,
+					velocity_x_sum/valid_frame_count,
+					velocity_y_sum/valid_frame_count, qual,
+					ground_distance, sonar_status,
+					x_rate, y_rate, z_rate, gyro_temp);
 			}
 			else
 			{
 				update_TX_buffer(pixel_flow_x, pixel_flow_y, 0.0f, 0.0f, qual,
-						ground_distance, x_rate, y_rate, z_rate, gyro_temp);
+					ground_distance, sonar_status,
+					x_rate, y_rate, z_rate, gyro_temp);
 			}
 
             //serial mavlink  + usb mavlink output throttled
