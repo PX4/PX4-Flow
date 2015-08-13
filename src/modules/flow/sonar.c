@@ -154,7 +154,7 @@ void UART4_IRQHandler(void)
 /**
   * @brief  Basic Kalman filter
   */
-static void sonar_filter()
+static void sonar_filter(void)
 {
 	/* no data for long time */
 	if (dt > 0.25f) // more than 2 values lost
