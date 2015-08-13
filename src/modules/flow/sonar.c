@@ -36,6 +36,7 @@
  ****************************************************************************/
 
 #include <stdint.h>
+#include <stddef.h>
 #include "stm32f4xx.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_adc.h"
@@ -54,7 +55,7 @@
 #define SONAR_MIN	0.12f		/** 0.12m sonar minimum distance */
 #define SONAR_MAX	3.5f		/** 3.50m sonar maximum distance */
 
-extern int atoi (__const char *__nptr);
+#define atoi(nptr)  strtol((nptr), NULL, 10)
 extern uint32_t get_boot_time_us(void);
 
 static char data_buffer[5]; // array for collecting decoded data
