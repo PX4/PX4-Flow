@@ -61,7 +61,7 @@ typedef struct _flow_klt_image {
  *	@param y_rate The gyro y-rate during the frame interval in pixels. (In the image y direction)
  *	@param z_rate The gyro z-rate during the frame interval in radians.
  *	@param out    Array which receives the raw result vectors computed for the blocks in the image.
- *	@param result_count The available space in the out buffer.
+ *	@param max_out The available space in the out buffer.
  *	@return The number of results written to the out buffer.
  */
 uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
@@ -85,7 +85,7 @@ void klt_preprocess_image(uint8_t *image, flow_klt_image *klt_image);
  *	@param y_rate The gyro y-rate during the frame interval in pixels. (In the image y direction)
  *	@param z_rate The gyro z-rate during the frame interval in radians.
  *	@param out    Array which receives the raw result vectors computed for the blocks in the image.
- *	@param result_count The available space in the out buffer.
+ *	@param max_out The available space in the out buffer.
  *	@return The number of results written to the out buffer.
  */
 uint16_t compute_klt(flow_klt_image *image1, flow_klt_image *image2, float x_rate, float y_rate, float z_rate,
