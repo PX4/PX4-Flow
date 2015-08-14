@@ -213,6 +213,11 @@ help:
 	@$(ECHO) "  Available targets:"
 	@$(ECHO) "  ------------------"
 	@$(ECHO) ""
+ifeq ($(PX4_TARGET_OS),baremetal)
+	@$(ECHO) "  archives"
+	@$(ECHO) "    Build the Bare Metal archives that are used by the firmware build."
+	@$(ECHO) ""
+endif
 	@$(ECHO) "  all"
 	@$(ECHO) "    Build all firmware configs: $(CONFIGS)"
 	@$(ECHO) "    A limited set of configs can be built with CONFIGS=<list-of-configs>"
