@@ -38,6 +38,8 @@
  * @author James Goppert <james.goppert@gmail.com>
  */
 
+#include "px4_config.h"
+#include "px4_macros.h"
 #include "i2c.h"
 #include "stm32f4xx.h"
 #include "stm32f4xx_i2c.h"
@@ -224,7 +226,7 @@ void I2C1_ER_IRQHandler(void) {
 void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 		float flow_comp_m_x, float flow_comp_m_y, uint8_t qual,
 		float ground_distance, float gyro_x_rate, float gyro_y_rate,
-		float gyro_z_rate, int16_t gyro_temp) {
+		float gyro_z_rate, int16_t gyro_temp, legacy_12c_data_t *pd) {
 	static uint16_t frame_count = 0;
 
 	i2c_frame f;
@@ -321,7 +323,12 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 	notpublishedIndexFrame1 = 1 - publishedIndexFrame1; // choose not the current published 1 buffer
 	notpublishedIndexFrame2 = 1 - publishedIndexFrame2; // choose not the current published 2 buffer
 
-	// fill I2C transmitbuffer1 with frame1 values
+	// HACK!! To get the data
+TODO(TODO:Tom Please fix this);
+        uavcan_export(&pd->frame, &f, I2C_FRAME_SIZE);
+        uavcan_export(&pd->integral_frame, &f_integral, I2C_INTEGRAL_FRAME_SIZE);
+
+        // fill I2C transmitbuffer1 with frame1 values
 	memcpy(&(txDataFrame1[notpublishedIndexFrame1]),
 		&f, I2C_FRAME_SIZE);
 

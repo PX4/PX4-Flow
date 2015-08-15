@@ -52,8 +52,6 @@ MODULE_STACKSIZE = 1024
 SRCS += uavcannode_main.cpp       \
 
 
-# Sensors
-
 #
 # libuavcan
 #
@@ -81,8 +79,9 @@ override EXTRADEFINES += -DUAVCAN_STM32_BAREMETAL -DUAVCAN_STM32_NUM_IFACES=1
 #
 # Invoke DSDL compiler
 #
-$(info $(shell $(LIBUAVCAN_DSDLC) $(UAVCAN_DSDL_DIR)))
+$(info $(shell $(LIBUAVCAN_DSDLC) $(UAVCAN_DSDL_DIR) $(PX4_MODULE_SRC)/modules/uavcannode/dsdl/uavcan/threedr))
 INCLUDE_DIRS += dsdlc_generated
+
 
 #
 # Using boot app shared structures

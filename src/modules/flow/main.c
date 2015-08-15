@@ -65,6 +65,9 @@
 #include "usbd_desc.h"
 #include "usbd_cdc_vcp.h"
 #include "main.h"
+#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
+#include <uavcan_if.h>
+#endif
 
 /* coprocessor control register (fpu) */
 #ifndef SCB_CPACR
@@ -72,11 +75,6 @@
 #endif
 
 
-#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
-int uavcannode_main(int argc, char *argv[]);
-int uavcannode_run();
-int uavcannode_publish(/* data please*/);
-#endif
 
 /* prototypes */
 void delay(unsigned msec);
@@ -334,19 +332,11 @@ int main(void)
 	static uint32_t lasttime = 0;
 	uint32_t time_since_last_sonar_update= 0;
 
-#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
-	char *argv[2] = {"you","start"};
-	int argc  = arraySize(argv[2]);
-	int rv = uavcannode_main(argc, argv);
-	UNUSED(rv);
-#endif
-
+	uavcan_start();
 	/* main loop */
 	while (1)
 	{
-#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
-	        uavcannode_run();
-#endif
+	        uavcan_run();
 		/* reset flow buffers if needed */
 		if(buffer_reset_needed)
 		{
@@ -506,21 +496,20 @@ int main(void)
 				ground_distance = sonar_distance_raw;
 			}
 
-#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
-			uavcannode_publish(/* data please*/);
-#endif
-
+			uavcan_define_export(data, ccm);
+			uavcan_timestamp_export(data);
 			//update I2C transmitbuffer
 			if(valid_frame_count>0)
 			{
 				update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_sum/valid_frame_count, velocity_y_sum/valid_frame_count, qual,
-						ground_distance, x_rate, y_rate, z_rate, gyro_temp);
+						ground_distance, x_rate, y_rate, z_rate, gyro_temp, uavcan_use_export(data));
 			}
 			else
 			{
 				update_TX_buffer(pixel_flow_x, pixel_flow_y, 0.0f, 0.0f, qual,
-						ground_distance, x_rate, y_rate, z_rate, gyro_temp);
+						ground_distance, x_rate, y_rate, z_rate, gyro_temp, uavcan_use_export(data));
 			}
+                        uavcan_publish(uavcan_use_export(data));
 
             //serial mavlink  + usb mavlink output throttled
 			if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor

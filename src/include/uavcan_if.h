@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,26 +31,45 @@
  *
  ****************************************************************************/
 
-/**
- * @file i2c.h
- * I2C communication functions.
- * @author Thomas Boehm <thomas.boehm@fortiss.org>
- */
+#pragma once
+
+#include <px4_config.h>
+#include <visibility.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include "i2c_frame.h"
+#include "hrt.h"
 
 
-#ifndef I2C_H_
-#define I2C_H_
-#include <inttypes.h>
-#include <uavcan_if.h>
+typedef struct legacy_12c_data_t {
+    uint64_t    time_stamp_utc;
+    i2c_frame   frame;
+    i2c_integral_frame integral_frame;
+} legacy_12c_data_t;
 
-#define I2C1_OWNADDRESS_1_BASE 0x42 //7bit base address
-/**
- * @brief  Configures I2C1 for communication as a slave (default behaviour for STM32F)
- */
+__BEGIN_DECLS
+__EXPORT int uavcannode_run(void);
+__EXPORT int uavcannode_publish(legacy_12c_data_t *pdata);
+__EXPORT int uavcannode_main(bool start_not_stop);
+__END_DECLS
 
-void i2c_init(void);
-void update_TX_buffer(float pixel_flow_x, float pixel_flow_y, float flow_comp_m_x, float flow_comp_m_y, uint8_t qual,
-        float ground_distance, float x_rate, float y_rate, float z_rate, int16_t gyro_temp, legacy_12c_data_t *pd);
-char i2c_get_ownaddress1(void);
-#endif /* I2C_H_ */
 
+#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
+#define  uavcan_start() uavcannode_main(true)
+#define  uavcan_stop()  uavcannode_main(false)
+#define  uavcan_run()   uavcannode_run()
+#define  uavcan_publish(d) uavcannode_publish(d)
+#define  uavcan_export memcpy
+#define  uavcan_define_export(name , section)  legacy_12c_data_t name
+#define  uavcan_use_export(name)  &name
+#define  uavcan_timestamp_export(name)  name.time_stamp_utc = hrt_absolute_time()
+#else
+#define  uavcan_start()
+#define  uavcan_stop()
+#define  uavcan_run()
+#define  uavcan_publish(d)
+#define  uavcan_export(d,s,l)
+#define  uavcan_define_export(name, section)
+#define  uavcan_use_export(name) NULL
+#define  uavcan_timestamp_export(name)
+#endif

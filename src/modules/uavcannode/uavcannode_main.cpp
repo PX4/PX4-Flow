@@ -94,6 +94,8 @@ UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &sys
 	active_bitrate(0),
 	_node(can_driver, system_clock),
 	_fw_update_listner(_node),
+	_time_sync_slave(_node),
+	_flow_pulisher(_node),
 	_reset_timer(_node)
 {
 
@@ -103,6 +105,12 @@ UavcanNode::~UavcanNode()
 {
 	_instance = nullptr;
 
+}
+
+int UavcanNode::stop()
+{
+    _instance = nullptr;
+    return PX4_OK;
 }
 
 int UavcanNode::start(uavcan::NodeID node_id, uint32_t bitrate)
@@ -254,6 +262,37 @@ class RestartRequestHandler: public uavcan::IRestartRequestHandler
 } restart_request_handler;
 
 
+
+int UavcanNode::publish(legacy_12c_data_t *pdata)
+{
+  ::threedr::equipment::flow::optical_flow::LegacyRawSample r;
+  r.time.husec = pdata->time_stamp_utc;
+  r.frame.frame_count = pdata->frame.frame_count;
+  r.frame.pixel_flow_x_sum = pdata->frame.pixel_flow_x_sum;
+  r.frame.pixel_flow_y_sum = pdata->frame.pixel_flow_y_sum;
+  r.frame.flow_comp_m_x = pdata->frame.flow_comp_m_x;
+  r.frame.flow_comp_m_y = pdata->frame.flow_comp_m_y;
+  r.frame.qual = pdata->frame.qual;
+  r.frame.gyro_x_rate = pdata->frame.gyro_x_rate;
+  r.frame.gyro_y_rate = pdata->frame.gyro_y_rate;
+  r.frame.gyro_z_rate = pdata->frame.gyro_z_rate;
+  r.frame.gyro_range = pdata->frame.gyro_range;
+  r.integral.frame_count_since_last_readout = pdata->integral_frame.frame_count_since_last_readout;
+  r.integral.pixel_flow_x_integral = pdata->integral_frame.pixel_flow_x_integral;
+  r.integral.pixel_flow_y_integral = pdata->integral_frame.pixel_flow_y_integral;
+  r.integral.gyro_x_rate_integral = pdata->integral_frame.gyro_x_rate_integral;
+  r.integral.gyro_y_rate_integral = pdata->integral_frame.gyro_y_rate_integral;
+  r.integral.gyro_z_rate_integral = pdata->integral_frame.gyro_z_rate_integral;
+  r.integral.integration_timespan = pdata->integral_frame.integration_timespan;
+  r.integral.sonar_timestamp = pdata->integral_frame.sonar_timestamp;
+  r.integral.ground_distance = pdata->integral_frame.ground_distance;
+  r.integral.gyro_temperature = pdata->integral_frame.gyro_temperature;
+  r.integral.qual = pdata->integral_frame.qual;
+  this->_flow_pulisher.broadcast(r);
+
+}
+
+
 int UavcanNode::run()
 {
         static bool once = false;
@@ -261,6 +300,12 @@ int UavcanNode::run()
         if (!once) {
           once = true;
           get_node().setRestartRequestHandler(&restart_request_handler);
+          const int slave_init_res = _time_sync_slave.start();
+          if (slave_init_res < 0) {
+              PX4_INFO("Failed to start time_sync_slave");
+            _task_should_exit = true;
+          }
+
           _node.setModeOperational();
         }
 
@@ -281,14 +326,6 @@ UavcanNode::teardown()
 	return 0;
 }
 
-void
-UavcanNode::print_info()
-{
-	if (!_instance) {
-		PX4_INFO("not running, start first");
-	}
-
-}
 
 /*
  * App entry point
@@ -299,9 +336,7 @@ static void print_usage()
 	      "\tuavcannode {start|status|stop|arm|disarm}");
 }
 
-extern "C" __EXPORT int uavcannode_start(int argc, char *argv[]);
-
-int uavcannode_start(int argc, char *argv[])
+static int uavcannode_start()
 {
         board_app_initialize();
 
@@ -341,12 +376,7 @@ TODO(Need non vol Paramter sotrage)
 	return UavcanNode::start(node_id, bitrate);
 }
 
-__BEGIN_DECLS
-extern "C" __EXPORT int uavcannode_run();
-extern "C" __EXPORT int uavcannode_publish();
-extern "C" __EXPORT int uavcannode_main(int argc, char *argv[]);
-__END_DECLS
-__EXPORT int uavcannode_publish()
+__EXPORT int uavcannode_publish(legacy_12c_data_t *pdata)
 {
 
   UavcanNode *const inst = UavcanNode::instance();
@@ -355,7 +385,7 @@ __EXPORT int uavcannode_publish()
             PX4_ERR( "application not running");
             return 1;
     }
-
+    inst->publish(pdata);
 }
 
 __EXPORT int uavcannode_run()
@@ -371,20 +401,16 @@ __EXPORT int uavcannode_run()
 }
 
 
-int uavcannode_main(int argc, char *argv[])
+int uavcannode_main(bool start_not_stop)
 {
-	if (argc < 2) {
-		print_usage();
-	}
-
-	if (!std::strcmp(argv[1], "start")) {
+	if (start_not_stop) {
 
 		if (UavcanNode::instance()) {
 		    PX4_ERR("already started");
 		    return 1;
 		}
 
-		return uavcannode_start(argc, argv);
+		return uavcannode_start();
 	}
 
 	/* commands below require the app to be started */
@@ -395,13 +421,9 @@ int uavcannode_main(int argc, char *argv[])
                 return 1;
 	}
 
-	if (!std::strcmp(argv[1], "status") || !std::strcmp(argv[1], "info")) {
-		inst->print_info();
-		return 0;
-	}
 
-	if (!std::strcmp(argv[1], "stop")) {
-		delete inst;
+	if (!start_not_stop) {
+		inst->stop();
                 return 0;
 	}
 
