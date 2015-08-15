@@ -283,7 +283,6 @@ void board_led_off(int led);
  *   None
  *
  ****************************************************************************/
-
 void board_led_rgb(uint16_t red, uint16_t green , uint16_t blue,
                    uint16_t hz);
 

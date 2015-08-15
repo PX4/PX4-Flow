@@ -2,6 +2,8 @@
 # Board-specific startup code for the PX4FLOW
 #
 
+DEFAULT_VISIBILITY=default
+
 ABS_BOOTLOADER_SRC := $(PX4_BOOTLOADER_BASE)src/
 
 SRCS   = \

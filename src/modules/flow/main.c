@@ -248,6 +248,14 @@ int main(void)
 	LEDOff(LED_ACT);
 	LEDOff(LED_COM);
 	LEDOff(LED_ERR);
+        board_led_rgb(255,255,255, 1);
+        board_led_rgb(  0,  0,255, 0);
+        board_led_rgb(  0,  0, 0, 0);
+        board_led_rgb(255,  0,  0, 1);
+        board_led_rgb(255,  0,  0, 2);
+        board_led_rgb(255,  0,  0, 3);
+                board_led_rgb(  0,255,  0, 3);
+        board_led_rgb(  0,  0,255, 4);
 
 	/* enable FPU on Cortex-M4F core */
 	SCB_CPACR |= ((3UL << 10 * 2) | (3UL << 11 * 2)); /* set CP10 Full Access and set CP11 Full Access */
