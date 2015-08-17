@@ -426,7 +426,7 @@ __EXPORT int uavcannode_run()
           PX4_ERR( "application not running");
           return 1;
   }
-  inst->run();
+  return inst->run();
 
 }
 
