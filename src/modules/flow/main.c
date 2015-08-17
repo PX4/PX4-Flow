@@ -67,9 +67,11 @@
 #include "usbd_desc.h"
 #include "usbd_cdc_vcp.h"
 #include "main.h"
-#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
 #include <uavcan_if.h>
-#endif
+
+//#define CONFIG_USE_PROBES
+#include <bsp/probes.h>
+
 
 /* coprocessor control register (fpu) */
 #ifndef SCB_CPACR
@@ -241,7 +243,7 @@ int main(void)
 	/* load settings and parameters */
 	global_data_reset_param_defaults();
 	global_data_reset();
-
+	PROBE_INIT();
 	/* init led */
 	LEDInit(LED_ACT);
 	LEDInit(LED_COM);
@@ -345,7 +347,9 @@ int main(void)
 	/* main loop */
 	while (1)
 	{
-	        uavcan_run();
+                PROBE_1(false);
+                uavcan_run();
+                PROBE_1(true);
 		/* reset flow buffers if needed */
 		if(buffer_reset_needed)
 		{
@@ -520,8 +524,13 @@ int main(void)
 				update_TX_buffer(pixel_flow_x, pixel_flow_y, 0.0f, 0.0f, qual,
 						ground_distance, x_rate, y_rate, z_rate, gyro_temp, uavcan_use_export(i2c_data));
 			}
+	                PROBE_2(false);
                         uavcan_publish(range, 40, range_data);
+	                PROBE_2(true);
+
+                        PROBE_3(false);
                         uavcan_publish(flow, 40, i2c_data);
+                        PROBE_3(true);
 
             //serial mavlink  + usb mavlink output throttled
 			if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
