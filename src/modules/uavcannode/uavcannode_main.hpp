@@ -37,6 +37,7 @@
 #include <uavcan_stm32/uavcan_stm32.hpp>
 #include <uavcan/protocol/global_time_sync_slave.hpp>
 #include <uavcan/protocol/file/BeginFirmwareUpdate.hpp>
+#include <uavcan/equipment/range_sensor/RangeMeasurement.hpp>
 #include <threedr/equipment/flow/optical_flow/LegacyRawSample.hpp>
 #include <uavcan/node/timer.hpp>
 
@@ -104,6 +105,7 @@ public:
 
         int             run();
         int             publish(legacy_12c_data_t *pdata);
+        int             publish(range_data_t *pdata);
 
 	/* The bit rate that can be passed back to the bootloader */
 
@@ -128,6 +130,7 @@ private:
 	uavcan::ServiceServer<BeginFirmwareUpdate, BeginFirmwareUpdateCallBack> _fw_update_listner;
         uavcan::GlobalTimeSyncSlave _time_sync_slave;
         uavcan::Publisher<::threedr::equipment::flow::optical_flow::LegacyRawSample> _flow_pulisher;
+        uavcan::Publisher<uavcan::equipment::range_sensor::RangeMeasurement> _range_pulisher;
 	void cb_beginfirmware_update(const uavcan::ReceivedDataStructure<UavcanNode::BeginFirmwareUpdate::Request> &req,
 	                             uavcan::ServiceResponseDataStructure<UavcanNode::BeginFirmwareUpdate::Response> &rsp);
 

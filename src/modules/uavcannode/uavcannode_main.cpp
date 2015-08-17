@@ -96,6 +96,7 @@ UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &sys
 	_fw_update_listner(_node),
 	_time_sync_slave(_node),
 	_flow_pulisher(_node),
+	_range_pulisher(_node),
 	_reset_timer(_node)
 {
 
@@ -263,6 +264,22 @@ class RestartRequestHandler: public uavcan::IRestartRequestHandler
 
 
 
+int UavcanNode::publish(range_data_t *pdata)
+{
+  ::uavcan::equipment::range_sensor::RangeMeasurement m;
+  m.timestamp.husec = pdata->time_stamp_utc;
+  m.sensor_id = pdata->sensor_id;
+  m.beam_orientation.fixed_axis_roll_pitch_yaw[0] = pdata->roll  * m.beam_orientation.ANGLE_MULTIPLIER;
+  m.beam_orientation.fixed_axis_roll_pitch_yaw[1] = pdata->pitch * m.beam_orientation.ANGLE_MULTIPLIER;
+  m.beam_orientation.fixed_axis_roll_pitch_yaw[2] = pdata->yaw   * m.beam_orientation.ANGLE_MULTIPLIER;
+  m.beam_orientation.orientation_defined = true;
+  m.field_of_view = pdata->field_of_view;
+  m.sensor_type = pdata->sensor_type;
+  m.reading_type= pdata->reading_type;
+  m.range = pdata->range;
+  _range_pulisher.broadcast(m);
+  return PX4_OK;
+}
 int UavcanNode::publish(legacy_12c_data_t *pdata)
 {
   ::threedr::equipment::flow::optical_flow::LegacyRawSample r;
@@ -288,7 +305,8 @@ int UavcanNode::publish(legacy_12c_data_t *pdata)
   r.integral.ground_distance = pdata->integral_frame.ground_distance;
   r.integral.gyro_temperature = pdata->integral_frame.gyro_temperature;
   r.integral.qual = pdata->integral_frame.qual;
-  this->_flow_pulisher.broadcast(r);
+  _flow_pulisher.broadcast(r);
+  return PX4_OK;
 
 }
 
@@ -376,7 +394,7 @@ TODO(Need non vol Paramter sotrage)
 	return UavcanNode::start(node_id, bitrate);
 }
 
-__EXPORT int uavcannode_publish(legacy_12c_data_t *pdata)
+__EXPORT int uavcannode_publish_flow(legacy_12c_data_t *pdata)
 {
 
   UavcanNode *const inst = UavcanNode::instance();
@@ -385,7 +403,19 @@ __EXPORT int uavcannode_publish(legacy_12c_data_t *pdata)
             PX4_ERR( "application not running");
             return 1;
     }
-    inst->publish(pdata);
+    return inst->publish(pdata);
+}
+
+__EXPORT int uavcannode_publish_range(range_data_t *pdata)
+{
+
+  UavcanNode *const inst = UavcanNode::instance();
+
+    if (!inst) {
+            PX4_ERR( "application not running");
+            return 1;
+    }
+    return inst->publish(pdata);
 }
 
 __EXPORT int uavcannode_run()

@@ -37,6 +37,8 @@
 
 #include <px4_config.h>
 #include <px4_macros.h>
+#include <bsp/board.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -73,7 +75,6 @@
 #ifndef SCB_CPACR
 #define SCB_CPACR (*((uint32_t*) (((0xE000E000UL) + 0x0D00UL) + 0x088)))
 #endif
-
 
 
 /* prototypes */
@@ -504,20 +505,23 @@ int main(void)
 				ground_distance = sonar_distance_raw;
 			}
 
-			uavcan_define_export(data, ccm);
-			uavcan_timestamp_export(data);
+                        uavcan_define_export(i2c_data, legacy_12c_data_t, ccm);
+                        uavcan_define_export(range_data, range_data_t, ccm);
+			uavcan_timestamp_export(i2c_data);
+                        uavcan_assign(range_data.time_stamp_utc, i2c_data.time_stamp_utc);
 			//update I2C transmitbuffer
 			if(valid_frame_count>0)
 			{
 				update_TX_buffer(pixel_flow_x, pixel_flow_y, velocity_x_sum/valid_frame_count, velocity_y_sum/valid_frame_count, qual,
-						ground_distance, x_rate, y_rate, z_rate, gyro_temp, uavcan_use_export(data));
+						ground_distance, x_rate, y_rate, z_rate, gyro_temp, uavcan_use_export(i2c_data));
 			}
 			else
 			{
 				update_TX_buffer(pixel_flow_x, pixel_flow_y, 0.0f, 0.0f, qual,
-						ground_distance, x_rate, y_rate, z_rate, gyro_temp, uavcan_use_export(data));
+						ground_distance, x_rate, y_rate, z_rate, gyro_temp, uavcan_use_export(i2c_data));
 			}
-                        uavcan_publish(uavcan_use_export(data));
+                        uavcan_publish(range, 40, range_data);
+                        uavcan_publish(flow, 40, i2c_data);
 
             //serial mavlink  + usb mavlink output throttled
 			if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
