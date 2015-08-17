@@ -242,28 +242,7 @@ __EXPORT void board_led_off(int led)
 {
 
 }
-/****************************************************************************
- * Name: board_led_rgb
- *
- * Description:
- *
- * Input Parameters:
- *
- *  red   - intensity of the red led
- *  green - intensity of the green led
- *  blue  - intensity of the blue led
- *  hz    - number of flashes per second
- *
- * Returned Value:
- *   None
- *
- ****************************************************************************/
 
-
-void board_led_rgb(uint16_t red, uint16_t green , uint16_t blue,
-    uint16_t hz)
-{
-}
 /****************************************************************************
  * Name: board_crashdump
  *

@@ -99,6 +99,7 @@
  ****************************************************************************/
 
 #include <stdint.h>
+#include <compiler.h>
 __BEGIN_DECLS
 /****************************************************************************
  * Pre-processor Definitions
@@ -283,8 +284,13 @@ void board_led_off(int led);
  *   None
  *
  ****************************************************************************/
-void board_led_rgb(uint16_t red, uint16_t green , uint16_t blue,
+#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V1)
+#define board_led_rgb(red, green , blue, hz)
+#endif
+#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
+weak_function void board_led_rgb(uint16_t red, uint16_t green , uint16_t blue,
                    uint16_t hz);
+#endif
 
 /****************************************************************************
  * Name: board_crashdump
