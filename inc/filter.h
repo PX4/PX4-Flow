@@ -31,20 +31,15 @@
  *
  ****************************************************************************/
 
-#ifndef DCMI_H_
-#define DCMI_H_
+#ifndef FILTER_H_
+#define FILTER_H_
 
 #include <stdint.h>
-#include "camera.h"
 
-#define CONFIG_DCMI_DMA_BUFFER_SIZE (1024u)
+/**
+ * @brief Filters the image to improve the flow processing
+ * @note  It uses a temporary buffer on the stack to work on the image.
+ */
+void filter_image(uint8_t *image, uint16_t width);
 
-const camera_transport_interface *dcmi_get_transport_interface();
-
-/* Interrupt Handlers */
-void DCMI_IRQHandler(void);
-void DMA2_Stream1_IRQHandler(void);
-
-#define DCMI_DR_ADDRESS       0x50050028
-
-#endif /* DCMI_H_ */
+#endif /* FILTER_H_ */

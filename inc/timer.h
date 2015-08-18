@@ -31,20 +31,58 @@
  *
  ****************************************************************************/
 
-#ifndef DCMI_H_
-#define DCMI_H_
+#ifndef TIMER_H_
+#define TIMER_H_
 
 #include <stdint.h>
-#include "camera.h"
 
-#define CONFIG_DCMI_DMA_BUFFER_SIZE (1024u)
+#define NTIMERS         	16
 
-const camera_transport_interface *dcmi_get_transport_interface();
+/**	Initializes the timer module.
+ */
+void timer_init(void);
 
-/* Interrupt Handlers */
-void DCMI_IRQHandler(void);
-void DMA2_Stream1_IRQHandler(void);
+/**	Registers a new timer with a corresponding function.
+ *	@note: The function will be called from within the timer_check function.
+ *  @param timer_fn  The timer function to call when the timer rolls over.
+ *					 This function is NOT called from the interrupt handler.
+ * 	@param period_ms The period of the timer in milliseconds.
+ */
+void timer_register(void (*timer_fn)(void), uint32_t period_ms);
 
-#define DCMI_DR_ADDRESS       0x50050028
+/**	Updates the period of an timer that has already been registered.
+ *  @param timer_fn  The timer function that has been registered.
+ * 	@param period_ms The new period of the timer in milliseconds.
+ */
+int timer_update(void (*timer_fn)(void), uint32_t period_ms);
 
-#endif /* DCMI_H_ */
+/**	Checks any pending timers and calls the respective timer functions.
+ */
+void timer_check(void);
+
+void delay(uint16_t ms);
+
+/** Returns the number of milliseconds since booting.
+ */
+uint32_t get_boot_time_ms(void);
+
+/** Returns the number of microseconds since booting.
+ */
+uint32_t get_boot_time_us(void);
+
+/** Computes the time delta in microseconds while taking the roll-over into account.
+ */
+uint32_t calculate_time_delta_us(uint32_t end, uint32_t start);
+
+/** Computes the time delta in microseconds while taking the roll-over into account.
+ */
+uint32_t get_time_delta_us(uint32_t start);
+
+/**
+  * @brief  Triggered by systen timer interrupt every millisecond.
+  * @param  None
+  * @retval None
+  */
+void timer_interrupt_fn(void);
+
+#endif /* TIMER_H_ */

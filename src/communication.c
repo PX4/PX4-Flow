@@ -46,10 +46,11 @@
 #include "gyro.h"
 #include "debug.h"
 #include "communication.h"
+#include "timer.h"
 
-extern uint32_t get_boot_time_us(void);
-extern void buffer_reset(void);
 extern void systemreset(bool to_bootloader);
+
+extern void notify_changed_camera_parameters();
 
 mavlink_system_t mavlink_system;
 
@@ -234,43 +235,23 @@ void handle_mavlink_message(mavlink_channel_t chan,
 								&& global_data.param_access[i])
 						{
 							global_data.param[i] = set.param_value;
-
-							/* handle sensor position */
-							if(i == PARAM_SENSOR_POSITION)
-							{
-								set_sensor_position_settings((uint8_t) set.param_value);
-								mt9v034_context_configuration();
-								dma_reconfigure();
-								buffer_reset();
-							}
-
 							/* handle low light mode and noise correction */
-							else if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR|| i == PARAM_IMAGE_TEST_PATTERN)
+							if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR || i == PARAM_IMAGE_TEST_PATTERN)
 							{
-								mt9v034_context_configuration();
-								dma_reconfigure();
-								buffer_reset();
+								notify_changed_camera_parameters();
 							}
-
 							/* handle calibration on/off */
 							else if(i == PARAM_VIDEO_ONLY)
 							{
-								mt9v034_set_context();
-								dma_reconfigure();
-								buffer_reset();
-
 								if(global_data.param[PARAM_VIDEO_ONLY])
 									debug_string_message_buffer("Calibration Mode On");
 								else
 									debug_string_message_buffer("Calibration Mode Off");
 							}
-
-							/* handle sensor position */
 							else if(i == PARAM_GYRO_SENSITIVITY_DPS)
 							{
 								l3gd20_config();
 							}
-
 							else
 							{
 								debug_int_message_buffer("Parameter received, param id =", i);

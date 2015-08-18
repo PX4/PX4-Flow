@@ -49,6 +49,7 @@
 #include "gyro.h"
 #include "sonar.h"
 #include "main.h"
+#include "result_accumulator.h"
 
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
@@ -105,13 +106,13 @@ void i2c_init() {
 	NVIC_InitTypeDef NVIC_InitStructure, NVIC_InitStructure2;
 
 	NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
 	NVIC_InitStructure2.NVIC_IRQChannel = I2C1_ER_IRQn;
-	NVIC_InitStructure2.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure2.NVIC_IRQChannelPreemptionPriority = 1;
 	NVIC_InitStructure2.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure2.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure2);
@@ -221,103 +222,71 @@ void I2C1_ER_IRQHandler(void) {
 	}
 }
 
-void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
-		float flow_comp_m_x, float flow_comp_m_y, uint8_t qual,
-		float ground_distance, float gyro_x_rate, float gyro_y_rate,
-		float gyro_z_rate, int16_t gyro_temp) {
-	static uint16_t frame_count = 0;
+void update_TX_buffer(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
+					  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
+					  bool distance_valid, float ground_distance, uint32_t distance_age) {
+	static result_accumulator_ctx accumulator;
+	static bool initialized = false;
+
+	if (!initialized) {
+		result_accumulator_init(&accumulator);
+		initialized = true;
+	}
+
+	/* reset if readout has been performed	*/
+	if (stop_accumulation == 1) {
+		result_accumulator_reset(&accumulator);
+		stop_accumulation = 0;
+	}
+
+	/* feed the accumulator and recalculate */
+	result_accumulator_feed(&accumulator, dt, x_rate, y_rate, z_rate, gyro_temp,
+							qual, pixel_flow_x, pixel_flow_y, rad_per_pixel, 
+							distance_valid, ground_distance, distance_age);
+
+	result_accumulator_output_flow output_flow;
+	result_accumulator_output_flow_i2c output_i2c;
+	int min_valid_ratio = global_data.param[PARAM_ALGORITHM_MIN_VALID_RATIO];
+	result_accumulator_calculate_output_flow(&accumulator, min_valid_ratio, &output_flow);
+	result_accumulator_calculate_output_flow_i2c(&accumulator, min_valid_ratio, &output_i2c);
 
 	i2c_frame f;
 	i2c_integral_frame f_integral;
 
-	f.frame_count = frame_count;
-	f.pixel_flow_x_sum = pixel_flow_x * 10.0f;
-	f.pixel_flow_y_sum = pixel_flow_y * 10.0f;
-	f.flow_comp_m_x = flow_comp_m_x * 1000;
-	f.flow_comp_m_y = flow_comp_m_y * 1000;
-	f.qual = qual;
-	f.ground_distance = ground_distance * 1000;
+	/* write the i2c_frame */
+	f.frame_count = accumulator.last.frame_count;
+	f.pixel_flow_x_sum = output_flow.flow_x;
+	f.pixel_flow_y_sum = output_flow.flow_y;
+	f.flow_comp_m_x = floor(output_flow.flow_comp_m_x * 1000.0f + 0.5f);
+	f.flow_comp_m_y = floor(output_flow.flow_comp_m_y * 1000.0f + 0.5f);
+	f.qual = output_flow.quality;
+	f.ground_distance = output_i2c.ground_distance;
 
-	f.gyro_x_rate = gyro_x_rate * getGyroScalingFactor();
-	f.gyro_y_rate = gyro_y_rate * getGyroScalingFactor();
-	f.gyro_z_rate = gyro_z_rate * getGyroScalingFactor();
+	f.gyro_x_rate = output_i2c.gyro_x;
+	f.gyro_y_rate = output_i2c.gyro_y;
+	f.gyro_z_rate = output_i2c.gyro_z;
 	f.gyro_range = getGyroRange();
 
-	uint32_t time_since_last_sonar_update;
-
-	time_since_last_sonar_update = (get_boot_time_us()
-			- get_sonar_measure_time());
-
-	if (time_since_last_sonar_update < 255 * 1000) {
-		f.sonar_timestamp = time_since_last_sonar_update / 1000; //convert to ms
+	if (output_i2c.time_delta_distance_us < 255 * 1000) {
+		f.sonar_timestamp = output_i2c.time_delta_distance_us / 1000; //convert to ms
 	} else {
 		f.sonar_timestamp = 255;
 	}
 
-	static float accumulated_flow_x = 0;
-	static float accumulated_flow_y = 0;
-	static uint16_t accumulated_framecount = 0;
-	static uint16_t accumulated_quality = 0;
-	static float accumulated_gyro_x = 0;
-	static float accumulated_gyro_y = 0;
-	static float accumulated_gyro_z = 0;
-	static uint32_t integration_timespan = 0;
-	static uint32_t lasttime = 0;
+	/* write the i2c_integral_frame */
+	f_integral.frame_count_since_last_readout = output_i2c.valid_frames;
+	f_integral.gyro_x_rate_integral = output_i2c.integrated_gyro_x;		//mrad*10
+	f_integral.gyro_y_rate_integral = output_i2c.integrated_gyro_y;		//mrad*10
+	f_integral.gyro_z_rate_integral = output_i2c.integrated_gyro_z; 	//mrad*10
+	f_integral.pixel_flow_x_integral = output_i2c.rad_flow_x; 			//mrad*10
+	f_integral.pixel_flow_y_integral = output_i2c.rad_flow_y; 			//mrad*10
+	f_integral.integration_timespan = output_i2c.integration_time;      //microseconds
+	f_integral.ground_distance = output_i2c.ground_distance;		    //mmeters
+	f_integral.sonar_timestamp = output_i2c.time_delta_distance_us;  	//microseconds
+	f_integral.qual = output_i2c.quality;										//0-255 linear quality measurement 0=bad, 255=best
+	f_integral.gyro_temperature = output_i2c.temperature;						//Temperature * 100 in centi-degrees Celsius
 
-	/* calculate focal_length in pixel */
-	const float focal_length_px = ((global_data.param[PARAM_FOCAL_LENGTH_MM])
-			/ (4.0f * 6.0f) * 1000.0f); //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
-
-	// reset if readout has been performed
-	if (stop_accumulation == 1) {
-
-		//debug output
-//		mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(),
-//				global_data.param[PARAM_SENSOR_ID], accumulated_flow_x * 10.0f,
-//				accumulated_gyro_x * 10.0f, integration_timespan,
-//				accumulated_framecount, (uint8_t) (accumulated_quality / accumulated_framecount), ground_distance);
-
-		integration_timespan = 0;
-		accumulated_flow_x = 0;			 //mrad
-		accumulated_flow_y = 0;			 //mrad
-		accumulated_framecount = 0;
-		accumulated_quality = 0;
-		accumulated_gyro_x = 0;			 //mrad
-		accumulated_gyro_y = 0;			 //mrad
-		accumulated_gyro_z = 0;			 //mrad
-		stop_accumulation = 0;
-	}
-
-	//accumulate flow and gyro values between sucessive I2C readings
-	//update only if qual !=0
-	if (qual > 0) {
-		uint32_t deltatime = (get_boot_time_us() - lasttime);
-		integration_timespan += deltatime;
-		accumulated_flow_x += pixel_flow_y * 1000.0f / focal_length_px * 1.0f;//mrad axis swapped to align x flow around y axis
-		accumulated_flow_y += pixel_flow_x * 1000.0f / focal_length_px * -1.0f;	//mrad
-		accumulated_framecount++;
-		accumulated_quality += qual;
-		accumulated_gyro_x += gyro_x_rate * deltatime * 0.001f;	//mrad  gyro_x_rate * 1000.0f*deltatime/1000000.0f;
-		accumulated_gyro_y += gyro_y_rate * deltatime * 0.001f;	//mrad
-		accumulated_gyro_z += gyro_z_rate * deltatime * 0.001f;	//mrad
-	}
-
-	//update lasttime
-	lasttime = get_boot_time_us();
-
-	f_integral.frame_count_since_last_readout = accumulated_framecount;
-	f_integral.gyro_x_rate_integral = accumulated_gyro_x * 10.0f;	//mrad*10
-	f_integral.gyro_y_rate_integral = accumulated_gyro_y * 10.0f;	//mrad*10
-	f_integral.gyro_z_rate_integral = accumulated_gyro_z * 10.0f; //mrad*10
-	f_integral.pixel_flow_x_integral = accumulated_flow_x * 10.0f; //mrad*10
-	f_integral.pixel_flow_y_integral = accumulated_flow_y * 10.0f; //mrad*10
-	f_integral.integration_timespan = integration_timespan;     //microseconds
-	f_integral.ground_distance = ground_distance * 1000;		    //mmeters
-	f_integral.sonar_timestamp = time_since_last_sonar_update;  //microseconds
-	f_integral.qual =
-			(uint8_t) (accumulated_quality / accumulated_framecount); //0-255 linear quality measurement 0=bad, 255=best
-	f_integral.gyro_temperature = gyro_temp;//Temperature * 100 in centi-degrees Celsius
-
+	/* perform buffer swapping */
 	notpublishedIndexFrame1 = 1 - publishedIndexFrame1; // choose not the current published 1 buffer
 	notpublishedIndexFrame2 = 1 - publishedIndexFrame2; // choose not the current published 2 buffer
 
@@ -338,9 +307,6 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 	if (readout_done_frame2) {
 		publishedIndexFrame2 = 1 - publishedIndexFrame2;
 	}
-
-	frame_count++;
-
 }
 
 char readI2CAddressOffset(void) {

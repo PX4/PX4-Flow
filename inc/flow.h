@@ -36,10 +36,72 @@
 
 #include <stdint.h>
 
+#define FLOW_FRAME_SIZE	64
+
+typedef struct _flow_raw_result {
+	float x;		///< The flow in x direction
+	float y;		///< The flow in y direction
+	float quality;	///< The quality of this result. 0 = bad
+	uint8_t at_x;	///< The mid-position of the patch that was used to calculate the flow.
+	uint8_t at_y;	///< The mid-position of the patch that was used to calculate the flow.
+} flow_raw_result;
+
+typedef struct _flow_klt_image {
+	uint8_t *image;
+	uint8_t preprocessed[(FLOW_FRAME_SIZE * FLOW_FRAME_SIZE) / 2];
+	uint32_t meta;
+} flow_klt_image;
+
 /**
- * @brief Computes pixel flow from image1 to image2
+ *  @brief Computes pixel flow from image1 to image2
+ *  Searches the corresponding position in the new image (image2) of max. 64 pixels from the old image (image1).
+ *	@param image1 The older image
+ *	@param image2 The new image
+ *	@param x_rate The gyro x-rate during the frame interval in pixels. (In the image x direction)
+ *	@param y_rate The gyro y-rate during the frame interval in pixels. (In the image y direction)
+ *	@param z_rate The gyro z-rate during the frame interval in radians.
+ *	@param out    Array which receives the raw result vectors computed for the blocks in the image.
+ *	@param max_out The available space in the out buffer.
+ *	@return The number of results written to the out buffer.
  */
-uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
-		float *histflowx, float *histflowy);
+uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
+					  flow_raw_result *out, uint16_t max_out);
+
+/**
+ *	Preprocesses the image for use with compute_klt. 
+ *	This will add the pyramid levels.
+ *  The pointed memory needs to be in CCM.
+ */
+void klt_preprocess_image(uint8_t *image, flow_klt_image *klt_image);
+
+/**
+ *  @brief Computes pixel flow from image1 to image2
+ *  Searches the corresponding position in the new image (image2) of max. 64 pixels from the old image (image1)
+ *  with the KLT method and outputs the value of all flow vectors.
+ *	@NOTE call klt_preprocess_image on the images first! (No need to call it on the previous image again if it has been treated already)
+ *	@param image1 The older image
+ *	@param image2 The new image
+ *	@param x_rate The gyro x-rate during the frame interval in pixels. (In the image x direction)
+ *	@param y_rate The gyro y-rate during the frame interval in pixels. (In the image y direction)
+ *	@param z_rate The gyro z-rate during the frame interval in radians.
+ *	@param out    Array which receives the raw result vectors computed for the blocks in the image.
+ *	@param max_out The available space in the out buffer.
+ *	@return The number of results written to the out buffer.
+ */
+uint16_t compute_klt(flow_klt_image *image1, flow_klt_image *image2, float x_rate, float y_rate, float z_rate,
+					 flow_raw_result *out, uint16_t max_out);
+
+/**
+* 
+*	@brief Extracts pixel flow from the result vector
+*	@param in Raw result vector from flow calculation.
+*	@param result_count Number of results in flow_raw_result.
+*	@param px_flow_x Receives the pixel flow in x direction.
+*	@param px_flow_y Receives the pixel flow in y direction.
+*	@param accuracy_p Outlier detection threshold in percent. (0 - 1).
+*	@param accuracy_px Minimum outlier detection threshold in absolute pixel flow values.
+*/
+uint8_t flow_extract_result(flow_raw_result *in, uint16_t result_count, float *px_flow_x, float *px_flow_y,
+				float accuracy_p, float accuracy_px);
 
 #endif /* FLOW_H_ */

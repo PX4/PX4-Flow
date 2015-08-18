@@ -18,10 +18,14 @@ CC =		arm-none-eabi-gcc
 OBJCOPY =	arm-none-eabi-objcopy
 
 SRCS = 		src/main.c \
+			src/timer.c \
+			src/result_accumulator.c \
 			src/utils.c \
 			src/led.c \
 			src/settings.c \
+			src/camera.c \
 			src/communication.c \
+			src/filter.c \
 			src/flow.c \
 			src/dcmi.c \
 			src/mt9v034.c \
