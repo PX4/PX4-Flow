@@ -64,7 +64,7 @@
             }
 
 #define PROBE_INIT() PROBE_INIT_(PROBE_PORT, PROBE_PINS)
-#define PROBE(port, pin, state) if(state) { PROBE_GLUE2_(GPIO, port)->BSRRH = pin;} else { PROBE_GLUE2_(GPIO, port)->BSRRL = pin;}}
+#define PROBE(port, pin, state) do { if(state) { PROBE_GLUE2_(GPIO, port)->BSRRH = pin;} else { PROBE_GLUE2_(GPIO, port)->BSRRL = pin;}} while(0);
 #define PROBE_1(state)  PROBE(PROBE_PORT, GPIO_Pin_2, state)
 #define PROBE_2(state)  PROBE(PROBE_PORT, GPIO_Pin_4, state)
 #define PROBE_3(state)  PROBE(PROBE_PORT, GPIO_Pin_5, state)
