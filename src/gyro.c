@@ -35,7 +35,7 @@
  *
  ****************************************************************************/
 
-#include "no_wanings.h"
+#include "no_warnings.h"
 #include "stm32f4xx.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_spi.h"

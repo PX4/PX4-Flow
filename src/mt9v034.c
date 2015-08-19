@@ -35,7 +35,7 @@
  *
  ****************************************************************************/
 
-#include "no_wanings.h"
+#include "no_warnings.h"
 #include "stm32f4xx_dcmi.h"
 #include "stm32f4xx_dma.h"
 #include "stm32f4xx_rcc.h"

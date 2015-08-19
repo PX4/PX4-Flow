@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "no_wanings.h"
+#include "no_warnings.h"
 #include "usbd_cdc_vcp.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
