@@ -110,7 +110,15 @@ volatile bool usb_image_transfer_active = false;
 static camera_ctx cam_ctx;
 static camera_img_param img_stream_param;
 
-uint8_t snapshot_buffer_mem[USB_IMAGE_PIXELS * USB_IMAGE_PIXELS];
+typedef struct __attribute__((packed)) {
+	uint32_t flags;
+	uint32_t timestamp;
+	uint32_t exposure;
+	uint32_t reserved;
+	uint8_t snapshot_buffer_mem[USB_IMAGE_PIXELS * USB_IMAGE_PIXELS];
+} usb_packet_format;
+
+usb_packet_format usb_packet;
 
 static camera_image_buffer snapshot_buffer;
 	
@@ -204,10 +212,10 @@ unsigned usb_image_pos = 0;
 #define MAX_TRANSFER (1023*64)
 
 static void send_image_step(void) {
-	unsigned size = USB_IMAGE_PIXELS*USB_IMAGE_PIXELS - usb_image_pos;
+	unsigned size = sizeof(usb_packet) - usb_image_pos;
 	if (size > MAX_TRANSFER) size = MAX_TRANSFER;
 
-	DCD_EP_Tx(&USB_OTG_dev, IMAGE_IN_EP, &snapshot_buffer_mem[usb_image_pos], size);
+	DCD_EP_Tx(&USB_OTG_dev, IMAGE_IN_EP, &((uint8_t*)&usb_packet)[usb_image_pos], size);
 	if (size == 0 || size % 64 != 0) {
 		// We sent a short packet at the end of the transfer. When it completes, we're done.
 		usb_image_pos = (unsigned) -1;
@@ -220,6 +228,10 @@ static void start_send_image(void) {
 	LEDOn(LED_COM);
 	usb_image_transfer_active = true;
 	usb_image_pos = 0;
+	usb_packet.flags = 0;
+	usb_packet.timestamp = snapshot_buffer.timestamp; // TODO: use UAVCAN timestamp instead of local timestamp
+	usb_packet.exposure = snapshot_buffer.param.exposure;
+	usb_packet.reserved = 0;
 	DCD_EP_Flush(&USB_OTG_dev, IMAGE_IN_EP);
 	send_image_step();
 }
@@ -253,7 +265,7 @@ static flow_klt_image flow_klt_images[2] __attribute__((section(".ccm")));
 int main(void)
 {
 	__enable_irq();
-	snapshot_buffer = BuildCameraImageBuffer(snapshot_buffer_mem);
+	snapshot_buffer = BuildCameraImageBuffer(usb_packet.snapshot_buffer_mem);
 
 	/* load settings and parameters */
 	global_data_reset_param_defaults();
