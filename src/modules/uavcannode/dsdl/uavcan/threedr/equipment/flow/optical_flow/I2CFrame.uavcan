@@ -1,0 +1,17 @@
+#
+# Nested Type
+# Legacy I2C 
+#
+
+uint16 frame_count
+int16 pixel_flow_x_sum
+int16 pixel_flow_y_sum
+int16 flow_comp_m_x
+int16 flow_comp_m_y
+int16 qual
+int16 gyro_x_rate
+int16 gyro_y_rate
+int16 gyro_z_rate
+uint8 gyro_range
+uint8 sonarimestamp
+int16 ground_distance
