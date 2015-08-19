@@ -35,6 +35,9 @@
  *
  ****************************************************************************/
 
+#include <px4_config.h>
+#include <px4_macros.h>
+#include "no_wanings.h"
 #include "no_wanings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
@@ -48,6 +51,11 @@
 #include "stm32f4xx_tim.h"
 #include "misc.h"
 #include "stm32f4xx.h"
+
+#include <uavcan_if.h>
+
+//#define CONFIG_USE_PROBES
+#include <bsp/probes.h>
 
 /* counters */
 volatile uint8_t image_counter = 0;
@@ -244,8 +252,15 @@ void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image,
 	*current_image = *previous_image;
 	*previous_image = tmp_image;
 
+TODO(NB dma_copy_image_buffers is calling uavcan_run());
+
 	/* wait for new image if needed */
-	while(image_counter < image_step) {}
+	while(image_counter < image_step) {
+            PROBE_1(false);
+            uavcan_run();
+            PROBE_1(true);
+	}
+
 	image_counter = 0;
 
 	/* time between images */
