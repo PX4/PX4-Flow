@@ -69,11 +69,11 @@
 *        so total FIFO size should be 1012 Only instead of 1024       
 *******************************************************************************/
 
-#define RX_FIFO_FS_SIZE                          128
+#define RX_FIFO_FS_SIZE                           64
 #define TX0_FIFO_FS_SIZE                          64
-#define TX1_FIFO_FS_SIZE                         128
-#define TX2_FIFO_FS_SIZE                          32
-#define TX3_FIFO_FS_SIZE                           0
+#define TX1_FIFO_FS_SIZE                          64
+#define TX2_FIFO_FS_SIZE                          16
+#define TX3_FIFO_FS_SIZE                          64
 
 /****************** USB OTG MISC CONFIGURATION ********************************/
 #define VBUS_SENSING_ENABLED

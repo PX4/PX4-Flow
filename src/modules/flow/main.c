@@ -84,6 +84,22 @@
 
 
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
+extern USBD_Class_cb_TypeDef custom_composite_cb;
+
+//TODO: this should use board-specific code instead of an ifdef here
+#ifdef CONFIG_ARCH_BOARD_PX4FLOW_V2
+// USB_IMAGE_PIXELS*USB_IMAGE_PIXELS % 1024 must equal 0
+#define USB_IMAGE_PIXELS (352)
+#else
+#define USB_IMAGE_PIXELS (128)
+#endif
+
+#define FLOW_IMAGE_SIZE (64)
+
+static volatile bool snap_capture_done = false;
+static volatile bool snap_capture_success = false;
+static bool snap_ready = true;
+volatile bool usb_image_transfer_active = false;
 
 /* timer constants */
 #define SONAR_POLL_MS	 	100	/* steps in milliseconds ticks */
@@ -94,7 +110,15 @@ __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 static camera_ctx cam_ctx;
 static camera_img_param img_stream_param;
 
-uint8_t snapshot_buffer_mem[128 * 128];
+typedef struct __attribute__((packed)) {
+	uint32_t flags;
+	uint32_t timestamp;
+	uint32_t exposure;
+	uint32_t reserved;
+	uint8_t snapshot_buffer_mem[USB_IMAGE_PIXELS * USB_IMAGE_PIXELS];
+} usb_packet_format;
+
+usb_packet_format usb_packet;
 
 static camera_image_buffer snapshot_buffer;
 	
@@ -167,24 +191,57 @@ static void send_params_fn(void) {
 	camera_img_stream_schedule_param_change(&cam_ctx, &img_stream_param);
 }*/
 
-static volatile bool snap_capture_done = false;
-static volatile bool snap_capture_success = false;
-static bool snap_ready = true;
-
 static void snapshot_captured_fn(bool success) {
 	snap_capture_done = true;
 	snap_capture_success = success;
 }
 
 static void take_snapshot_fn(void) {
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]) && FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]) && snap_ready) {
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]) && FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]) && snap_ready && !usb_image_transfer_active) {
 		static camera_img_param snapshot_param;
-		snapshot_param.size.x = 128;
-		snapshot_param.size.y = 128;
+		snapshot_param.size.x = USB_IMAGE_PIXELS;
+		snapshot_param.size.y = USB_IMAGE_PIXELS;
 		snapshot_param.binning = 1;
 		if (camera_snapshot_schedule(&cam_ctx, &snapshot_param, &snapshot_buffer, snapshot_captured_fn)) {
 			snap_ready = false;
 		}
+	}
+}
+
+unsigned usb_image_pos = 0;
+#define MAX_TRANSFER (1023*64)
+
+static void send_image_step(void) {
+	unsigned size = sizeof(usb_packet) - usb_image_pos;
+	if (size > MAX_TRANSFER) size = MAX_TRANSFER;
+
+	DCD_EP_Tx(&USB_OTG_dev, IMAGE_IN_EP, &((uint8_t*)&usb_packet)[usb_image_pos], size);
+	if (size == 0 || size % 64 != 0) {
+		// We sent a short packet at the end of the transfer. When it completes, we're done.
+		usb_image_pos = (unsigned) -1;
+	} else {
+		usb_image_pos += size;
+	}
+}
+
+static void start_send_image(void) {
+	LEDOn(LED_COM);
+	usb_image_transfer_active = true;
+	usb_image_pos = 0;
+	usb_packet.flags = 0;
+	usb_packet.timestamp = snapshot_buffer.timestamp; // TODO: use UAVCAN timestamp instead of local timestamp
+	usb_packet.exposure = snapshot_buffer.param.exposure;
+	usb_packet.reserved = 0;
+	DCD_EP_Flush(&USB_OTG_dev, IMAGE_IN_EP);
+	send_image_step();
+}
+
+void send_image_completed(void) {
+	if (usb_image_pos != (unsigned) -1) {
+		send_image_step();
+	} else {
+		usb_image_transfer_active = false;
+		LEDOff(LED_COM);
 	}
 }
 
@@ -208,7 +265,7 @@ static flow_klt_image flow_klt_images[2] __attribute__((section(".ccm")));
 int main(void)
 {
 	__enable_irq();
-	snapshot_buffer = BuildCameraImageBuffer(snapshot_buffer_mem);
+	snapshot_buffer = BuildCameraImageBuffer(usb_packet.snapshot_buffer_mem);
 
 	/* load settings and parameters */
 	global_data_reset_param_defaults();
@@ -240,7 +297,7 @@ int main(void)
 	USBD_Init(	&USB_OTG_dev,
 				USB_OTG_FS_CORE_ID,
 				&USR_desc,
-				&USBD_CDC_cb,
+				&custom_composite_cb,
 				&USR_cb);
 
 	/* init mavlink */
@@ -319,7 +376,7 @@ int main(void)
 			if (snap_capture_success) {
 				/* send the snapshot! */
 				LEDToggle(LED_COM);
-				mavlink_send_image(&snapshot_buffer);
+				start_send_image();
 			}
 		}
 

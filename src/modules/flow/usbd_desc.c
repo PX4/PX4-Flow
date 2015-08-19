@@ -30,6 +30,7 @@
 #include "usbd_req.h"
 #include "usbd_conf.h"
 #include "usb_regs.h"
+#include "usb_standard.h"
 
 /* Vendor ID */
 #define USBD_VID                        0x26AC
@@ -63,42 +64,25 @@ USBD_DEVICE USR_desc =
 	USBD_USR_InterfaceStrDescriptor,
 };
 
-/* USB Standard Device Descriptor */
-__ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
-{
-	0x12,						/*bLength */
-	USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
-	0x00,						/*bcdUSB */
-	0x02,
-	0x00,						/*bDeviceClass*/
-	0x00,						/*bDeviceSubClass*/
-	0x00,						/*bDeviceProtocol*/
-	USB_OTG_MAX_EP0_SIZE,		/*bMaxPacketSize*/
-	LOBYTE(USBD_VID),			/*idVendor*/
-	HIBYTE(USBD_VID),			/*idVendor*/
-	LOBYTE(USBD_PID),			/*idVendor*/
-	HIBYTE(USBD_PID),			/*idVendor*/
-	0x00,						/*bcdDevice rel. 2.00*/
-	0x02,
-	USBD_IDX_MFC_STR,			/*Index of manufacturer  string*/
-	USBD_IDX_PRODUCT_STR,		/*Index of product string*/
-	USBD_IDX_SERIAL_STR,		/*Index of serial number string*/
-	USBD_CFG_MAX_NUM			/*bNumConfigurations*/
- } ; /* USB_DeviceDescriptor */
+const USB_DeviceDescriptor device_descriptor = {
+	.bLength = sizeof(USB_DeviceDescriptor),
+	.bDescriptorType = USB_DTYPE_Device,
 
-/* USB Standard Device Descriptor */
-__ALIGN_BEGIN uint8_t USBD_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_END =
-{
-	USB_LEN_DEV_QUALIFIER_DESC,
-	USB_DESC_TYPE_DEVICE_QUALIFIER,
-	0x00,
-	0x02,
-	0x00,
-	0x00,
-	0x00,
-	0x40,
-	0x01,
-	0x00,
+	.bcdUSB                 = 0x0200,
+	.bDeviceClass           = 0,
+	.bDeviceSubClass        = USB_CSCP_NoDeviceSubclass,
+	.bDeviceProtocol        = USB_CSCP_NoDeviceProtocol,
+
+	.bMaxPacketSize0        = 64,
+	.idVendor               = USBD_VID,
+	.idProduct              = USBD_PID,
+	.bcdDevice              = 0x0200,
+
+	.iManufacturer          = USBD_IDX_MFC_STR,
+	.iProduct               = USBD_IDX_PRODUCT_STR,
+	.iSerialNumber          = USBD_IDX_SERIAL_STR,
+
+	.bNumConfigurations     = USBD_CFG_MAX_NUM
 };
 
 /* USB Standard Device Descriptor */
@@ -119,8 +103,8 @@ __ALIGN_BEGIN uint8_t USBD_LangIDDesc[USB_SIZ_STRING_LANGID] __ALIGN_END =
 */
 uint8_t *  USBD_USR_DeviceDescriptor( uint8_t speed , uint16_t *length)
 {
-	*length = sizeof(USBD_DeviceDesc);
-	return USBD_DeviceDesc;
+	*length = sizeof(device_descriptor);
+	return (uint8_t*) &device_descriptor;
 }
 
 /**
