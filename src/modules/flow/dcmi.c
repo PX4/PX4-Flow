@@ -37,8 +37,7 @@
 
 #include <px4_config.h>
 #include <px4_macros.h>
-#include "no_wanings.h"
-#include "no_wanings.h"
+#include "no_warnings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "utils.h"

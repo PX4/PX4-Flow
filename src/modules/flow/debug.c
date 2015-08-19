@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 #include <stdbool.h>
-#include "no_wanings.h"
+#include "no_warnings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "utils.h"
