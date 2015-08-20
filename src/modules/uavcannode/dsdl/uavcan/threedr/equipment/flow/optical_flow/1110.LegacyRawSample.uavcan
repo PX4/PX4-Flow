@@ -1,0 +1,6 @@
+# Current time.
+# Note that the data type "uavcan.Timestamp" is defined by the UAVCAN specification.
+uavcan.Timestamp time
+
+I2CFrame frame
+I2CFrameIntegral integral
