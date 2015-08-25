@@ -36,7 +36,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "no_warnings.h"
 #include "usbd_cdc_vcp.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
@@ -51,6 +50,25 @@ extern void systemreset(bool to_bootloader);
 mavlink_system_t mavlink_system;
 
 static uint32_t m_parameter_i = 0;
+
+static mavlink_param_union_t mavlink_value(const param_info_item* p) {
+	mavlink_param_union_t value;
+	switch (p->type) {
+		case PARAM_FLOAT:
+			value.type = MAV_PARAM_TYPE_REAL32;
+			value.param_float = *(float*) p->variable;
+			break;
+		case PARAM_UINT:
+			value.type = MAV_PARAM_TYPE_UINT32;
+			value.param_uint32 = *(uint32_t*) p->variable;
+			break;
+		case PARAM_BOOL:
+			value.type = MAV_PARAM_TYPE_UINT32;
+			value.param_uint32 = *(bool*) p->variable;
+			break;
+	}
+	return value;
+}
 
 /**
  * @brief Initialize MAVLINK system
@@ -80,10 +98,11 @@ void communication_parameter_send(void)
 	if (m_parameter_i < params_count)
 	{
 		const param_info_item* p = &param_info[m_parameter_i];
+		mavlink_param_union_t value = mavlink_value(p);
 		mavlink_msg_param_value_send(MAVLINK_COMM_0,
-			p->name, *p->variable, MAVLINK_TYPE_FLOAT, params_count, m_parameter_i);
+			p->name, value.param_float, value.type, params_count, m_parameter_i);
 		mavlink_msg_param_value_send(MAVLINK_COMM_2,
-			p->name, *p->variable, MAVLINK_TYPE_FLOAT, params_count, m_parameter_i);	
+			p->name, value.param_float, value.type, params_count, m_parameter_i);
 		m_parameter_i++;
 	}
 }
@@ -115,7 +134,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 		len = mavlink_msg_to_send_buffer(buf, msg);
 		mavlink_send_uart_bytes(MAVLINK_COMM_0, buf, len);
 
-		if (FLOAT_AS_BOOL(param_usb_send_forward))
+		if (param_usb_send_forward)
 			mavlink_send_uart_bytes(MAVLINK_COMM_2, buf, len);
 
 		return;
@@ -152,8 +171,9 @@ void handle_mavlink_message(mavlink_channel_t chan,
 				
 				if (param_index >= 0 && (unsigned)param_index < params_count) {
 					const param_info_item* param = &param_info[param_index];
-					mavlink_msg_param_value_send(chan, param->name, *param->variable,
-						MAVLINK_TYPE_FLOAT, params_count, param_index);
+					mavlink_param_union_t value = mavlink_value(param);
+					mavlink_msg_param_value_send(chan, param->name,
+						value.param_float, value.type, params_count, param_index);
 				}
 			}
 		}
@@ -180,23 +200,31 @@ void handle_mavlink_message(mavlink_channel_t chan,
 					const param_info_item* param = &param_info[param_index];
 					/* Check if matched */
 					if (strncmp(set.param_id, param->name, 16) == 0)
-					{
-						/* Only write and emit changes if there is actually a difference
-						 * AND only write if new value is NOT "not-a-number"
-						 * AND is NOT infinity
-						 */
-						if (!FLOAT_EQ_FLOAT(*param->variable, set.param_value)
-								&& !isnan(set.param_value)
-								&& !isinf(set.param_value)
-								&& param->access)
+					{						 
+						mavlink_param_union_t old_value = mavlink_value(param);
+						mavlink_param_union_t new_value = { .param_float = set.param_value };
+						
+						if (param->access && old_value.param_uint32 != new_value.param_uint32)
 						{
-							*param->variable = set.param_value;
+							switch (param->type) {
+								case PARAM_FLOAT:
+									*(float*) param->variable = new_value.param_float;
+									break;
+								case PARAM_UINT:
+									*(uint32_t*) param->variable = new_value.param_uint32;
+									break;
+								case PARAM_BOOL:
+									*(bool*) param->variable = new_value.param_uint32;
+									break;
+							}
 							if (param->on_change) param->on_change();
 						}
+						
+						mavlink_param_union_t value = mavlink_value(param);
 						mavlink_msg_param_value_send(MAVLINK_COMM_0, param->name,
-							*param->variable, MAVLINK_TYPE_FLOAT, params_count, param_index);
+							value.param_float, value.type, params_count, param_index);
 						mavlink_msg_param_value_send(MAVLINK_COMM_2, param->name,
-							*param->variable, MAVLINK_TYPE_FLOAT, params_count, param_index);
+							value.param_float, value.type, params_count, param_index);
 					}
 				}
 			}

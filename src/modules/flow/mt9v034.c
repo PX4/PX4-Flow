@@ -35,7 +35,6 @@
  *
  ****************************************************************************/
 
-#include "no_warnings.h"
 #include "stm32f4xx_dcmi.h"
 #include "stm32f4xx_dma.h"
 #include "stm32f4xx_rcc.h"
@@ -67,7 +66,7 @@ void mt9v034_context_configuration(void)
 
 	uint16_t new_control;
 
-	if (FLOAT_AS_BOOL(param_video_only))
+	if (param_video_only)
 		new_control = 0x8188; // Context B
 	else
 		new_control = 0x0188; // Context A
@@ -124,7 +123,7 @@ void mt9v034_context_configuration(void)
 	uint16_t agc_low_pass = 0x02; // default VALID RANGE: 0-2
 
 
-	if (FLOAT_AS_BOOL(param_image_low_light))
+	if (param_image_low_light)
 	{
 		min_exposure = 0x0001;
 		max_exposure = 0x0040;
@@ -154,12 +153,12 @@ void mt9v034_context_configuration(void)
 	uint16_t row_noise_correction = 0x0000; // default
 	uint16_t test_data = 0x0000; // default
 
-	if(FLOAT_AS_BOOL(param_image_row_noise_corr) && !FLOAT_AS_BOOL(param_image_test_pattern))
+	if(param_image_row_noise_corr && !param_image_test_pattern)
 		row_noise_correction = 0x0101;
 	else
 		row_noise_correction = 0x0000;
 
-	if (FLOAT_AS_BOOL(param_image_test_pattern))
+	if (param_image_test_pattern)
 		test_data = 0x3000; //enable vertical gray shade pattern
 	else
 		test_data = 0x0000;
@@ -227,7 +226,7 @@ void mt9v034_context_configuration(void)
 void mt9v034_set_context()
 {
 	uint16_t new_control;
-	if (FLOAT_AS_BOOL(param_video_only))
+	if (param_video_only)
 		new_control = 0x8188; // Context B
 	else
 		new_control = 0x0188; // Context A

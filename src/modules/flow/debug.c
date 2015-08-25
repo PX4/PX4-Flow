@@ -32,7 +32,6 @@
  ****************************************************************************/
 
 #include <stdbool.h>
-#include "no_warnings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "utils.h"
@@ -195,7 +194,7 @@ void debug_message_send_one(void)
 
 	mavlink_msg_statustext_send(MAVLINK_COMM_0, 0, msg);
 
-	if (FLOAT_AS_BOOL(param_usb_send_debug))
+	if (param_usb_send_debug)
 		mavlink_msg_statustext_send(MAVLINK_COMM_2, 0, msg);
 }
 

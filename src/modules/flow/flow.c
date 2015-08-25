@@ -39,7 +39,6 @@
 #include <stdbool.h>
 #include <math.h>
 
-#include "no_warnings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "dcmi.h"
@@ -548,7 +547,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		/* check if there is a peak value in histogram */
 		if (1) //(histx[maxpositionx] > meancount / 6 && histy[maxpositiony] > meancount / 6)
 		{
-			if (FLOAT_AS_BOOL(param_bottom_flow_hist_filter))
+			if (param_bottom_flow_hist_filter)
 			{
 
 				/* use histogram filter peek value */
@@ -673,7 +672,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			 * -y_rate gives x flow
 			 * x_rates gives y_flow
 			 */
-			if (FLOAT_AS_BOOL(param_bottom_flow_gyro_compensation))
+			if (param_bottom_flow_gyro_compensation)
 			{
 				if(fabsf(y_rate) > param_gyro_compensation_threshold)
 				{

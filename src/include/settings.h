@@ -36,6 +36,7 @@
 #define SETTINGS_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define BOTTOM_FLOW_IMAGE_HEIGHT		64
 #define BOTTOM_FLOW_IMAGE_WIDTH			64
@@ -53,6 +54,13 @@ typedef enum
   READ_ONLY   = 0,
   READ_WRITE  = 1,
 } ParameterAccess_TypeDef;
+
+typedef enum
+{
+  PARAM_FLOAT,
+  PARAM_BOOL,
+  PARAM_UINT,
+} ParameterType_TypeDef;
 
 /**
   * @brief  sensor position enumeration
@@ -90,49 +98,50 @@ typedef enum
 /******************************************************************
   * ALL SETTINGS VARIABLES
   */
-extern float param_system_id;
-extern float param_component_id;
-extern float param_sensor_id;
-extern float param_system_type;
-extern float param_autopilot_type;
-extern float param_sw_version;
-extern float param_system_send_state;
-extern float param_system_send_lpos;
-extern float param_usart2_baud;
-extern float param_usart3_baud;
+extern uint32_t param_system_id;
+extern uint32_t param_component_id;
+extern uint32_t param_sensor_id;
+extern uint32_t param_system_type;
+extern uint32_t param_autopilot_type;
+extern uint32_t param_sw_version;
+extern bool param_system_send_state;
+extern bool param_system_send_lpos;
+extern uint32_t param_usart2_baud;
+extern uint32_t param_usart3_baud;
 extern float param_focal_length_mm;
-extern float param_image_width;
-extern float param_image_height;
-extern float param_max_flow_pixel;
-extern float param_image_low_light;
-extern float param_image_row_noise_corr;
-extern float param_image_test_pattern;
-extern float param_gyro_sensitivity_dps;
+extern uint32_t param_image_width;
+extern uint32_t param_image_height;
+extern uint32_t param_max_flow_pixel;
+extern bool param_image_low_light;
+extern bool param_image_row_noise_corr;
+extern bool param_image_test_pattern;
+extern uint32_t param_gyro_sensitivity_dps;
 extern float param_gyro_compensation_threshold;
-extern float param_sonar_filtered;
+extern bool param_sonar_filtered;
 extern float param_sonar_kalman_l1;
 extern float param_sonar_kalman_l2;
-extern float param_usb_send_video;
-extern float param_usb_send_flow;
-extern float param_usb_send_gyro;
-extern float param_usb_send_forward;
-extern float param_usb_send_debug;
-extern float param_video_only;
+extern bool param_usb_send_video;
+extern bool param_usb_send_flow;
+extern bool param_usb_send_gyro;
+extern bool param_usb_send_forward;
+extern bool param_usb_send_debug;
+extern bool param_video_only;
 extern float param_video_rate;
 extern float param_bottom_flow_feature_threshold;
 extern float param_bottom_flow_value_threshold;
-extern float param_bottom_flow_hist_filter;
-extern float param_bottom_flow_gyro_compensation;
-extern float param_bottom_flow_lp_filtered;
+extern bool param_bottom_flow_hist_filter;
+extern bool param_bottom_flow_gyro_compensation;
+extern bool param_bottom_flow_lp_filtered;
 extern float param_bottom_flow_weight_new;
 extern float param_bottom_flow_serial_throttle_factor;
-extern float param_sensor_position;
+extern uint32_t param_sensor_position;
 extern float debug_variable;
 
 typedef struct param_info_item {
   const char* name;
+  ParameterType_TypeDef type;
   ParameterAccess_TypeDef access;
-  float* variable;
+  void* variable;
   void (*on_change)(void);
 } param_info_item;
 

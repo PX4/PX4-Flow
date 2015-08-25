@@ -37,7 +37,6 @@
 
 #include <px4_config.h>
 #include <px4_macros.h>
-#include "no_warnings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "utils.h"
@@ -103,7 +102,7 @@ void dma_reconfigure(void)
 {
 	dcmi_dma_disable();
 
-	if (FLOAT_AS_BOOL(param_video_only))
+	if (param_video_only)
 		dcmi_dma_init(FULL_IMAGE_SIZE);
 	else
 		dcmi_dma_init(param_image_width * param_image_height);
@@ -146,7 +145,7 @@ void DMA2_Stream1_IRQHandler(void)
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
 		frame_counter++;
 
-		if (FLOAT_AS_BOOL(param_video_only))
+		if (param_video_only)
 		{
 			if (frame_counter >= 4)
 			{

@@ -47,7 +47,6 @@
 #include "stm32f4xx_conf.h"
 #include "stm32f4xx.h"
 
-#include "no_warnings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "settings.h"
@@ -285,7 +284,7 @@ int main(void)
 	gyro_config();
 
 	/* init and clear fast image buffers */
-	for (int i = 0; i < param_image_width * param_image_height; i++)
+	for (unsigned i = 0; i < param_image_width * param_image_height; i++)
 	{
 		image_buffer_8bit_1[i] = 0;
 		image_buffer_8bit_2[i] = 0;
@@ -351,7 +350,7 @@ int main(void)
 		if(buffer_reset_needed)
 		{
 			buffer_reset_needed = 0;
-			for (int i = 0; i < param_image_width * param_image_height; i++)
+			for (unsigned i = 0; i < param_image_width * param_image_height; i++)
 			{
 				image_buffer_8bit_1[i] = 0;
 				image_buffer_8bit_2[i] = 0;
@@ -361,9 +360,9 @@ int main(void)
 		}
 
 		/* calibration routine */
-		if(FLOAT_AS_BOOL(param_video_only))
+		if(param_video_only)
 		{
-			while(FLOAT_AS_BOOL(param_video_only))
+			while(param_video_only)
 			{
 				dcmi_restart_calibration_routine();
 
@@ -380,7 +379,7 @@ int main(void)
 
 				send_calibration_image(&previous_image, &current_image);
 
-				if (FLOAT_AS_BOOL(param_system_send_state))
+				if (param_system_send_state)
 					communication_system_state_send();
 
 				communication_receive_usb();
@@ -419,7 +418,7 @@ int main(void)
 		}
 
 		/* compute optical flow */
-		if (FLOAT_EQ_INT(param_sensor_position, BOTTOM))
+		if (param_sensor_position == BOTTOM)
 		{
 			/* copy recent image to faster ram */
 			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
@@ -490,14 +489,14 @@ int main(void)
 
 		counter++;
 
-		if (FLOAT_EQ_INT(param_sensor_position, BOTTOM))
+		if (param_sensor_position == BOTTOM)
 		{
 			/* send bottom flow if activated */
 
 			float ground_distance = 0.0f;
 
 
-			if(FLOAT_AS_BOOL(param_sonar_filtered))
+			if(param_sonar_filtered)
 			{
 				ground_distance = sonar_distance_filtered;
 			}
@@ -536,7 +535,7 @@ int main(void)
 				float flow_comp_m_x = 0.0f;
 				float flow_comp_m_y = 0.0f;
 
-				if(FLOAT_AS_BOOL(param_bottom_flow_lp_filtered))
+				if(param_bottom_flow_lp_filtered)
 				{
 					flow_comp_m_x = velocity_x_lp;
 					flow_comp_m_y = velocity_y_lp;
@@ -568,7 +567,7 @@ int main(void)
 						time_since_last_sonar_update,ground_distance);
 
 				/* send approximate local position estimate without heading */
-				if (FLOAT_AS_BOOL(param_system_send_lpos))
+				if (param_system_send_lpos)
 				{
 					/* rough local position estimate for unit testing */
 					lpos.x += ground_distance*accumulated_flow_x;
@@ -589,7 +588,7 @@ int main(void)
 					lpos.vz = 0;
 				}
 
-				if (FLOAT_AS_BOOL(param_usb_send_flow))
+				if (param_usb_send_flow)
 				{
 					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), param_sensor_id,
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
@@ -604,7 +603,7 @@ int main(void)
 				}
 
 
-				if(FLOAT_AS_BOOL(param_usb_send_gyro))
+				if(param_usb_send_gyro)
 				{
 					mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_us(), x_rate, y_rate, z_rate);
 				}
@@ -637,7 +636,7 @@ int main(void)
 		if (send_system_state_now)
 		{
 			/* every second */
-			if (FLOAT_AS_BOOL(param_system_send_state))
+			if (param_system_send_state)
 			{
 				communication_system_state_send();
 			}
@@ -664,7 +663,7 @@ int main(void)
 		/* send local position estimate, for testing only, doesn't account for heading */
 		if (send_lpos_now)
 		{
-			if (FLOAT_AS_BOOL(param_system_send_lpos))
+			if (param_system_send_lpos)
 			{
 				mavlink_msg_local_position_ned_send(MAVLINK_COMM_2, timer_ms, lpos.x, lpos.y, lpos.z, lpos.vx, lpos.vy, lpos.vz);
 			}
@@ -672,7 +671,7 @@ int main(void)
 		}
 
 		/*  transmit raw 8-bit image */
-		if (FLOAT_AS_BOOL(param_usb_send_video)&& send_image_now)
+		if (param_usb_send_video&& send_image_now)
 		{
 			/* get size of image to send */
 			uint16_t image_size_send;
@@ -701,7 +700,7 @@ int main(void)
 
 			send_image_now = false;
 		}
-		else if (!FLOAT_AS_BOOL(param_usb_send_video))
+		else if (!param_usb_send_video)
 		{
 			LEDOff(LED_COM);
 		}

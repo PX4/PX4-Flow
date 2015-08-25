@@ -35,7 +35,6 @@
  *
  ****************************************************************************/
 
-#include "no_warnings.h"
 #include "stm32f4xx.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_spi.h"
@@ -117,19 +116,19 @@ void l3gd20_config()
 	/* enable sensor, 760Hz, bandwidth 30Hz */
 	l3gd20_SendHalfWord(0x0000 | 0x2000 | 0x00CF);
 
-	if (FLOAT_EQ_INT(param_gyro_sensitivity_dps, 250))
+	if (param_gyro_sensitivity_dps == 250)
 	{
 		/* enable +-250dps range */
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0000);
 	    sensor_range = GYRO_DPS250;
 	}
-	else if (FLOAT_EQ_INT(param_gyro_sensitivity_dps, 500))
+	else if (param_gyro_sensitivity_dps == 500)
 	{
 		/* enable +-500dps range */
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0010);
 	    sensor_range = GYRO_DPS500;
 	}
-	else if (FLOAT_EQ_INT(param_gyro_sensitivity_dps, 2000))
+	else if (param_gyro_sensitivity_dps == 2000)
 	{
 		/* enable +-2000dps range */
 		l3gd20_SendHalfWord(0x0000 | 0x2300 | 0x0020);
