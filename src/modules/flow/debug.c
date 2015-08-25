@@ -195,7 +195,7 @@ void debug_message_send_one(void)
 
 	mavlink_msg_statustext_send(MAVLINK_COMM_0, 0, msg);
 
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_DEBUG]))
+	if (FLOAT_AS_BOOL(param_usb_send_debug))
 		mavlink_msg_statustext_send(MAVLINK_COMM_2, 0, msg);
 }
 

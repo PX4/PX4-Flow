@@ -355,9 +355,9 @@ void usart_init(void)
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 
-	USART_InitStructure.USART_BaudRate = global_data.param[PARAM_USART2_BAUD];
+	USART_InitStructure.USART_BaudRate = param_usart2_baud;
 	USART_Init(USART2, &USART_InitStructure);
-	USART_InitStructure.USART_BaudRate = global_data.param[PARAM_USART3_BAUD];
+	USART_InitStructure.USART_BaudRate = param_usart3_baud;
 	USART_Init(USART3, &USART_InitStructure);
 
 	USART_Cmd(USART2, ENABLE);

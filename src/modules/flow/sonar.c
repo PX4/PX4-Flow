@@ -168,8 +168,8 @@ static void sonar_filter(void)
 
 	float x_new = sonar_mode;
 	sonar_raw = x_new;
-	x_post = x_pred + global_data.param[PARAM_SONAR_KALMAN_L1] * (x_new - x_pred);
-	v_post = v_pred + global_data.param[PARAM_SONAR_KALMAN_L2] * (x_new - x_pred);
+	x_post = x_pred + param_sonar_kalman_l1 * (x_new - x_pred);
+	v_post = v_pred + param_sonar_kalman_l2 * (x_new - x_pred);
 
 }
 

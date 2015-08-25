@@ -67,14 +67,14 @@ void mt9v034_context_configuration(void)
 
 	uint16_t new_control;
 
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
+	if (FLOAT_AS_BOOL(param_video_only))
 		new_control = 0x8188; // Context B
 	else
 		new_control = 0x0188; // Context A
 
 	/* image dimentions */
-	uint16_t new_width_context_a  = global_data.param[PARAM_IMAGE_WIDTH] * 4; // windowing off, row + col bin reduce size
-	uint16_t new_height_context_a = global_data.param[PARAM_IMAGE_HEIGHT] * 4;
+	uint16_t new_width_context_a  = param_image_width * 4; // windowing off, row + col bin reduce size
+	uint16_t new_height_context_a = param_image_height * 4;
 	uint16_t new_width_context_b  = FULL_IMAGE_ROW_SIZE * 4; // windowing off, row + col bin reduce size
 	uint16_t new_height_context_b = FULL_IMAGE_COLUMN_SIZE * 4;
 
@@ -124,7 +124,7 @@ void mt9v034_context_configuration(void)
 	uint16_t agc_low_pass = 0x02; // default VALID RANGE: 0-2
 
 
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_LOW_LIGHT]))
+	if (FLOAT_AS_BOOL(param_image_low_light))
 	{
 		min_exposure = 0x0001;
 		max_exposure = 0x0040;
@@ -154,12 +154,12 @@ void mt9v034_context_configuration(void)
 	uint16_t row_noise_correction = 0x0000; // default
 	uint16_t test_data = 0x0000; // default
 
-	if(FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_ROW_NOISE_CORR]) && !FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_TEST_PATTERN]))
+	if(FLOAT_AS_BOOL(param_image_row_noise_corr) && !FLOAT_AS_BOOL(param_image_test_pattern))
 		row_noise_correction = 0x0101;
 	else
 		row_noise_correction = 0x0000;
 
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_TEST_PATTERN]))
+	if (FLOAT_AS_BOOL(param_image_test_pattern))
 		test_data = 0x3000; //enable vertical gray shade pattern
 	else
 		test_data = 0x0000;
@@ -227,7 +227,7 @@ void mt9v034_context_configuration(void)
 void mt9v034_set_context()
 {
 	uint16_t new_control;
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
+	if (FLOAT_AS_BOOL(param_video_only))
 		new_control = 0x8188; // Context B
 	else
 		new_control = 0x0188; // Context A

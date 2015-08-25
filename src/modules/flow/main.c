@@ -182,7 +182,7 @@ void timer_update_ms(void)
 	if (timer[TIMER_IMAGE] == 0)
 	{
 		send_image_now = true;
-		timer[TIMER_IMAGE] = global_data.param[PARAM_VIDEO_RATE];
+		timer[TIMER_IMAGE] = param_video_rate;
 	}
 
 	if (timer[TIMER_LPOS] == 0)
@@ -240,9 +240,6 @@ int main(void)
 {
 	__enable_irq();
 
-	/* load settings and parameters */
-	global_data_reset_param_defaults();
-	global_data_reset();
 	PROBE_INIT();
 	/* init led */
 	LEDInit(LED_ACT);
@@ -288,7 +285,7 @@ int main(void)
 	gyro_config();
 
 	/* init and clear fast image buffers */
-	for (int i = 0; i < global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]; i++)
+	for (int i = 0; i < param_image_width * param_image_height; i++)
 	{
 		image_buffer_8bit_1[i] = 0;
 		image_buffer_8bit_2[i] = 0;
@@ -314,7 +311,7 @@ int main(void)
 	timer[TIMER_SYSTEM_STATE] = SYSTEM_STATE_COUNT;
 	timer[TIMER_RECEIVE] = SYSTEM_STATE_COUNT / 2;
 	timer[TIMER_PARAMS] = PARAMS_COUNT;
-	timer[TIMER_IMAGE] = global_data.param[PARAM_VIDEO_RATE];
+	timer[TIMER_IMAGE] = param_video_rate;
 
 	/* variables */
 	uint32_t counter = 0;
@@ -354,7 +351,7 @@ int main(void)
 		if(buffer_reset_needed)
 		{
 			buffer_reset_needed = 0;
-			for (int i = 0; i < global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]; i++)
+			for (int i = 0; i < param_image_width * param_image_height; i++)
 			{
 				image_buffer_8bit_1[i] = 0;
 				image_buffer_8bit_2[i] = 0;
@@ -364,9 +361,9 @@ int main(void)
 		}
 
 		/* calibration routine */
-		if(FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
+		if(FLOAT_AS_BOOL(param_video_only))
 		{
-			while(FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
+			while(FLOAT_AS_BOOL(param_video_only))
 			{
 				dcmi_restart_calibration_routine();
 
@@ -383,7 +380,7 @@ int main(void)
 
 				send_calibration_image(&previous_image, &current_image);
 
-				if (FLOAT_AS_BOOL(global_data.param[PARAM_SYSTEM_SEND_STATE]))
+				if (FLOAT_AS_BOOL(param_system_send_state))
 					communication_system_state_send();
 
 				communication_receive_usb();
@@ -397,7 +394,7 @@ int main(void)
 			LEDOff(LED_COM);
 		}
 
-		uint16_t image_size = global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT];
+		uint16_t image_size = param_image_width * param_image_height;
 
 		/* new gyroscope data */
 		float x_rate_sensor, y_rate_sensor, z_rate_sensor;
@@ -410,7 +407,7 @@ int main(void)
 		float z_rate = z_rate_sensor; // z is correct
 
 		/* calculate focal_length in pixel */
-		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
+		const float focal_length_px = (param_focal_length_mm) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
 		/* get sonar data */
 		distance_valid = sonar_read(&sonar_distance_filtered, &sonar_distance_raw);
@@ -422,7 +419,7 @@ int main(void)
 		}
 
 		/* compute optical flow */
-		if (FLOAT_EQ_INT(global_data.param[PARAM_SENSOR_POSITION], BOTTOM))
+		if (FLOAT_EQ_INT(param_sensor_position, BOTTOM))
 		{
 			/* copy recent image to faster ram */
 			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
@@ -464,23 +461,23 @@ int main(void)
 					accumulated_quality += qual;
 
 					/* lowpass velocity output */
-					velocity_x_lp = global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW] * new_velocity_x +
-							(1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_x_lp;
-					velocity_y_lp = global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW] * new_velocity_y +
-							(1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_y_lp;
+					velocity_x_lp = param_bottom_flow_weight_new * new_velocity_x +
+							(1.0f - param_bottom_flow_weight_new) * velocity_x_lp;
+					velocity_y_lp = param_bottom_flow_weight_new * new_velocity_y +
+							(1.0f - param_bottom_flow_weight_new) * velocity_y_lp;
 				}
 				else
 				{
 					/* taking flow as zero */
-					velocity_x_lp = (1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_x_lp;
-					velocity_y_lp = (1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_y_lp;
+					velocity_x_lp = (1.0f - param_bottom_flow_weight_new) * velocity_x_lp;
+					velocity_y_lp = (1.0f - param_bottom_flow_weight_new) * velocity_y_lp;
 				}
 			}
 			else
 			{
 				/* taking flow as zero */
-				velocity_x_lp = (1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_x_lp;
-				velocity_y_lp = (1.0f - global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW]) * velocity_y_lp;
+				velocity_x_lp = (1.0f - param_bottom_flow_weight_new) * velocity_x_lp;
+				velocity_y_lp = (1.0f - param_bottom_flow_weight_new) * velocity_y_lp;
 			}
 			//update lasttime
 			lasttime = get_boot_time_us();
@@ -493,14 +490,14 @@ int main(void)
 
 		counter++;
 
-		if (FLOAT_EQ_INT(global_data.param[PARAM_SENSOR_POSITION], BOTTOM))
+		if (FLOAT_EQ_INT(param_sensor_position, BOTTOM))
 		{
 			/* send bottom flow if activated */
 
 			float ground_distance = 0.0f;
 
 
-			if(FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]))
+			if(FLOAT_AS_BOOL(param_sonar_filtered))
 			{
 				ground_distance = sonar_distance_filtered;
 			}
@@ -533,13 +530,13 @@ int main(void)
                         PROBE_3(true);
 
             //serial mavlink  + usb mavlink output throttled
-			if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
+			if (counter % (uint32_t)param_bottom_flow_serial_throttle_factor == 0)//throttling factor
 			{
 
 				float flow_comp_m_x = 0.0f;
 				float flow_comp_m_y = 0.0f;
 
-				if(FLOAT_AS_BOOL(global_data.param[PARAM_BOTTOM_FLOW_LP_FILTERED]))
+				if(FLOAT_AS_BOOL(param_bottom_flow_lp_filtered))
 				{
 					flow_comp_m_x = velocity_x_lp;
 					flow_comp_m_y = velocity_y_lp;
@@ -560,18 +557,18 @@ int main(void)
 
 
 				// send flow
-				mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
+				mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_us(), param_sensor_id,
 						pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 
-				mavlink_msg_optical_flow_rad_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
+				mavlink_msg_optical_flow_rad_send(MAVLINK_COMM_0, get_boot_time_us(), param_sensor_id,
 						integration_timespan, accumulated_flow_x, accumulated_flow_y,
 						accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,
 						gyro_temp, accumulated_quality/accumulated_framecount,
 						time_since_last_sonar_update,ground_distance);
 
 				/* send approximate local position estimate without heading */
-				if (FLOAT_AS_BOOL(global_data.param[PARAM_SYSTEM_SEND_LPOS]))
+				if (FLOAT_AS_BOOL(param_system_send_lpos))
 				{
 					/* rough local position estimate for unit testing */
 					lpos.x += ground_distance*accumulated_flow_x;
@@ -592,14 +589,14 @@ int main(void)
 					lpos.vz = 0;
 				}
 
-				if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_FLOW]))
+				if (FLOAT_AS_BOOL(param_usb_send_flow))
 				{
-					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
+					mavlink_msg_optical_flow_send(MAVLINK_COMM_2, get_boot_time_us(), param_sensor_id,
 							pixel_flow_x_sum * 10.0f, pixel_flow_y_sum * 10.0f,
 						flow_comp_m_x, flow_comp_m_y, qual, ground_distance);
 
 
-					mavlink_msg_optical_flow_rad_send(MAVLINK_COMM_2, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],
+					mavlink_msg_optical_flow_rad_send(MAVLINK_COMM_2, get_boot_time_us(), param_sensor_id,
 							integration_timespan, accumulated_flow_x, accumulated_flow_y,
 							accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,
 							gyro_temp, accumulated_quality/accumulated_framecount,
@@ -607,7 +604,7 @@ int main(void)
 				}
 
 
-				if(FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_GYRO]))
+				if(FLOAT_AS_BOOL(param_usb_send_gyro))
 				{
 					mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "GYRO", get_boot_time_us(), x_rate, y_rate, z_rate);
 				}
@@ -640,7 +637,7 @@ int main(void)
 		if (send_system_state_now)
 		{
 			/* every second */
-			if (FLOAT_AS_BOOL(global_data.param[PARAM_SYSTEM_SEND_STATE]))
+			if (FLOAT_AS_BOOL(param_system_send_state))
 			{
 				communication_system_state_send();
 			}
@@ -667,7 +664,7 @@ int main(void)
 		/* send local position estimate, for testing only, doesn't account for heading */
 		if (send_lpos_now)
 		{
-			if (FLOAT_AS_BOOL(global_data.param[PARAM_SYSTEM_SEND_LPOS]))
+			if (FLOAT_AS_BOOL(param_system_send_lpos))
 			{
 				mavlink_msg_local_position_ned_send(MAVLINK_COMM_2, timer_ms, lpos.x, lpos.y, lpos.z, lpos.vx, lpos.vy, lpos.vz);
 			}
@@ -675,7 +672,7 @@ int main(void)
 		}
 
 		/*  transmit raw 8-bit image */
-		if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO])&& send_image_now)
+		if (FLOAT_AS_BOOL(param_usb_send_video)&& send_image_now)
 		{
 			/* get size of image to send */
 			uint16_t image_size_send;
@@ -683,8 +680,8 @@ int main(void)
 			uint16_t image_height_send;
 
 			image_size_send = image_size;
-			image_width_send = global_data.param[PARAM_IMAGE_WIDTH];
-			image_height_send = global_data.param[PARAM_IMAGE_HEIGHT];
+			image_width_send = param_image_width;
+			image_height_send = param_image_height;
 
 			mavlink_msg_data_transmission_handshake_send(
 					MAVLINK_COMM_2,
@@ -704,7 +701,7 @@ int main(void)
 
 			send_image_now = false;
 		}
-		else if (!FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))
+		else if (!FLOAT_AS_BOOL(param_usb_send_video))
 		{
 			LEDOff(LED_COM);
 		}

@@ -42,14 +42,10 @@
 #include <mavlink.h>
 #include "settings.h"
 #include "usart.h"
-#include "mt9v034.h"
-#include "dcmi.h"
-#include "gyro.h"
 #include "debug.h"
 #include "communication.h"
 
 extern uint32_t get_boot_time_us(void);
-extern void buffer_reset(void);
 extern void systemreset(bool to_bootloader);
 
 mavlink_system_t mavlink_system;
@@ -61,8 +57,8 @@ static uint32_t m_parameter_i = 0;
  */
 void communication_init(void)
 {
-	mavlink_system.sysid = global_data.param[PARAM_SYSTEM_ID]; // System ID, 1-255
-	mavlink_system.compid = global_data.param[PARAM_COMPONENT_ID]; // Component/Subsystem ID, 1-255
+	mavlink_system.sysid = param_system_id; // System ID, 1-255
+	mavlink_system.compid = param_component_id; // Component/Subsystem ID, 1-255
 }
 
 /**
@@ -71,8 +67,8 @@ void communication_init(void)
 void communication_system_state_send(void)
 {
 	/* send heartbeat to announce presence of this system */
-	mavlink_msg_heartbeat_send(MAVLINK_COMM_0, global_data.param[PARAM_SYSTEM_TYPE], global_data.param[PARAM_AUTOPILOT_TYPE], 0, 0, 0);
-	mavlink_msg_heartbeat_send(MAVLINK_COMM_2, global_data.param[PARAM_SYSTEM_TYPE], global_data.param[PARAM_AUTOPILOT_TYPE], 0, 0, 0);
+	mavlink_msg_heartbeat_send(MAVLINK_COMM_0, param_system_type, param_autopilot_type, 0, 0, 0);
+	mavlink_msg_heartbeat_send(MAVLINK_COMM_2, param_system_type, param_autopilot_type, 0, 0, 0);
 }
 
 /**
@@ -81,16 +77,29 @@ void communication_system_state_send(void)
 void communication_parameter_send(void)
 {
 	/* send parameters one by one */
-	if (m_parameter_i < ONBOARD_PARAM_COUNT)
+	if (m_parameter_i < params_count)
 	{
+		const param_info_item* p = &param_info[m_parameter_i];
 		mavlink_msg_param_value_send(MAVLINK_COMM_0,
-				global_data.param_name[m_parameter_i],
-				global_data.param[m_parameter_i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+			p->name, *p->variable, MAVLINK_TYPE_FLOAT, params_count, m_parameter_i);
 		mavlink_msg_param_value_send(MAVLINK_COMM_2,
-				global_data.param_name[m_parameter_i],
-				global_data.param[m_parameter_i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, m_parameter_i);
+			p->name, *p->variable, MAVLINK_TYPE_FLOAT, params_count, m_parameter_i);	
 		m_parameter_i++;
 	}
+}
+
+static int32_t param_index_by_name(const char* name)
+{
+	for (unsigned i = 0; i < params_count; i++)
+	{
+		const param_info_item* param = &param_info[i];
+		/* Check if matched */
+		if (strncmp(name, param->name, 16) == 0)
+		{
+			return i;
+		}
+	}
+	return -1;
 }
 
 void handle_mavlink_message(mavlink_channel_t chan,
@@ -106,7 +115,7 @@ void handle_mavlink_message(mavlink_channel_t chan,
 		len = mavlink_msg_to_send_buffer(buf, msg);
 		mavlink_send_uart_bytes(MAVLINK_COMM_0, buf, len);
 
-		if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_FORWARD]))
+		if (FLOAT_AS_BOOL(param_usb_send_forward))
 			mavlink_send_uart_bytes(MAVLINK_COMM_2, buf, len);
 
 		return;
@@ -132,54 +141,19 @@ void handle_mavlink_message(mavlink_channel_t chan,
 			mavlink_msg_param_request_read_decode(msg, &set);
 
 			/* Check if this message is for this system */
-			if ((uint8_t) set.target_system
-					== (uint8_t) global_data.param[PARAM_SYSTEM_ID]
-												   && (uint8_t) set.target_component
-												   == (uint8_t) global_data.param[PARAM_COMPONENT_ID])
+			if ((uint8_t) set.target_system == (uint8_t) param_system_id
+				&& (uint8_t) set.target_component == (uint8_t) param_component_id)
 			{
-				char* key = (char*) set.param_id;
-
-				if (set.param_id[0] != (char)-1)
-				{
-					/* Choose parameter based on index */
-					if ((set.param_index >= 0) && (set.param_index < ONBOARD_PARAM_COUNT))
-					{
-						/* Report back value */
-						mavlink_msg_param_value_send(chan,
-								global_data.param_name[set.param_index],
-								global_data.param[set.param_index], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, set.param_index);
-					}
+				
+				int param_index = set.param_index;
+				if (param_index == -1) {
+					param_index = param_index_by_name(set.param_id);
 				}
-				else
-				{
-					for (int i = 0; i < ONBOARD_PARAM_COUNT; i++)
-					{
-						bool match = true;
-						for (int j = 0; j < ONBOARD_PARAM_NAME_LENGTH; j++)
-						{
-							/* Compare */
-							if (((char) (global_data.param_name[i][j]))
-									!= (char) (key[j]))
-							{
-								match = false;
-							}
-
-							/* End matching if null termination is reached */
-							if (((char) global_data.param_name[i][j]) == '\0')
-							{
-								break;
-							}
-						}
-
-						/* Check if matched */
-						if (match)
-						{
-							/* Report back value */
-							mavlink_msg_param_value_send(chan,
-									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
-						}
-					}
+				
+				if (param_index >= 0 && (unsigned)param_index < params_count) {
+					const param_info_item* param = &param_info[param_index];
+					mavlink_msg_param_value_send(chan, param->name, *param->variable,
+						MAVLINK_TYPE_FLOAT, params_count, param_index);
 				}
 			}
 		}
@@ -196,106 +170,33 @@ void handle_mavlink_message(mavlink_channel_t chan,
 			mavlink_msg_param_set_decode(msg, &set);
 
 			/* Check if this message is for this system */
-			if ((uint8_t) set.target_system
-					== (uint8_t) global_data.param[PARAM_SYSTEM_ID]
-												   && (uint8_t) set.target_component
-												   == (uint8_t) global_data.param[PARAM_COMPONENT_ID])
+			if ((uint8_t) set.target_system == (uint8_t) param_system_id
+				&& (uint8_t) set.target_component == (uint8_t) param_component_id)
 			{
-				char* key = (char*) set.param_id;
-
-				for (int i = 0; i < ONBOARD_PARAM_COUNT; i++)
+				int param_index = param_index_by_name(set.param_id);
+				
+				if (param_index >= 0)
 				{
-					bool match = true;
-					for (int j = 0; j < ONBOARD_PARAM_NAME_LENGTH; j++)
-					{
-						/* Compare */
-						if (((char) (global_data.param_name[i][j]))
-								!= (char) (key[j]))
-						{
-							match = false;
-						}
-
-						/* End matching if null termination is reached */
-						if (((char) global_data.param_name[i][j]) == '\0')
-						{
-							break;
-						}
-					}
-
+					const param_info_item* param = &param_info[param_index];
 					/* Check if matched */
-					if (match)
+					if (strncmp(set.param_id, param->name, 16) == 0)
 					{
 						/* Only write and emit changes if there is actually a difference
 						 * AND only write if new value is NOT "not-a-number"
 						 * AND is NOT infinity
 						 */
-						if (!FLOAT_EQ_FLOAT(global_data.param[i], set.param_value)
+						if (!FLOAT_EQ_FLOAT(*param->variable, set.param_value)
 								&& !isnan(set.param_value)
 								&& !isinf(set.param_value)
-								&& global_data.param_access[i])
+								&& param->access)
 						{
-							global_data.param[i] = set.param_value;
-
-							/* handle sensor position */
-							if(i == PARAM_SENSOR_POSITION)
-							{
-								set_sensor_position_settings((uint8_t) set.param_value);
-								mt9v034_context_configuration();
-								dma_reconfigure();
-								buffer_reset();
-							}
-
-							/* handle low light mode and noise correction */
-							else if(i == PARAM_IMAGE_LOW_LIGHT || i == PARAM_IMAGE_ROW_NOISE_CORR|| i == PARAM_IMAGE_TEST_PATTERN)
-							{
-								mt9v034_context_configuration();
-								dma_reconfigure();
-								buffer_reset();
-							}
-
-							/* handle calibration on/off */
-							else if(i == PARAM_VIDEO_ONLY)
-							{
-								mt9v034_set_context();
-								dma_reconfigure();
-								buffer_reset();
-
-								if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
-									debug_string_message_buffer("Calibration Mode On");
-								else
-									debug_string_message_buffer("Calibration Mode Off");
-							}
-
-							/* handle sensor position */
-							else if(i == PARAM_GYRO_SENSITIVITY_DPS)
-							{
-								l3gd20_config();
-							}
-
-							else
-							{
-								debug_int_message_buffer("Parameter received, param id =", i);
-							}
-
-							/* report back new value */
-							mavlink_msg_param_value_send(MAVLINK_COMM_0,
-									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
-							mavlink_msg_param_value_send(MAVLINK_COMM_2,
-									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
-
+							*param->variable = set.param_value;
+							if (param->on_change) param->on_change();
 						}
-						else
-						{
-							/* send back current value because it is not accepted or not write access*/
-							mavlink_msg_param_value_send(MAVLINK_COMM_0,
-									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
-							mavlink_msg_param_value_send(MAVLINK_COMM_2,
-									global_data.param_name[i],
-									global_data.param[i], MAVLINK_TYPE_FLOAT, ONBOARD_PARAM_COUNT, i);
-						}
+						mavlink_msg_param_value_send(MAVLINK_COMM_0, param->name,
+							*param->variable, MAVLINK_TYPE_FLOAT, params_count, param_index);
+						mavlink_msg_param_value_send(MAVLINK_COMM_2, param->name,
+							*param->variable, MAVLINK_TYPE_FLOAT, params_count, param_index);
 					}
 				}
 			}

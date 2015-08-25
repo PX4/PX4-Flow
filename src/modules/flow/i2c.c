@@ -267,8 +267,8 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 	static uint32_t lasttime = 0;
 
 	/* calculate focal_length in pixel */
-	const float focal_length_px = ((global_data.param[PARAM_FOCAL_LENGTH_MM])
-			/ (4.0f * 6.0f) * 1000.0f); //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
+	const float focal_length_px = param_focal_length_mm / (4.0f * 6.0f) * 1000.0f;
+	//original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
 	// reset if readout has been performed
 	if (stop_accumulation == 1) {

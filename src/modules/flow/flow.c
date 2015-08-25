@@ -49,8 +49,8 @@
 #define __ASM asm
 #include "core_cm4_simd.h"
 
-#define FRAME_SIZE	global_data.param[PARAM_IMAGE_WIDTH]
-#define SEARCH_SIZE	global_data.param[PARAM_MAX_FLOW_PIXEL] // maximum offset to search: 4 + 1/2 pixels
+#define FRAME_SIZE	param_image_width
+#define SEARCH_SIZE	param_max_flow_pixel // maximum offset to search: 4 + 1/2 pixels
 #define TILE_SIZE	8               						// x & y tile size
 #define NUM_BLOCKS	5 // x & y number of tiles to check
 
@@ -430,8 +430,8 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		for (i = pixLo; i < pixHi; i += pixStep)
 		{
 			/* test pixel if it is suitable for flow tracking */
-			uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
-			if (diff < global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
+			uint32_t diff = compute_diff(image1, i, j, (uint16_t) param_image_width);
+			if (diff < param_bottom_flow_feature_threshold)
 			{
 				continue;
 			}
@@ -441,15 +441,15 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			int8_t sumy = 0;
 			int8_t ii, jj;
 
-			uint8_t *base1 = image1 + j * (uint16_t) global_data.param[PARAM_IMAGE_WIDTH] + i;
+			uint8_t *base1 = image1 + j * (uint16_t) param_image_width + i;
 
 			for (jj = winmin; jj <= winmax; jj++)
 			{
-				uint8_t *base2 = image2 + (j+jj) * (uint16_t) global_data.param[PARAM_IMAGE_WIDTH] + i;
+				uint8_t *base2 = image2 + (j+jj) * (uint16_t) param_image_width + i;
 
 				for (ii = winmin; ii <= winmax; ii++)
 				{
-//					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+//					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) param_image_width);
 					uint32_t temp_dist = ABSDIFF(base1, base2 + ii);
 					if (temp_dist < dist)
 					{
@@ -461,12 +461,12 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			}
 
 			/* acceptance SAD distance threshhold */
-			if (dist < global_data.param[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD])
+			if (dist < param_bottom_flow_value_threshold)
 			{
 				meanflowx += (float) sumx;
 				meanflowy += (float) sumy;
 
-				compute_subpixel(image1, image2, i, j, i + sumx, j + sumy, acc, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+				compute_subpixel(image1, image2, i, j, i + sumx, j + sumy, acc, (uint16_t) param_image_width);
 				uint32_t mindist = dist; // best SAD until now
 				uint8_t mindir = 8; // direction 8 for no direction
 				for(uint8_t k = 0; k < 8; k++)
@@ -501,7 +501,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	/* create flow image if needed (image1 is not needed anymore)
 	 * -> can be used for debugging purpose
 	 */
-//	if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
+//	if (param_usb_send_video )//&& param_video_usb_mode == FLOW_VIDEO)
 //	{
 //
 //		for (j = pixLo; j < pixHi; j += pixStep)
@@ -509,10 +509,10 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 //			for (i = pixLo; i < pixHi; i += pixStep)
 //			{
 //
-//				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
-//				if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
+//				uint32_t diff = compute_diff(image1, i, j, (uint16_t) param_image_width);
+//				if (diff > param_bottom_flow_feature_threshold)
 //				{
-//					image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
+//					image1[j * ((uint16_t) param_image_width) + i] = 255;
 //				}
 //
 //			}
@@ -548,7 +548,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		/* check if there is a peak value in histogram */
 		if (1) //(histx[maxpositionx] > meancount / 6 && histy[maxpositiony] > meancount / 6)
 		{
-			if (FLOAT_AS_BOOL(global_data.param[PARAM_BOTTOM_FLOW_HIST_FILTER]))
+			if (FLOAT_AS_BOOL(param_bottom_flow_hist_filter))
 			{
 
 				/* use histogram filter peek value */
@@ -662,7 +662,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 
 			/* compensate rotation */
 			/* calculate focal_length in pixel */
-			const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
+			const float focal_length_px = (param_focal_length_mm) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
 			/*
 			 * gyro compensation
@@ -673,9 +673,9 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			 * -y_rate gives x flow
 			 * x_rates gives y_flow
 			 */
-			if (FLOAT_AS_BOOL(global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION]))
+			if (FLOAT_AS_BOOL(param_bottom_flow_gyro_compensation))
 			{
-				if(fabsf(y_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+				if(fabsf(y_rate) > param_gyro_compensation_threshold)
 				{
 					/* calc pixel of gyro */
 					float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
@@ -694,7 +694,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 					*pixel_flow_x = histflowx;
 				}
 
-				if(fabsf(x_rate) > global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD])
+				if(fabsf(x_rate) > param_gyro_compensation_threshold)
 				{
 					/* calc pixel of gyro */
 					float x_rate_pixel = x_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;

@@ -91,7 +91,7 @@ void enable_image_capture(void)
 {
 	dcmi_clock_init();
 	dcmi_hw_init();
-	dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]);
+	dcmi_dma_init(param_image_width * param_image_height);
 	mt9v034_context_configuration();
 	dcmi_dma_enable();
 }
@@ -103,10 +103,10 @@ void dma_reconfigure(void)
 {
 	dcmi_dma_disable();
 
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
+	if (FLOAT_AS_BOOL(param_video_only))
 		dcmi_dma_init(FULL_IMAGE_SIZE);
 	else
-		dcmi_dma_init(global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT]);
+		dcmi_dma_init(param_image_width * param_image_height);
 
 	dcmi_dma_enable();
 }
@@ -146,7 +146,7 @@ void DMA2_Stream1_IRQHandler(void)
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
 		frame_counter++;
 
-		if (FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
+		if (FLOAT_AS_BOOL(param_video_only))
 		{
 			if (frame_counter >= 4)
 			{
@@ -484,7 +484,7 @@ void dcmi_clock_init()
  */
 void dcmi_hw_init(void)
 {
-	uint16_t image_size = global_data.param[PARAM_IMAGE_WIDTH] * global_data.param[PARAM_IMAGE_HEIGHT];
+	uint16_t image_size = param_image_width * param_image_height;
 
 	/* Reset image buffers */
 	for (int i = 0; i < image_size; i++) {
