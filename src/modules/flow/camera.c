@@ -41,6 +41,8 @@
 
 #include <string.h>
 
+#include <uavcan_if.h>
+
 #define abs(x) ({			\
 	typeof(x) __x = (x);	\
 	if (__x < 0) __x = -__x;\
@@ -539,7 +541,10 @@ int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer *buffers[
 	while (1) {
 		if (wait_for_new) {
 			/* wait until a new frame is available: */
-			while(!ctx->new_frame_arrived);
+			while(!ctx->new_frame_arrived) {
+				//TODO: camera_img_stream_get_buffers is calling uavcan_run()
+				uavcan_run();
+			}				
 		}
 		if (camera_img_stream_get_buffers_idx(ctx, bidx, count, wait_for_new)) {
 			/* update the pointers: */

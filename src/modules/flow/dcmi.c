@@ -35,7 +35,9 @@
  *
  ****************************************************************************/
 
-#include "no_wanings.h"
+#include <px4_config.h>
+#include <px4_macros.h>
+#include "no_warnings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "utils.h"
@@ -49,6 +51,9 @@
 #include "stm32f4xx_tim.h"
 #include "misc.h"
 #include "stm32f4xx.h"
+
+//#define CONFIG_USE_PROBES
+#include <bsp/probes.h>
 //#include "led.h"
 
 struct _dcmi_transport_ctx;

@@ -31,8 +31,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-#ifndef NO_WANINGS_H_
-#define NO_WANINGS_H_
+#ifndef NO_WARNINGS_H_
+#define NO_WARNINGS_H_
 
 #include <stdbool.h>
 
@@ -64,4 +64,4 @@ inline int FLOAT_EQ_FLOAT(float f1 , float f2)
 #pragma GCC diagnostic pop
 }
 
-#endif /* NO_WANINGS_H_ */
+#endif /* NO_WARNINGS_H_ */
