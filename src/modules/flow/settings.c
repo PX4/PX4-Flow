@@ -34,204 +34,278 @@
 
 #include <mavlink.h>
 #include "settings.h"
-
-enum global_param_id_t global_param_id;
-struct global_struct global_data;
+#include "mt9v034.h"
+#include "dcmi.h"
+#include "gyro.h"
 
 extern uint8_t debug_int_message_buffer(const char* string, int32_t num);
 
-/**
- * @brief reset all parameters to default
- */
-void global_data_reset_param_defaults(void){
+uint32_t param_system_id = 81;
+uint32_t param_component_id = 50;
+uint32_t param_sensor_id = 77;
+uint32_t param_system_type = MAV_TYPE_GENERIC;
+uint32_t param_autopilot_type = MAV_AUTOPILOT_GENERIC;
+uint32_t param_sw_version  = 1300;
+bool param_system_send_state = 1;
+bool param_system_send_lpos = 0;
+uint32_t param_usart2_baud = 115200;
+uint32_t param_usart3_baud = 115200;
+float param_focal_length_mm = 16.0f;
+uint32_t param_image_width = BOTTOM_FLOW_IMAGE_WIDTH;
+uint32_t param_image_height = BOTTOM_FLOW_IMAGE_HEIGHT;
+uint32_t param_max_flow_pixel = BOTTOM_FLOW_SEARCH_WINDOW_SIZE;
+bool param_image_low_light = 0;
+bool param_image_row_noise_corr = 1;
+bool param_image_test_pattern = 0;
+uint32_t param_gyro_sensitivity_dps = 250;
+float param_gyro_compensation_threshold = 0.01;
+bool param_sonar_filtered = 0;
+float param_sonar_kalman_l1 = 0.8461f;
+float param_sonar_kalman_l2 = 6.2034f;
+bool param_usb_send_video = 1;
+bool param_usb_send_flow = 1;
+bool param_usb_send_gyro = 1;
+bool param_usb_send_forward = 0;
+bool param_usb_send_debug = 1;
+bool param_video_only = 0;
+float param_video_rate = 150;
+float param_bottom_flow_feature_threshold = 30;
+float param_bottom_flow_value_threshold = 5000;
+bool param_bottom_flow_hist_filter = 0;
+bool param_bottom_flow_gyro_compensation = 0;
+bool param_bottom_flow_lp_filtered = 0;
+float param_bottom_flow_weight_new = 0.3f;
+float param_bottom_flow_serial_throttle_factor = 10.0f;
+uint32_t param_sensor_position = 0; //BOTTOM
+float debug_variable = 0;
 
-	global_data.param[PARAM_SYSTEM_ID] = 81;
-	strcpy(global_data.param_name[PARAM_SYSTEM_ID], "SYS_ID");
-	global_data.param_access[PARAM_SYSTEM_ID] = READ_WRITE;
-
-	global_data.param[PARAM_COMPONENT_ID] = 50;
-	strcpy(global_data.param_name[PARAM_COMPONENT_ID], "SYS_COMP_ID");
-	global_data.param_access[PARAM_COMPONENT_ID] = READ_WRITE;
-
-	global_data.param[PARAM_SENSOR_ID] = 77;
-	strcpy(global_data.param_name[PARAM_SENSOR_ID], "SYS_SENSOR_ID");
-	global_data.param_access[PARAM_SENSOR_ID] = READ_WRITE;
-
-	global_data.param[PARAM_SYSTEM_TYPE] = MAV_TYPE_GENERIC;
-	strcpy(global_data.param_name[PARAM_SYSTEM_TYPE], "SYS_TYPE");
-	global_data.param_access[PARAM_SYSTEM_TYPE] = READ_WRITE;
-
-	global_data.param[PARAM_AUTOPILOT_TYPE] = MAV_AUTOPILOT_GENERIC;
-	strcpy(global_data.param_name[PARAM_AUTOPILOT_TYPE], "SYS_AP_TYPE");
-	global_data.param_access[PARAM_AUTOPILOT_TYPE] = READ_WRITE;
-
-	global_data.param[PARAM_SW_VERSION] = 1300;
-	strcpy(global_data.param_name[PARAM_SW_VERSION], "SYS_SW_VER");
-	global_data.param_access[PARAM_SW_VERSION] = READ_WRITE;
-
-	global_data.param[PARAM_SYSTEM_SEND_STATE] = 1;
-	strcpy(global_data.param_name[PARAM_SYSTEM_SEND_STATE], "SYS_SEND_STATE");
-	global_data.param_access[PARAM_SYSTEM_SEND_STATE] = READ_WRITE;
-
-	global_data.param[PARAM_SYSTEM_SEND_LPOS] = 0;
-	strcpy(global_data.param_name[PARAM_SYSTEM_SEND_LPOS], "SYS_SEND_LPOS");
-	global_data.param_access[PARAM_SYSTEM_SEND_LPOS] = READ_WRITE;
-
-	global_data.param[PARAM_SENSOR_POSITION] = 0; // BOTTOM
-	strcpy(global_data.param_name[PARAM_SENSOR_POSITION], "POSITION");
-	global_data.param_access[PARAM_SENSOR_POSITION] = READ_WRITE;
-
-	global_data.param[PARAM_USART2_BAUD] = 115200;
-	strcpy(global_data.param_name[PARAM_USART2_BAUD], "USART_2_BAUD");
-	global_data.param_access[PARAM_USART2_BAUD] = READ_ONLY;
-
-	global_data.param[PARAM_USART3_BAUD] = 115200;
-//	global_data.param[PARAM_USART3_BAUD] = 921600;
-	strcpy(global_data.param_name[PARAM_USART3_BAUD], "USART_3_BAUD");
-	global_data.param_access[PARAM_USART3_BAUD] = READ_ONLY;
-
-	global_data.param[PARAM_FOCAL_LENGTH_MM] = 16.0f;
-	strcpy(global_data.param_name[PARAM_FOCAL_LENGTH_MM], "LENS_FOCAL_LEN");
-	global_data.param_access[PARAM_FOCAL_LENGTH_MM] = READ_WRITE;
-
-	global_data.param[PARAM_IMAGE_WIDTH] = BOTTOM_FLOW_IMAGE_WIDTH;
-	strcpy(global_data.param_name[PARAM_IMAGE_WIDTH], "IMAGE_WIDTH");
-	global_data.param_access[PARAM_IMAGE_WIDTH] = READ_ONLY;
-
-	global_data.param[PARAM_IMAGE_HEIGHT] = BOTTOM_FLOW_IMAGE_HEIGHT;
-	strcpy(global_data.param_name[PARAM_IMAGE_HEIGHT], "IMAGE_HEIGHT");
-	global_data.param_access[PARAM_IMAGE_HEIGHT] = READ_ONLY;
-
-	global_data.param[PARAM_IMAGE_LOW_LIGHT] = 0;
-//	global_data.param[PARAM_IMAGE_LOW_LIGHT] = 1;
-	strcpy(global_data.param_name[PARAM_IMAGE_LOW_LIGHT], "IMAGE_L_LIGHT");
-	global_data.param_access[PARAM_IMAGE_LOW_LIGHT] = READ_WRITE;
-
-	global_data.param[PARAM_IMAGE_ROW_NOISE_CORR] = 1;
-	strcpy(global_data.param_name[PARAM_IMAGE_ROW_NOISE_CORR], "IMAGE_NOISE_C");
-	global_data.param_access[PARAM_IMAGE_ROW_NOISE_CORR] = READ_WRITE;
-
-	global_data.param[PARAM_IMAGE_TEST_PATTERN] = 0;
-	strcpy(global_data.param_name[PARAM_IMAGE_TEST_PATTERN], "IMAGE_TEST_PAT");
-	global_data.param_access[PARAM_IMAGE_TEST_PATTERN] = READ_WRITE;
-
-	global_data.param[PARAM_GYRO_SENSITIVITY_DPS] = 250;
-	strcpy(global_data.param_name[PARAM_GYRO_SENSITIVITY_DPS], "GYRO_SENS_DPS");
-	global_data.param_access[PARAM_GYRO_SENSITIVITY_DPS] = READ_WRITE;
-
-	global_data.param[PARAM_GYRO_COMPENSATION_THRESHOLD] = 0.01;
-	strcpy(global_data.param_name[PARAM_GYRO_COMPENSATION_THRESHOLD], "GYRO_COMP_THR");
-	global_data.param_access[PARAM_GYRO_COMPENSATION_THRESHOLD] = READ_WRITE;
-
-	global_data.param[PARAM_SONAR_FILTERED] = 0;
-	strcpy(global_data.param_name[PARAM_SONAR_FILTERED], "SONAR_FILTERED");
-	global_data.param_access[PARAM_SONAR_FILTERED] = READ_WRITE;
-
-	global_data.param[PARAM_SONAR_KALMAN_L1] = 0.8461f;
-	strcpy(global_data.param_name[PARAM_SONAR_KALMAN_L1], "SONAR_KAL_L1");
-	global_data.param_access[PARAM_SONAR_KALMAN_L1] = READ_WRITE;
-
-	global_data.param[PARAM_SONAR_KALMAN_L2] = 6.2034f;
-	strcpy(global_data.param_name[PARAM_SONAR_KALMAN_L2], "SONAR_KAL_L2");
-	global_data.param_access[PARAM_SONAR_KALMAN_L2] = READ_WRITE;
-
-	global_data.param[PARAM_USB_SEND_VIDEO] = 1; // send video over USB
-	strcpy(global_data.param_name[PARAM_USB_SEND_VIDEO], "USB_SEND_VIDEO");
-	global_data.param_access[PARAM_USB_SEND_VIDEO] = READ_WRITE;
-
-	global_data.param[PARAM_USB_SEND_FLOW] = 1; // send flow over USB
-	strcpy(global_data.param_name[PARAM_USB_SEND_FLOW], "USB_SEND_FLOW");
-	global_data.param_access[PARAM_USB_SEND_FLOW] = READ_WRITE;
-
-	global_data.param[PARAM_USB_SEND_GYRO] = 1; // send gyro debug values over USB
-	strcpy(global_data.param_name[PARAM_USB_SEND_GYRO], "USB_SEND_GYRO");
-	global_data.param_access[PARAM_USB_SEND_GYRO] = READ_WRITE;
-
-	global_data.param[PARAM_USB_SEND_FORWARD] = 0; // send forward flow over USB
-	strcpy(global_data.param_name[PARAM_USB_SEND_FORWARD], "USB_SEND_FWD");
-	global_data.param_access[PARAM_USB_SEND_FORWARD] = READ_WRITE;
-
-	global_data.param[PARAM_USB_SEND_DEBUG] = 1; // send debug msgs over USB
-	strcpy(global_data.param_name[PARAM_USB_SEND_DEBUG], "USB_SEND_DEBUG");
-	global_data.param_access[PARAM_USB_SEND_DEBUG] = READ_WRITE;
-
-	global_data.param[PARAM_VIDEO_ONLY] = 0;
-	strcpy(global_data.param_name[PARAM_VIDEO_ONLY], "VIDEO_ONLY");
-	global_data.param_access[PARAM_VIDEO_ONLY] = READ_WRITE;
-
-	global_data.param[PARAM_VIDEO_RATE] = 150;
-	strcpy(global_data.param_name[PARAM_VIDEO_RATE], "VIDEO_RATE");
-	global_data.param_access[PARAM_VIDEO_RATE] = READ_WRITE;
-
-	global_data.param[PARAM_MAX_FLOW_PIXEL] = BOTTOM_FLOW_SEARCH_WINDOW_SIZE;
-	strcpy(global_data.param_name[PARAM_MAX_FLOW_PIXEL], "BFLOW_MAX_PIX");
-	global_data.param_access[PARAM_MAX_FLOW_PIXEL] = READ_ONLY;
-
-//	global_data.param[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD] = 8 * 8 * 20;
-	global_data.param[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD] = 5000; // threshold is irrelevant with this value
-	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD], "BFLOW_V_THLD");
-	global_data.param_access[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD] = READ_WRITE;
-
-//	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 100;
-	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 30; // threshold is irrelevant with this value
-	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD], "BFLOW_F_THLD");
-	global_data.param_access[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = READ_WRITE;
-
-	global_data.param[PARAM_BOTTOM_FLOW_HIST_FILTER] = 0;
-//	global_data.param[PARAM_BOTTOM_FLOW_HIST_FILTER] = 1;
-	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_HIST_FILTER], "BFLOW_HIST_FIL");
-	global_data.param_access[PARAM_BOTTOM_FLOW_HIST_FILTER] = READ_WRITE;
-
-//	global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = 0;
-	global_data.param[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = 0;
-	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION], "BFLOW_GYRO_COM");
-	global_data.param_access[PARAM_BOTTOM_FLOW_GYRO_COMPENSATION] = READ_WRITE;
-
-	global_data.param[PARAM_BOTTOM_FLOW_LP_FILTERED] = 0;
-	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_LP_FILTERED], "BFLOW_LP_FIL");
-	global_data.param_access[PARAM_BOTTOM_FLOW_LP_FILTERED] = READ_WRITE;
-
-	global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW] = 0.3f;
-	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_WEIGHT_NEW], "BFLOW_W_NEW");
-	global_data.param_access[PARAM_BOTTOM_FLOW_WEIGHT_NEW] = READ_WRITE;
-
-	global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = 10.0f;
-	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR], "BFLOW_THROTT");
-	global_data.param_access[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = READ_WRITE;
-
-	global_data.param[DEBUG_VARIABLE] = 1;
-	strcpy(global_data.param_name[DEBUG_VARIABLE], "DEBUG");
-	global_data.param_access[DEBUG_VARIABLE] = READ_WRITE;
-
-}
-
-/**
- * @brief resets the global data struct to all-zero values
- */
-void global_data_reset(void)
-{
-	// not in use anymore
+extern void buffer_reset(void);
+static void reconfigure(void) {
+	mt9v034_context_configuration();
+	dma_reconfigure();
+	buffer_reset();
 }
 
 /**
  * @brief changes read only settings depending on sensor position
  */
-void set_sensor_position_settings(uint8_t sensor_position)
+static void on_sensor_position_change(void)
 {
-
-	switch(sensor_position)
-	{
+	switch(param_sensor_position) {
 		case(BOTTOM):
-			global_data.param[PARAM_IMAGE_WIDTH] = BOTTOM_FLOW_IMAGE_WIDTH;
-			global_data.param[PARAM_IMAGE_HEIGHT] = BOTTOM_FLOW_IMAGE_HEIGHT;
+			param_image_width = BOTTOM_FLOW_IMAGE_WIDTH;
+			param_image_height = BOTTOM_FLOW_IMAGE_HEIGHT;
 			break;
 
 		default:
-			debug_int_message_buffer("Unused sensor position:", sensor_position);
+			debug_int_message_buffer("Unused sensor position:", param_sensor_position);
 			return;
 	}
 
-	debug_int_message_buffer("Set sensor position:", sensor_position);
-	return;
+	debug_int_message_buffer("Set sensor position:", param_sensor_position);
+	reconfigure();
 }
+
+
+const param_info_item param_info[] = {
+	{ .name = "SYS_ID",
+		.type = PARAM_UINT,
+		.access = READ_WRITE,
+		.variable = &param_system_id,
+	},
+	{ .name = "SYS_COMP_ID",
+		.type = PARAM_UINT,
+		.access = READ_WRITE,
+		.variable = &param_component_id,
+	},
+	{ .name = "SYS_SENSOR_ID",
+		.type = PARAM_UINT,
+		.access = READ_WRITE,
+		.variable = &param_sensor_id,
+	},
+	{ .name = "SYS_TYPE",
+		.type = PARAM_UINT,
+		.access = READ_WRITE,
+		.variable = &param_system_type,
+	},
+	{ .name = "SYS_AP_TYPE",
+		.type = PARAM_UINT,
+		.access = READ_WRITE,
+		.variable = &param_autopilot_type,
+	},
+	{ .name = "SYS_SW_VER",
+		.type = PARAM_UINT,
+		.access = READ_WRITE,
+		.variable = &param_sw_version,
+	},
+	{ .name = "SYS_SEND_STATE",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_system_send_state,
+	},
+	{ .name = "SYS_SEND_LPOS",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_system_send_lpos,
+	},
+	{ .name = "POSITION",
+		.type = PARAM_UINT,
+		.access = READ_WRITE,
+		.variable = &param_sensor_position,
+		.on_change = on_sensor_position_change,
+	},
+	{ .name = "USART_2_BAUD",
+		.type = PARAM_UINT,
+		.access = READ_ONLY,
+		.variable = &param_usart2_baud,
+	},
+	{ .name = "USART_3_BAUD",
+		.type = PARAM_UINT,
+		.access = READ_ONLY,
+		.variable = &param_usart3_baud,
+	},
+	{ .name = "LENS_FOCAL_LEN",
+		.type = PARAM_FLOAT,
+		.access = READ_WRITE,
+		.variable = &param_focal_length_mm,
+	},
+	{ .name = "IMAGE_WIDTH",
+		.type = PARAM_UINT,
+		.access = READ_ONLY,
+		.variable = &param_image_width,
+	},
+	{ .name = "IMAGE_HEIGHT",
+		.type = PARAM_UINT,
+		.access = READ_ONLY,
+		.variable = &param_image_height,
+	},
+	{ .name = "IMAGE_L_LIGHT",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_image_low_light,
+		.on_change = reconfigure,
+	},
+	{ .name = "IMAGE_NOISE_C",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_image_row_noise_corr,
+		.on_change = reconfigure,
+	},
+	{ .name = "IMAGE_TEST_PAT",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_image_test_pattern,
+		.on_change = reconfigure,
+	},
+	{ .name = "GYRO_SENS_DPS",
+		.type = PARAM_UINT,
+		.access = READ_WRITE,
+		.variable = &param_gyro_sensitivity_dps,
+		.on_change = l3gd20_config,
+	},
+	{ .name = "GYRO_COMP_THR",
+		.type = PARAM_FLOAT,
+		.access = READ_WRITE,
+		.variable = &param_gyro_compensation_threshold,
+	},
+	{ .name = "SONAR_FILTERED",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_sonar_filtered,
+	},
+	{ .name = "SONAR_KAL_L1",
+		.type = PARAM_FLOAT,
+		.access = READ_WRITE,
+		.variable = &param_sonar_kalman_l1,
+	},
+	{ .name = "SONAR_KAL_L2",
+		.type = PARAM_FLOAT,
+		.access = READ_WRITE,
+		.variable = &param_sonar_kalman_l2,
+	},
+	{ .name = "USB_SEND_VIDEO",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_usb_send_video,
+	},
+	{ .name = "USB_SEND_FLOW",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_usb_send_flow,
+	},
+	{ .name = "USB_SEND_GYRO",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_usb_send_gyro,
+	},
+	{ .name = "USB_SEND_FWD",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_usb_send_forward,
+	},
+	{ .name = "USB_SEND_DEBUG",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_usb_send_debug,
+	},
+	{ .name = "VIDEO_ONLY",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_video_only,
+		.on_change = reconfigure,
+	},
+	{ .name = "VIDEO_RATE",
+		.type = PARAM_FLOAT,
+		.access = READ_WRITE,
+		.variable = &param_video_rate,
+	},
+	{ .name = "BFLOW_MAX_PIX",
+		.type = PARAM_UINT,
+		.access = READ_ONLY,
+		.variable = &param_max_flow_pixel,
+	},
+	{ .name = "BFLOW_V_THLD",
+		.type = PARAM_FLOAT,
+		.access = READ_WRITE,
+		.variable = &param_bottom_flow_value_threshold,
+	},
+	{ .name = "BFLOW_F_THLD",
+		.type = PARAM_FLOAT,
+		.access = READ_WRITE,
+		.variable = &param_bottom_flow_feature_threshold,
+	},
+	{ .name = "BFLOW_HIST_FIL",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_bottom_flow_hist_filter,
+	},
+	{ .name = "BFLOW_GYRO_COM",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_bottom_flow_gyro_compensation,
+	},
+	{ .name = "BFLOW_LP_FIL",
+		.type = PARAM_BOOL,
+		.access = READ_WRITE,
+		.variable = &param_bottom_flow_lp_filtered,
+	},
+	{ .name = "BFLOW_W_NEW",
+		.type = PARAM_FLOAT,
+		.access = READ_WRITE,
+		.variable = &param_bottom_flow_weight_new,
+	},
+	{ .name = "BFLOW_THROTT",
+		.type = PARAM_FLOAT,
+		.access = READ_WRITE,
+		.variable = &param_bottom_flow_serial_throttle_factor,
+	},
+	{ .name = "DEBUG",
+		.type = PARAM_FLOAT,
+		.access = READ_WRITE,
+		.variable = &debug_variable,
+	},
+};
+
+const uint32_t params_count = sizeof(param_info) / sizeof(*param_info);
+
 

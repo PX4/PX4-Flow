@@ -36,8 +36,8 @@
 #define SETTINGS_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
-#define ONBOARD_PARAM_NAME_LENGTH 		15
 #define BOTTOM_FLOW_IMAGE_HEIGHT		64
 #define BOTTOM_FLOW_IMAGE_WIDTH			64
 #define BOTTOM_FLOW_SEARCH_WINDOW_SIZE 	4
@@ -54,6 +54,13 @@ typedef enum
   READ_ONLY   = 0,
   READ_WRITE  = 1,
 } ParameterAccess_TypeDef;
+
+typedef enum
+{
+  PARAM_FLOAT,
+  PARAM_BOOL,
+  PARAM_UINT,
+} ParameterType_TypeDef;
 
 /**
   * @brief  sensor position enumeration
@@ -91,82 +98,60 @@ typedef enum
 /******************************************************************
   * ALL SETTINGS VARIABLES
   */
+extern uint32_t param_system_id;
+extern uint32_t param_component_id;
+extern uint32_t param_sensor_id;
+extern uint32_t param_system_type;
+extern uint32_t param_autopilot_type;
+extern uint32_t param_sw_version;
+extern bool param_system_send_state;
+extern bool param_system_send_lpos;
+extern uint32_t param_usart2_baud;
+extern uint32_t param_usart3_baud;
+extern float param_focal_length_mm;
+extern uint32_t param_image_width;
+extern uint32_t param_image_height;
+extern uint32_t param_max_flow_pixel;
+extern bool param_image_low_light;
+extern bool param_image_row_noise_corr;
+extern bool param_image_test_pattern;
+extern uint32_t param_gyro_sensitivity_dps;
+extern float param_gyro_compensation_threshold;
+extern bool param_sonar_filtered;
+extern float param_sonar_kalman_l1;
+extern float param_sonar_kalman_l2;
+extern bool param_usb_send_video;
+extern bool param_usb_send_flow;
+extern bool param_usb_send_gyro;
+extern bool param_usb_send_forward;
+extern bool param_usb_send_debug;
+extern bool param_video_only;
+extern float param_video_rate;
+extern float param_bottom_flow_feature_threshold;
+extern float param_bottom_flow_value_threshold;
+extern bool param_bottom_flow_hist_filter;
+extern bool param_bottom_flow_gyro_compensation;
+extern bool param_bottom_flow_lp_filtered;
+extern float param_bottom_flow_weight_new;
+extern float param_bottom_flow_serial_throttle_factor;
+extern uint32_t param_sensor_position;
+extern float debug_variable;
 
-typedef struct
-{
-	/* nothing here until now */
+typedef struct param_info_item {
+  const char* name;
+  ParameterType_TypeDef type;
+  ParameterAccess_TypeDef access;
+  void* variable;
+  void (*on_change)(void);
+} param_info_item;
 
-} SysState_TypeDef;
-
-enum global_param_id_t
-{
-	PARAM_SYSTEM_ID = 0,
-	PARAM_COMPONENT_ID,
-	PARAM_SENSOR_ID,
-	PARAM_SYSTEM_TYPE,
-	PARAM_AUTOPILOT_TYPE,
-	PARAM_SW_VERSION,
-	PARAM_SYSTEM_SEND_STATE,
-	PARAM_SYSTEM_SEND_LPOS,
-
-	PARAM_USART2_BAUD,
-	PARAM_USART3_BAUD,
-	PARAM_FOCAL_LENGTH_MM,
-	PARAM_IMAGE_WIDTH,
-	PARAM_IMAGE_HEIGHT,
-	PARAM_MAX_FLOW_PIXEL,
-	PARAM_IMAGE_LOW_LIGHT,
-	PARAM_IMAGE_ROW_NOISE_CORR,
-	PARAM_IMAGE_TEST_PATTERN,
-	PARAM_GYRO_SENSITIVITY_DPS,
-	PARAM_GYRO_COMPENSATION_THRESHOLD,
-	PARAM_SONAR_FILTERED,
-	PARAM_SONAR_KALMAN_L1,
-	PARAM_SONAR_KALMAN_L2,
-
-	PARAM_USB_SEND_VIDEO,
-	PARAM_USB_SEND_FLOW,
-	PARAM_USB_SEND_GYRO,
-	PARAM_USB_SEND_FORWARD,
-	PARAM_USB_SEND_DEBUG,
-
-	PARAM_VIDEO_ONLY,
-	PARAM_VIDEO_RATE,
-
-	PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD,
-	PARAM_BOTTOM_FLOW_VALUE_THRESHOLD,
-	PARAM_BOTTOM_FLOW_HIST_FILTER,
-	PARAM_BOTTOM_FLOW_GYRO_COMPENSATION,
-	PARAM_BOTTOM_FLOW_LP_FILTERED,
-	PARAM_BOTTOM_FLOW_WEIGHT_NEW,
-	PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR,
-
-	PARAM_SENSOR_POSITION,
-	DEBUG_VARIABLE,
-
-	ONBOARD_PARAM_COUNT
-
-};
-
-struct global_struct
-{
-	SysState_TypeDef system_state;
-	float param[ONBOARD_PARAM_COUNT];
-	char param_name[ONBOARD_PARAM_COUNT][ONBOARD_PARAM_NAME_LENGTH];
-	ParameterAccess_TypeDef param_access[ONBOARD_PARAM_COUNT];
-
-};
-
-/* global declarations */
-extern enum global_param_id_t global_param_id;
-extern struct global_struct global_data;
+extern const param_info_item param_info[];
+extern const uint32_t params_count;
 
 /******************************************************************
   * ALL SETTINGS FUNCTIONS
   */
 
-void global_data_reset_param_defaults(void);
-void global_data_reset(void);
 void set_sensor_position_settings(uint8_t sensor_position);
 
 #endif /* SETTINGS_H_ */
