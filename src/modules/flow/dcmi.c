@@ -54,7 +54,6 @@
 
 //#define CONFIG_USE_PROBES
 #include <bsp/probes.h>
-//#include "led.h"
 
 struct _dcmi_transport_ctx;
 typedef struct _dcmi_transport_ctx dcmi_transport_ctx;
@@ -174,7 +173,6 @@ void DMA2_Stream1_IRQHandler(void) {
 	if (DMA_GetITStatus(DMA2_Stream1, DMA_IT_TCIF1) != RESET) {
 		DMA_ClearITPendingBit(DMA2_Stream1, DMA_IT_TCIF1);
 		/* get the buffer that has been completed: */
-		//LEDOn(LED_ACT);
 		void *buffer;
 		if (DMA_GetCurrentMemoryTarget(DMA2_Stream1) == 0) {
 			buffer = dcmi_dma_buffer_2;
@@ -189,7 +187,6 @@ void DMA2_Stream1_IRQHandler(void) {
 		ctx->transfer_done_cb(ctx->cb_usr, buffer, CONFIG_DCMI_DMA_BUFFER_SIZE);
 		/* store the time when the function finished. */
 		ctx->last_dma_irq_t       = get_boot_time_us();
-		//LEDOff(LED_ACT);
 	}
 }
 

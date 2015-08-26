@@ -23,7 +23,6 @@ SRCS = 	$(ST_LIB)startup_stm32f4xx.s \
 
 SRCS += 		main.c \
           utils.c \
-          led.c \
           settings.c \
           communication.c \
           flow.c \

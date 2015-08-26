@@ -53,7 +53,6 @@
 #include <mavlink.h>
 #include "settings.h"
 #include "utils.h"
-#include "led.h"
 #include "filter.h"
 #include "result_accumulator.h"
 #include "flow.h"
@@ -169,11 +168,6 @@ static void send_video_fn(void) {
 	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]) && !FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
 	{
 		mavlink_send_image(previous_image);
-		LEDToggle(LED_COM);
-	}
-	else if (!FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))
-	{
-		LEDOff(LED_COM);
 	}
 }
 
@@ -225,7 +219,6 @@ static void send_image_step(void) {
 }
 
 static void start_send_image(void) {
-	LEDOn(LED_COM);
 	usb_image_transfer_active = true;
 	usb_image_pos = 0;
 	usb_packet.flags = 0;
@@ -241,7 +234,6 @@ void send_image_completed(void) {
 		send_image_step();
 	} else {
 		usb_image_transfer_active = false;
-		LEDOff(LED_COM);
 	}
 }
 
@@ -271,22 +263,9 @@ int main(void)
 	global_data_reset_param_defaults();
 	global_data_reset();
 	PROBE_INIT();
-	/* init led */
-	LEDInit(LED_ACT);
-	LEDInit(LED_COM);
-	LEDInit(LED_ERR);
-	LEDOff(LED_ACT);
-	LEDOff(LED_COM);
-	LEDOff(LED_ERR);
-        board_led_rgb(255,255,255, 1);
-        board_led_rgb(  0,  0,255, 0);
-        board_led_rgb(  0,  0, 0, 0);
-        board_led_rgb(255,  0,  0, 1);
-        board_led_rgb(255,  0,  0, 2);
-        board_led_rgb(255,  0,  0, 3);
-                board_led_rgb(  0,255,  0, 3);
-        board_led_rgb(  0,  0,255, 4);
-
+	
+	board_led_initialize();
+	
 	/* enable FPU on Cortex-M4F core */
 	SCB_CPACR |= ((3UL << 10 * 2) | (3UL << 11 * 2)); /* set CP10 Full Access and set CP11 Full Access */
 
@@ -375,7 +354,6 @@ int main(void)
 			snap_ready = true;
 			if (snap_capture_success) {
 				/* send the snapshot! */
-				LEDToggle(LED_COM);
 				start_send_image();
 			}
 		}
@@ -583,6 +561,8 @@ int main(void)
 			int min_valid_ratio = global_data.param[PARAM_ALGORITHM_MIN_VALID_RATIO];
 			result_accumulator_calculate_output_flow(&mavlink_accumulator, min_valid_ratio, &output_flow);
 			result_accumulator_calculate_output_flow_rad(&mavlink_accumulator, min_valid_ratio, &output_flow_rad);
+			
+			board_led_status_update(output_flow.quality / 255.0);
 
 			// send flow
 			mavlink_msg_optical_flow_send(MAVLINK_COMM_0, get_boot_time_us(), global_data.param[PARAM_SENSOR_ID],

@@ -41,7 +41,6 @@
 #include "stm32f4xx.h"
 
 #include "timer.h"
-#include "led.h"
 
 #define __INLINE inline
 #include "core_cmInstr.h"
@@ -120,7 +119,6 @@ void timer_register(void (*timer_fn)(void), uint32_t period_ms) {
 	}
 	if (idx >= NTIMERS) {
 		/* capture error */
-		LEDOn(LED_ERR);
 		while (1);
 	}
 	/* setup the info struct: */
@@ -163,7 +161,6 @@ void timer_init(void)
 	if (SysTick_Config(ticks_per_ms)) /* set timer to trigger interrupt every 1 millisecond */
 	{
 		/* capture clock error */
-		LEDOn(LED_ERR);
 		while (1);
 	}
 }
