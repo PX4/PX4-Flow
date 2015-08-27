@@ -37,7 +37,6 @@ SRCS += 		main.c \
           usbd_cdc_vcp.c \
           usbd_desc.c \
           usbd_usr.c \
-          i2c.c \
           reset.c \
           sonar_mode_filter.c \
 	   camera.c \

@@ -61,7 +61,7 @@
 #include "dcmi.h"
 #include "mt9v034.h"
 #include "gyro.h"
-#include "i2c.h"
+#include "fmu_comm.h"
 #include "usart.h"
 #include "sonar.h"
 #include "communication.h"
@@ -326,8 +326,7 @@ int main(void)
 	/* usart config*/
 	usart_init();
 
-    /* i2c config*/
-    i2c_init();
+  fmu_comm_init();
 
 	/* sonar config*/
 	float sonar_distance_filtered = 0.0f; // distance in meter
@@ -357,17 +356,13 @@ int main(void)
 	
 	uint32_t last_frame_index = 0;
 	
-	uavcan_start();
-	
 	/* main loop */
 	while (1)
 	{
 		/* check timers */
 		timer_check();
 		
-		PROBE_1(false);
-		uavcan_run();
-		PROBE_1(true);
+		fmu_comm_run();
 		
 		if (snap_capture_done) {
 			snap_capture_done = false;
@@ -528,25 +523,12 @@ int main(void)
 		{
 			ground_distance = sonar_distance_raw;
 		}
-		
-		uavcan_define_export(i2c_data, legacy_12c_data_t, ccm);
-		uavcan_define_export(range_data, range_data_t, ccm);
-		uavcan_timestamp_export(i2c_data);
-		uavcan_assign(range_data.time_stamp_utc, i2c_data.time_stamp_utc);
 
 		/* update I2C transmit buffer */
-		update_TX_buffer(frame_dt, 
+		fmu_comm_update(frame_dt, 
 						 x_rate, y_rate, z_rate, gyro_temp, 
 						 qual, pixel_flow_x, pixel_flow_y, 1.0f / focal_length_px, 
-						 distance_valid, ground_distance, get_time_delta_us(get_sonar_measure_time()), uavcan_use_export(i2c_data));
-						 
-		PROBE_2(false);
-		uavcan_publish(range, 40, range_data);
-		PROBE_2(true);
-
-		PROBE_3(false);
-		uavcan_publish(flow, 40, i2c_data);
-		PROBE_3(true);
+						 distance_valid, ground_distance, get_time_delta_us(get_sonar_measure_time()));
 
 		/* accumulate the results */
 		result_accumulator_feed(&mavlink_accumulator, frame_dt, 

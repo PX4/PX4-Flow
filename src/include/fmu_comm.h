@@ -30,29 +30,23 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
+#ifndef FMU_COMM_H
+#define FMU_COMM_H
 
-/**
- * @file i2c.h
- * I2C communication functions.
- * @author Thomas Boehm <thomas.boehm@fortiss.org>
- */
+/// Abstraction over the FMU communications interface -- I2C slave or UAVCAN
 
-
-#ifndef I2C_H_
-#define I2C_H_
 #include <inttypes.h>
-#include <stdbool.h>
-#include <uavcan_if.h>
 
-#define I2C1_OWNADDRESS_1_BASE 0x42 //7bit base address
-/**
- * @brief  Configures I2C1 for communication as a slave (default behaviour for STM32F)
- */
+/// Call on boot to initialize
+void fmu_comm_init(void);
 
-void i2c_init(void);
-void update_TX_buffer(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
-					  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
-					  bool distance_valid, float ground_distance, uint32_t distance_age, legacy_12c_data_t *pd);
-char i2c_get_ownaddress1(void);
-#endif /* I2C_H_ */
+/// Call in the main loop periodically
+void fmu_comm_run(void);
+
+/// Call every frame to update with new data
+void fmu_comm_update(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
+  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
+  bool distance_valid, float ground_distance, uint32_t distance_age);
+
+#endif
 
