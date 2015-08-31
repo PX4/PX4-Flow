@@ -37,6 +37,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "i2c_frame.h"
+#include "flow.h"
 
 typedef struct _result_accumulator_frame {
 	float dt;					///< The time delta of this sample.
@@ -51,6 +52,7 @@ typedef struct _result_accumulator_frame {
 	float pixel_flow_y;			///< The measured y-flow in the current image in pixel. Sensor linear motion along the positive Y axis induces a negative flow.
 	float ground_distance;		///< The measured distance to the ground in meter.
 	uint32_t distance_age;		///< Age of the distance measurement in us.
+	flow_capability flow_cap;
 } result_accumulator_frame;
 
 typedef struct _result_accumulator_ctx {
@@ -73,8 +75,11 @@ typedef struct _result_accumulator_ctx {
 	int16_t last_gyro_temp;		///< Temperature * 100 in centi-degrees Celsius
 	float last_ground_distance;		///< The measured distance to the ground in meter.
 	uint32_t last_distance_age;		///< Age of the distance measurement in us.
+	float flow_cap_mvx_rad; /**< The maximum velocity that could be measured by all datasets together in one accumulation period. 
+	                          *   This is the minimum of all max velocities. In rad / s. */
+	float flow_cap_mvy_rad; /**< The maximum velocity that could be measured by all datasets together in one accumulation period. 
+	                          *   This is the minimum of all max velocities. In rad / s. */
 } result_accumulator_ctx;
-
 
 typedef struct _result_accumulator_output_flow {
 	int16_t flow_x;		///< Flow in pixels * 10 in x-sensor direction (dezi-pixels)

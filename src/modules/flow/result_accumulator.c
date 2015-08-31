@@ -62,6 +62,15 @@ void result_accumulator_feed(result_accumulator_ctx *ctx, const result_accumulat
 		ctx->px_flow_x_accu += frame->pixel_flow_x;
 		ctx->px_flow_y_accu += frame->pixel_flow_y;
 		
+		/* Convert the flow from pixels to rad:
+		 * This is done with a linear relationship because the involved angles are low.
+		 * 
+		 * Calculation for maximum possible error: (for an assumed drone configuration)
+		 * With a 10Hz accumulation period and 5m/s at 1m distance the real speed in rad is 0.463rad per accumulation period.
+		 * Each frame (taken at 400Hz) measures a distance of 4.16px (at 8mm focal length, 4x binning -> 3mm/px).
+		 * With the linear formula this equates to 0.0125rad per frame.
+		 * Accumulated value in rad is thus 40 * 0.0125 = 5rad. Error: 8%.
+		 * At half the speed the error is just 2%. */
 		float flow_x_rad = frame->pixel_flow_y * frame->rad_per_pixel;
 		float flow_y_rad = - frame->pixel_flow_x * frame->rad_per_pixel;
 		ctx->rad_flow_x_accu += flow_x_rad;
@@ -85,6 +94,24 @@ void result_accumulator_feed(result_accumulator_ctx *ctx, const result_accumulat
 			ctx->valid_dist_time += frame->dt;
 		}
 	}
+	
+	/* convert the algorithm's capability into a velocity in rad / s: */
+	float flow_cap_mvx_rad = frame->flow_cap.max_y_px_frame * frame->rad_per_pixel / frame->dt;
+	float flow_cap_mvy_rad = frame->flow_cap.max_x_px_frame * frame->rad_per_pixel / frame->dt;
+
+	if (ctx->data_count > 0) {
+		/* accumulate the minimum value: */
+		if (flow_cap_mvx_rad < ctx->flow_cap_mvx_rad) {
+			ctx->flow_cap_mvx_rad = flow_cap_mvx_rad;
+		}
+		if (flow_cap_mvy_rad < ctx->flow_cap_mvy_rad) {
+			ctx->flow_cap_mvy_rad = flow_cap_mvy_rad;
+		}
+	} else {
+		ctx->flow_cap_mvx_rad = flow_cap_mvx_rad;
+		ctx->flow_cap_mvy_rad = flow_cap_mvy_rad;
+	}
+
 	ctx->data_count++;
 	ctx->frame_count++;
 	ctx->full_time += frame->dt + frame->dropped_dt;

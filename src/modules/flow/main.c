@@ -377,9 +377,6 @@ int main(void)
 			}
 		}
 
-		/* calculate focal_length in pixel */
-		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 0.006f); //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
-
 		/* new gyroscope data */
 		float x_rate_sensor, y_rate_sensor, z_rate_sensor;
 		int16_t gyro_temp;
@@ -452,19 +449,39 @@ int main(void)
 		float frame_dt   = calculate_time_delta_us(frames[0]->timestamp, frames[1]->timestamp)           * 0.000001f;
 		float dropped_dt = calculate_time_delta_us(frames[1]->timestamp, last_processed_frame_timestamp) * 0.000001f;
 		last_processed_frame_timestamp = frames[0]->timestamp;
-		
-		/* compute gyro rate in pixels and change to image coordinates */
-		float x_rate_px = - y_rate * (focal_length_px * frame_dt);
-		float y_rate_px =   x_rate * (focal_length_px * frame_dt);
-		float z_rate_fr = - z_rate * frame_dt;
 
-		/* compute optical flow in pixels */
+		/* calculate focal_length in pixel */
+		const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / 
+									  ((float)frames[0]->param.p.binning * 0.006f);	// pixel-size: 6um
+
+		/* extract the raw flow from the images: */
 		flow_raw_result flow_rslt[32];
 		uint16_t flow_rslt_count = 0;
-		if (!use_klt) {
-			flow_rslt_count = compute_flow(frames[1]->buffer, frames[0]->buffer, x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
+		/* make sure both images are taken with same binning mode: */
+		if (frames[0]->param.p.binning == frames[1]->param.p.binning) {
+			/* compute gyro rate in pixels and change to image coordinates */
+			float x_rate_px = - y_rate * (focal_length_px * frame_dt);
+			float y_rate_px =   x_rate * (focal_length_px * frame_dt);
+			float z_rate_fr = - z_rate * frame_dt;
+
+			/* compute optical flow in pixels */
+			if (!use_klt) {
+				flow_rslt_count = compute_flow(frames[1]->buffer, frames[0]->buffer, x_rate_px, y_rate_px, z_rate_fr, 
+											   flow_rslt, sizeof(flow_rslt) / sizeof(flow_rslt[0]));
+			} else {
+				flow_rslt_count =  compute_klt(klt_images[1], klt_images[0],         x_rate_px, y_rate_px, z_rate_fr, 
+											   flow_rslt, sizeof(flow_rslt) / sizeof(flow_rslt[0]));
+			}
 		} else {
-			flow_rslt_count =  compute_klt(klt_images[1], klt_images[0], x_rate_px, y_rate_px, z_rate_fr, flow_rslt, 32);
+			/* no result for this frame. */
+			flow_rslt_count = 0;
+		}
+		/* determine capability: */
+		flow_capability flow_rslt_cap;
+		if (!use_klt) {
+			get_flow_capability(&flow_rslt_cap);
+		} else {
+			get_flow_klt_capability(&flow_rslt_cap);
 		}
 
 		/* calculate flow value from the raw results */
@@ -516,7 +533,8 @@ int main(void)
 			.pixel_flow_y = pixel_flow_y,
 			.rad_per_pixel = 1.0f / focal_length_px,
 			.ground_distance = ground_distance,
-			.distance_age = get_time_delta_us(get_distance_measure_time())
+			.distance_age = get_time_delta_us(get_distance_measure_time()),
+			.flow_cap = flow_rslt_cap,
 		};
 
 		/* update I2C transmit buffer */
