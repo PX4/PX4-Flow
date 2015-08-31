@@ -121,8 +121,6 @@ void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint1
 			out->flow_comp_m_y = 0;
 		}
 		out->quality = ctx->min_quality;
-		/* averaging the distance is no use */
-		out->ground_distance = ctx->last.ground_distance;
 	} else {
 		/* not enough valid data */
 		out->flow_x = 0;
@@ -130,8 +128,9 @@ void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint1
 		out->flow_comp_m_x = 0;
 		out->flow_comp_m_y = 0;
 		out->quality = 0;
-		out->ground_distance = -1;
 	}
+	/* averaging the distance is no use */
+	out->ground_distance = ctx->last.ground_distance;
 }
 
 void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow_rad *out)
@@ -147,8 +146,6 @@ void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, u
 		out->quality = ctx->min_quality;
 		/* averaging the distance and temperature is no use */
 		out->temperature = ctx->last.temperature;
-		out->time_delta_distance_us = ctx->last.distance_age;
-		out->ground_distance = ctx->last.ground_distance;
 	} else {
 		/* not enough valid data */
 		out->integration_time = 0;
@@ -159,9 +156,9 @@ void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, u
 		out->integrated_zgyro = 0;
 		out->quality = 0;
 		out->temperature = ctx->last.temperature;
-		out->time_delta_distance_us = 0;
-		out->ground_distance = -1;
 	}
+	out->time_delta_distance_us = ctx->last.distance_age;
+	out->ground_distance = ctx->last.ground_distance;
 }
 
 void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow_i2c *out)
@@ -181,12 +178,6 @@ void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, u
 		out->gyro_z = floor(ctx->gyro_z_accu * (100.0f / ctx->valid_time) + 0.5f);
 		out->quality = ctx->min_quality;
 		out->temperature = ctx->last.temperature;
-		out->time_delta_distance_us = ctx->last.distance_age;
-		if (ctx->last.ground_distance >= 0) {
-			out->ground_distance = floor(ctx->last.ground_distance * 1000.0f + 0.5f);
-		} else {
-			out->ground_distance = 0;
-		}
 	} else {
 		/* not enough valid data */
 		out->frame_count = ctx->frame_count;
@@ -202,7 +193,11 @@ void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, u
 		out->gyro_z = 0;
 		out->quality = 0;
 		out->temperature = ctx->last.temperature;
-		out->time_delta_distance_us = 0;
+	}
+	out->time_delta_distance_us = ctx->last.distance_age;
+	if (ctx->last.ground_distance >= 0) {
+		out->ground_distance = floor(ctx->last.ground_distance * 1000.0f + 0.5f);
+	} else {
 		out->ground_distance = 0;
 	}
 }
@@ -263,7 +258,7 @@ void result_accumulator_reset(result_accumulator_ctx *ctx)
 	ctx->gyro_x_accu = 0;
 	ctx->gyro_y_accu = 0;
 	ctx->gyro_z_accu = 0;
-	
+
 	ctx->min_quality = 255;
 
 	ctx->valid_data_count = 0;
