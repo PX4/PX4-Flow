@@ -37,7 +37,6 @@
 
 #include "stm32f4xx_conf.h"
 #include "core_cmFunc.h"
-#include "led.h"
 
 #include <string.h>
 
@@ -374,7 +373,6 @@ void camera_transport_frame_done_fn(void *usr, bool probably_infront_dma) {
 		ctx->resync_discard_frame_count = fdc;
 		/* re-initialize the transport twice */
 		if (fdc == 0 || fdc == 1) {
-			LEDOff(LED_ERR);
 			ctx->transport->reset(ctx->transport->usr);
 		}
 	} else {
@@ -406,8 +404,6 @@ void camera_transport_frame_done_fn(void *usr, bool probably_infront_dma) {
 				ctx->seq_frame_receiving = false;
 				/* initiate resynchronization: */
 				ctx->resync_discard_frame_count = 2;
-
-				LEDOn(LED_ERR);
 			}
 		} else {
 			ctx->frame_done_infront_count++;

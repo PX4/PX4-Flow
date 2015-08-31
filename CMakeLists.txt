@@ -190,7 +190,6 @@ set(PX4FLOW_HDRS
     inc/gyro.h
     inc/i2c_frame.h
     inc/i2c.h
-    inc/led.h
     inc/main.h
     inc/mavlink_bridge_header.h
     inc/mt9v034.h
@@ -218,7 +217,6 @@ set(PX4FLOW_SRC
     src/flow.c
     src/gyro.c
     src/i2c.c
-    src/led.c
     src/main.c
     src/mt9v034.c
     src/reset.c
