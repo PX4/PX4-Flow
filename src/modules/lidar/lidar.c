@@ -322,6 +322,8 @@ __EXPORT void I2C1_EV_IRQHandler(void)
 			default:
 				break;
 		}
+	} else if (I2C1->SR2 == 0 && I2C1->SR1 == 0x40) {
+		I2C_ReceiveData(I2C1);
 	}
 }
 
