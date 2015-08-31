@@ -134,6 +134,8 @@ static void uint32_t_memcpy(uint32_t *dst, const uint32_t *src, size_t count) {
 	}
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic warning "-Warray-bounds"
 static void camera_buffer_fifo_remove_front(camera_ctx *ctx, int *out, size_t count) {
 	size_t bc = ctx->buf_avail_count;
 	size_t i;
@@ -147,6 +149,7 @@ static void camera_buffer_fifo_remove_front(camera_ctx *ctx, int *out, size_t co
 	}
 	ctx->buf_avail_count = bc - count;
 }
+#pragma GCC diagnostic pop
 
 static void camera_buffer_fifo_remove_back(camera_ctx *ctx, int *out, size_t count) {
 	size_t bc = ctx->buf_avail_count;

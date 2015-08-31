@@ -207,8 +207,9 @@ static flow_klt_image flow_klt_images[2] __attribute__((section(".ccm")));
   */
 int main(void)
 {
+	__enable_irq();
 	snapshot_buffer = BuildCameraImageBuffer(snapshot_buffer_mem);
-	
+
 	/* load settings and parameters */
 	global_data_reset_param_defaults();
 	global_data_reset();

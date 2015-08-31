@@ -579,6 +579,16 @@ uint16_t compute_klt(flow_klt_image *image1, flow_klt_image *image2, float x_rat
 
 	//initialize flow values with the pixel value of the previous image
 	uint16_t topPyrStep = 1 << (PYR_LVLS - 1);
+
+    /* 
+     * if the gyro change (x_rate & y_rate) is more than the maximum pixel
+     * difference that can be detected between two frames (depends on PYR_LVLS)
+     * we can't calculate the flow. So return empty flow.
+     */
+    if(fabs(x_rate) > (float)(2 * topPyrStep) || fabs(y_rate) > (float)(2 * topPyrStep)){
+        return 0;
+    }
+
 	uint16_t pixStep = frame_size / (NUM_BLOCK_KLT + 1);
 	uint16_t pixLo = pixStep;
 	/* align with topPyrStep */

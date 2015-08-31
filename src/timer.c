@@ -198,7 +198,7 @@ uint32_t get_boot_time_us(void)
 }
 
 uint32_t calculate_time_delta_us(uint32_t end, uint32_t start) {
-	return (int32_t)end - (int32_t)start;
+	return end - start;
 }
 
 uint32_t get_time_delta_us(uint32_t start)
