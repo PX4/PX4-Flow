@@ -55,7 +55,7 @@ typedef  struct i2c_frame
     int16_t gyro_y_rate;
     int16_t gyro_z_rate;
     uint8_t gyro_range;
-    uint8_t sonar_timestamp;
+    uint8_t distance_timestamp;
     int16_t ground_distance;
 } i2c_frame;
 
@@ -71,7 +71,7 @@ typedef struct i2c_integral_frame
     int16_t gyro_y_rate_integral;
     int16_t gyro_z_rate_integral;
     uint32_t integration_timespan;
-    uint32_t sonar_timestamp;
+    uint32_t distance_timestamp;
     uint16_t ground_distance;
     int16_t gyro_temperature;
     uint8_t qual;

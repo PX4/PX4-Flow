@@ -10,7 +10,7 @@ int16 gyro_x_rate_integral
 int16 gyro_y_rate_integral
 int16 gyro_z_rate_integral
 uint32 integration_timespan
-uint32 sonar_timestamp
+uint32 distance_timestamp
 uint16 ground_distance
 int16 gyro_temperature
 uint8 qual

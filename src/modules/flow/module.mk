@@ -31,14 +31,13 @@ SRCS += 		main.c \
           mt9v034.c \
           gyro.c \
           usart.c \
-          sonar.c \
           debug.c \
           usb_bsp.c \
           usbd_cdc_vcp.c \
           usbd_desc.c \
           usbd_usr.c \
           reset.c \
-          sonar_mode_filter.c \
+          distance_mode_filter.c \
 	   camera.c \
 	   filter.c \
 	   result_accumulator.c \

@@ -31,51 +31,17 @@
  *
  ****************************************************************************/
 
-#include "sonar_mode_filter.h"
-#include <string.h>
+#ifndef DISTANCE_MODE_FILTER_H_
+#define DISTANCE_MODE_FILTER_H_
 
-/**
- * insert-only ring buffer of sonar data, needs to be of uneven size
- * the initialization to zero will make the filter respond zero for the
- * first three inserted readinds, which is a decent startup-logic.
- */
-static float sonar_values[3] = { 0.0f };
-static unsigned insert_index = 0;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-static void sonar_bubble_sort(float in_out_sonar_values[], unsigned n)
-{
-	float t;
+float insert_distance_value_and_get_mode_value(float insert);
 
-	for (unsigned i = 0; i < (n - 1); i++) {
-		for (unsigned j = 0; j < (n - i - 1); j++) {
-			if (in_out_sonar_values[j] > in_out_sonar_values[j+1]) {
-				/* swap two values */
-				t = in_out_sonar_values[j];
-				in_out_sonar_values[j] = in_out_sonar_values[j + 1];
-				in_out_sonar_values[j + 1] = t;
-			}
-		}
-	}
+#ifdef __cplusplus
 }
+#endif
 
-float insert_sonar_value_and_get_mode_value(float insert)
-{
-	const unsigned sonar_count = sizeof(sonar_values) / sizeof(sonar_values[0]);
-
-	sonar_values[insert_index] = insert;
-	insert_index++;
-	if (insert_index == sonar_count) {
-		insert_index = 0;
-	}
-
-	/* sort and return mode */
-
-	/* copy ring buffer */
-	float sonar_temp[sonar_count];
-	memcpy(sonar_temp, sonar_values, sizeof(sonar_values));
-
-	sonar_bubble_sort(sonar_temp, sonar_count);
-
-	/* the center element represents the mode after sorting */
-	return sonar_temp[sonar_count / 2];
-}
+#endif /* DISTANCE_MODE_FILTER_H_ */

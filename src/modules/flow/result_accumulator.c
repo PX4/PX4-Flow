@@ -230,9 +230,9 @@ void result_accumulator_fill_i2c_data(result_accumulator_ctx *ctx, i2c_frame* f,
 	f->gyro_range = getGyroRange();
 
 	if (output_i2c.time_delta_distance_us < 255 * 1000) {
-		f->sonar_timestamp = output_i2c.time_delta_distance_us / 1000; //convert to ms
+		f->distance_timestamp = output_i2c.time_delta_distance_us / 1000; //convert to ms
 	} else {
-		f->sonar_timestamp = 255;
+		f->distance_timestamp = 255;
 	}
 
 	/* write the i2c_integral_frame */
@@ -244,7 +244,7 @@ void result_accumulator_fill_i2c_data(result_accumulator_ctx *ctx, i2c_frame* f,
 	f_integral->pixel_flow_y_integral = output_i2c.rad_flow_y; 			//mrad*10
 	f_integral->integration_timespan = output_i2c.integration_time;      //microseconds
 	f_integral->ground_distance = output_i2c.ground_distance;		    //mmeters
-	f_integral->sonar_timestamp = output_i2c.time_delta_distance_us;  	//microseconds
+	f_integral->distance_timestamp = output_i2c.time_delta_distance_us;  	//microseconds
 	f_integral->qual = output_i2c.quality;										//0-255 linear quality measurement 0=bad, 255=best
 	f_integral->gyro_temperature = output_i2c.temperature;						//Temperature * 100 in centi-degrees Celsius
 }

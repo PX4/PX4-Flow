@@ -301,7 +301,7 @@ int UavcanNode::publish(legacy_12c_data_t *pdata)
   r.integral.gyro_y_rate_integral = pdata->integral_frame.gyro_y_rate_integral;
   r.integral.gyro_z_rate_integral = pdata->integral_frame.gyro_z_rate_integral;
   r.integral.integration_timespan = pdata->integral_frame.integration_timespan;
-  r.integral.sonar_timestamp = pdata->integral_frame.sonar_timestamp;
+  r.integral.distance_timestamp = pdata->integral_frame.distance_timestamp;
   r.integral.ground_distance = pdata->integral_frame.ground_distance;
   r.integral.gyro_temperature = pdata->integral_frame.gyro_temperature;
   r.integral.qual = pdata->integral_frame.qual;

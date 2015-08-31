@@ -63,7 +63,7 @@
 #include "gyro.h"
 #include "fmu_comm.h"
 #include "usart.h"
-#include "sonar.h"
+#include "distance.h"
 #include "communication.h"
 #include "debug.h"
 #include "usbd_cdc_core.h"
@@ -102,7 +102,7 @@ static bool snap_ready = true;
 volatile bool usb_image_transfer_active = false;
 
 /* timer constants */
-#define SONAR_POLL_MS	 	100	/* steps in milliseconds ticks */
+#define DISTANCE_POLL_MS	 	100	/* steps in milliseconds ticks */
 #define SYSTEM_STATE_MS		1000/* steps in milliseconds ticks */
 #define PARAMS_MS			100	/* steps in milliseconds ticks */
 #define LPOS_TIMER_COUNT 	100	/* steps in milliseconds ticks */
@@ -121,9 +121,16 @@ typedef struct __attribute__((packed)) {
 usb_packet_format usb_packet;
 
 static camera_image_buffer snapshot_buffer;
-	
-static void sonar_update_fn(void) {
-	sonar_trigger();
+
+static void distance_update_fn(void) {
+	static bool state = 0;
+	if (state == 0) {
+		distance_trigger();
+		state = 1;
+	} else {
+		distance_readback();
+		state = 0;
+	}
 }
 
 static void system_state_send_fn(void) {
@@ -328,14 +335,13 @@ int main(void)
 
   fmu_comm_init();
 
-	/* sonar config*/
-	float sonar_distance_filtered = 0.0f; // distance in meter
-	float sonar_distance_raw = 0.0f; // distance in meter
+	float distance_filtered = 0.0f; // distance in meter
+	float distance_raw = 0.0f; // distance in meter
 	bool distance_valid = false;
-	sonar_config();
+	distance_init();
 
 	/* reset/start timers */
-	timer_register(sonar_update_fn, SONAR_POLL_MS);
+	timer_register(distance_update_fn, DISTANCE_POLL_MS/2);
 	timer_register(system_state_send_fn, SYSTEM_STATE_MS);
 	timer_register(system_receive_fn, SYSTEM_STATE_MS / 2);
 	timer_register(send_params_fn, PARAMS_MS);
@@ -388,12 +394,11 @@ int main(void)
 		float y_rate = - x_rate_sensor;
 		float z_rate =   z_rate_sensor; // z is correct
 
-		/* get sonar data */
-		distance_valid = sonar_read(&sonar_distance_filtered, &sonar_distance_raw);
+		distance_valid = distance_read(&distance_filtered, &distance_raw);
 		/* reset to zero for invalid distances */
 		if (!distance_valid) {
-			sonar_distance_filtered = 0.0f;
-			sonar_distance_raw = 0.0f;
+			distance_filtered = 0.0f;
+			distance_raw = 0.0f;
 		}
 		
 		bool use_klt = !FLOAT_EQ_INT(global_data.param[PARAM_ALGORITHM_CHOICE], 0);
@@ -517,24 +522,24 @@ int main(void)
 
 		if(FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]))
 		{
-			ground_distance = sonar_distance_filtered;
+			ground_distance = distance_filtered;
 		}
 		else
 		{
-			ground_distance = sonar_distance_raw;
+			ground_distance = distance_raw;
 		}
 
 		/* update I2C transmit buffer */
 		fmu_comm_update(frame_dt, 
 						 x_rate, y_rate, z_rate, gyro_temp, 
 						 qual, pixel_flow_x, pixel_flow_y, 1.0f / focal_length_px, 
-						 distance_valid, ground_distance, get_time_delta_us(get_sonar_measure_time()));
+						 distance_valid, ground_distance, get_time_delta_us(get_distance_measure_time()));
 
 		/* accumulate the results */
 		result_accumulator_feed(&mavlink_accumulator, frame_dt, 
 								x_rate, y_rate, z_rate, gyro_temp, 
 								qual, pixel_flow_x, pixel_flow_y, 1.0f / focal_length_px, 
-								distance_valid, ground_distance, get_time_delta_us(get_sonar_measure_time()));
+								distance_valid, ground_distance, get_time_delta_us(get_distance_measure_time()));
 
 		uint32_t computaiton_time_us = get_time_delta_us(start_computations);
 

@@ -38,6 +38,7 @@ MODULES		+= modules/libc
 # Flow
 MODULES		+= modules/flow
 
+MODULES		+= modules/sonar
 
 
 # Generate parameter XML file

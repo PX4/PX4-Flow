@@ -45,7 +45,6 @@
 #include "led.h"
 #include "i2c_frame.h"
 #include "gyro.h"
-#include "sonar.h"
 #include "main.h"
 #include "result_accumulator.h"
 
