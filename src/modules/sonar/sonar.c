@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include "stm32f4xx.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_adc.h"
@@ -48,8 +49,8 @@
 #include "utils.h"
 #include "usart.h"
 #include "settings.h"
-#include "sonar.h"
-#include "sonar_mode_filter.h"
+#include "distance.h"
+#include "distance_mode_filter.h"
 
 #define SONAR_SCALE	1000.0f
 #define SONAR_MIN	0.12f		/** 0.12m sonar minimum distance */
@@ -87,9 +88,11 @@ bool sonar_valid = false;				/**< the mode of all sonar measurements */
   *
   * see datasheet for more info
   */
-void sonar_trigger(){
+__EXPORT void distance_trigger(){
 	GPIO_SetBits(GPIOE, GPIO_Pin_8);
 }
+
+__EXPORT void distance_readback() {}
 
 /**
   * @brief  Sonar interrupt handler
@@ -135,7 +138,7 @@ void UART4_IRQHandler(void)
 					dt = ((float)(measure_time - last_measure_time)) / 1000000.0f;
 
 					valid_data = temp;
-					sonar_mode = insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
+					sonar_mode = insert_distance_value_and_get_mode_value(valid_data / SONAR_SCALE);
 					new_value = 1;
 					sonar_valid = true;
 				} else {
@@ -180,7 +183,7 @@ static void sonar_filter(void)
   * @param  sonar_value_filtered Filtered return value
   * @param  sonar_value_raw Raw return value
   */
-bool sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
+__EXPORT bool distance_read(float* sonar_value_filtered, float* sonar_value_raw)
 {
 	/* getting new data with only around 10Hz */
 	if (new_value) {
@@ -203,7 +206,7 @@ bool sonar_read(float* sonar_value_filtered, float* sonar_value_raw)
 /**
  * @brief  Configures the sonar sensor Peripheral.
  */
-void sonar_config(void)
+__EXPORT void distance_init(void)
 {
 	valid_data = 0;
 
@@ -267,13 +270,8 @@ void sonar_config(void)
 
 }
 
-uint32_t get_sonar_measure_time()
+__EXPORT uint32_t get_distance_measure_time()
 {
     return sonar_measure_time;
-}
-
-uint32_t get_sonar_measure_time_interrupt()
-{
-    return sonar_measure_time_interrupt;
 }
 

@@ -34,13 +34,12 @@
 
 #include "camera.h"
 #include "timer.h"
+#include "fmu_comm.h"
 
 #include "stm32f4xx_conf.h"
 #include "core_cmFunc.h"
 
 #include <string.h>
-
-#include <uavcan_if.h>
 
 #define abs(x) ({			\
 	typeof(x) __x = (x);	\
@@ -538,8 +537,8 @@ int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer *buffers[
 		if (wait_for_new) {
 			/* wait until a new frame is available: */
 			while(!ctx->new_frame_arrived) {
-				//TODO: camera_img_stream_get_buffers is calling uavcan_run()
-				uavcan_run();
+				//TODO: camera_img_stream_get_buffers is calling fmu_comm_run()
+				fmu_comm_run();
 			}				
 		}
 		if (camera_img_stream_get_buffers_idx(ctx, bidx, count, wait_for_new)) {

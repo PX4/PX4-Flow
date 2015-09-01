@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2014 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,52 +30,23 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
+#ifndef FMU_COMM_H
+#define FMU_COMM_H
 
-#include "sonar_mode_filter.h"
-#include <string.h>
+/// Abstraction over the FMU communications interface -- I2C slave or UAVCAN
 
-/**
- * insert-only ring buffer of sonar data, needs to be of uneven size
- * the initialization to zero will make the filter respond zero for the
- * first three inserted readinds, which is a decent startup-logic.
- */
-static float sonar_values[3] = { 0.0f };
-static unsigned insert_index = 0;
+#include <inttypes.h>
 
-static void sonar_bubble_sort(float in_out_sonar_values[], unsigned n)
-{
-	float t;
+/// Call on boot to initialize
+void fmu_comm_init(void);
 
-	for (unsigned i = 0; i < (n - 1); i++) {
-		for (unsigned j = 0; j < (n - i - 1); j++) {
-			if (in_out_sonar_values[j] > in_out_sonar_values[j+1]) {
-				/* swap two values */
-				t = in_out_sonar_values[j];
-				in_out_sonar_values[j] = in_out_sonar_values[j + 1];
-				in_out_sonar_values[j + 1] = t;
-			}
-		}
-	}
-}
+/// Call in the main loop periodically
+void fmu_comm_run(void);
 
-float insert_sonar_value_and_get_mode_value(float insert)
-{
-	const unsigned sonar_count = sizeof(sonar_values) / sizeof(sonar_values[0]);
+/// Call every frame to update with new data
+void fmu_comm_update(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
+  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
+  bool distance_valid, float ground_distance, uint32_t distance_age);
 
-	sonar_values[insert_index] = insert;
-	insert_index++;
-	if (insert_index == sonar_count) {
-		insert_index = 0;
-	}
+#endif
 
-	/* sort and return mode */
-
-	/* copy ring buffer */
-	float sonar_temp[sonar_count];
-	memcpy(sonar_temp, sonar_values, sizeof(sonar_values));
-
-	sonar_bubble_sort(sonar_temp, sonar_count);
-
-	/* the center element represents the mode after sorting */
-	return sonar_temp[sonar_count / 2];
-}

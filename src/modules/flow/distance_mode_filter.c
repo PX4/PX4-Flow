@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2014 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,43 +31,53 @@
  *
  ****************************************************************************/
 
-#ifndef SONAR_H_
-#define SONAR_H_
-
-#include <stdint.h>
-#include <stdbool.h>
-#include "settings.h"
+#include "distance_mode_filter.h"
+#include <string.h>
 
 /**
- * @brief  Configures the sonar sensor Peripheral.
+ * insert-only ring buffer of distance data, needs to be of uneven size
+ * the initialization to zero will make the filter respond zero for the
+ * first N inserted readinds, which is a decent startup-logic.
  */
-void sonar_config(void);
+static float distance_values[5] = { 0.0f };
+static unsigned insert_index = 0;
 
-/**
-  * @brief  Sonar interrupt handler
-  */
-void UART4_IRQHandler(void);
+static void distance_bubble_sort(float distance_values[], unsigned n);
 
-/**
-  * @brief  Triggers the sonar to measure the next value
-  */
-void sonar_trigger(void);
+void distance_bubble_sort(float distance_values[], unsigned n)
+{
+	float t;
 
-/**
-  * @brief  Read out newest sonar data
-  *
-  * @return true if valid measurement values were obtained, false else
-  */
-bool sonar_read(float* sonar_value_filtered, float* sonar_value_raw);
+	for (unsigned i = 0; i < (n - 1); i++) {
+		for (unsigned j = 0; j < (n - i - 1); j++) {
+			if (distance_values[j] > distance_values[j+1]) {
+				/* swap two values */
+				t = distance_values[j];
+				distance_values[j] = distance_values[j + 1];
+				distance_values[j + 1] = t;
+			}
+		}
+	}
+}
 
-/**
-  * @brief Get the timestamp of the new sonar value when available to the main code
-  */
-uint32_t get_sonar_measure_time(void);
+float insert_distance_value_and_get_mode_value(float insert)
+{
+	const unsigned distance_count = sizeof(distance_values) / sizeof(distance_values[0]);
 
-/**
-  * @brief Get the timestamp of the new sonar value when the interrupt is triggered
-  */
-uint32_t get_sonar_measure_time_interrupt(void);
+	distance_values[insert_index] = insert;
+	insert_index++;
+	if (insert_index == distance_count) {
+		insert_index = 0;
+	}
 
-#endif /* SONAR_H_ */
+	/* sort and return mode */
+
+	/* copy ring buffer */
+	float distance_temp[distance_count];
+	memcpy(distance_temp, distance_values, sizeof(distance_values));
+
+	distance_bubble_sort(distance_temp, distance_count);
+
+	/* the center element represents the mode after sorting */
+	return distance_temp[distance_count / 2];
+}

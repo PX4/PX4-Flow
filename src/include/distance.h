@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,12 +31,15 @@
  *
  ****************************************************************************/
 
-#pragma once
-
-#include <px4_config.h>
-#include <px4_macros.h>
+#ifndef DISTANCE_H_
+#define DISTANCE_H_
 #include <stdint.h>
+#include <stdbool.h>
 
-typedef struct legacy_12c_data_t {
-    uint64_t    time_stamp_utc;
-} legacy_12c_data_t;
+void distance_init(void);
+void distance_trigger(void);
+void distance_readback(void);
+bool distance_read(float* distance_filtered, float* distance_raw);
+uint32_t get_distance_measure_time(void);
+
+#endif //DISTANCE_H_

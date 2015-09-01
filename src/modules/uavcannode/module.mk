@@ -50,6 +50,7 @@ MODULE_STACKSIZE = 1024
 
 # Main
 SRCS += uavcannode_main.cpp       \
+        uavcannode.c              \
 
 
 #

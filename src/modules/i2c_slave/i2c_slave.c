@@ -30,17 +30,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-
-/**
- * @file i2c.c
- * Definition of i2c frames.
- * @author Thomas Boehm <thomas.boehm@fortiss.org>
- * @author James Goppert <james.goppert@gmail.com>
- */
+ 
+#include <stdbool.h>
+#include <uavcan_if.h>
+#include "fmu_comm.h"
 
 #include "px4_config.h"
 #include "px4_macros.h"
-#include "i2c.h"
 #include "stm32f4xx.h"
 #include "stm32f4xx_i2c.h"
 #include "stm32f4xx_rcc.h"
@@ -49,17 +45,14 @@
 
 #include "i2c_frame.h"
 #include "gyro.h"
-#include "sonar.h"
 #include "main.h"
 #include "result_accumulator.h"
 
-#include "mavlink_bridge_header.h"
-#include <mavlink.h>
+#define I2C1_OWNADDRESS_1_BASE 0x42 //7bit base address
 
 /* prototypes */
 void I2C1_EV_IRQHandler(void);
 void I2C1_ER_IRQHandler(void);
-char readI2CAddressOffset(void);
 
 static char offset = 0;
 uint8_t dataRX = 0;
@@ -73,8 +66,21 @@ uint8_t readout_done_frame1 = 1;
 uint8_t readout_done_frame2 = 1;
 uint8_t stop_accumulation = 0;
 
-void i2c_init() {
+static char readI2CAddressOffset(void) {
+	//read 3bit address offset of 7 bit address
+	offset = 0x00;
+	offset = GPIO_ReadInputData(GPIOC ) >> 13; //bit 0
+	offset = offset | ((GPIO_ReadInputData(GPIOC ) >> 14) << 1); //bit 1
+	offset = offset | ((GPIO_ReadInputData(GPIOC ) >> 15) << 2); //bit 2
+	offset = (~offset) & 0x07;
+	return offset;
+}
 
+static char i2c_get_ownaddress1(void) {
+	return (I2C1_OWNADDRESS_1_BASE + readI2CAddressOffset()) << 1; //add offset to base and shift 1 bit to generate valid 7 bit address
+}
+
+__EXPORT void fmu_comm_init(void) {
 	I2C_DeInit(I2C1 );       //Deinit and reset the I2C to avoid it locking up
 	I2C_SoftwareResetCmd(I2C1, ENABLE);
 	I2C_SoftwareResetCmd(I2C1, DISABLE);
@@ -135,6 +141,8 @@ void i2c_init() {
 	I2C_StretchClockCmd(I2C1, ENABLE);
 	I2C_Cmd(I2C1, ENABLE);
 }
+
+__EXPORT void fmu_comm_run(void) {}
 
 void I2C1_EV_IRQHandler(void) {
 
@@ -225,9 +233,9 @@ void I2C1_ER_IRQHandler(void) {
 }
 
 
-void update_TX_buffer(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
+__EXPORT void fmu_comm_update(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
 					  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
-					  bool distance_valid, float ground_distance, uint32_t distance_age, legacy_12c_data_t *pd) {
+					  bool distance_valid, float ground_distance, uint32_t distance_age) {
 	static result_accumulator_ctx accumulator;
 	static bool initialized = false;
 
@@ -247,58 +255,17 @@ void update_TX_buffer(float dt, float x_rate, float y_rate, float z_rate, int16_
 							qual, pixel_flow_x, pixel_flow_y, rad_per_pixel, 
 							distance_valid, ground_distance, distance_age);
 
-	result_accumulator_output_flow output_flow;
-	result_accumulator_output_flow_i2c output_i2c;
-	int min_valid_ratio = global_data.param[PARAM_ALGORITHM_MIN_VALID_RATIO];
-	result_accumulator_calculate_output_flow(&accumulator, min_valid_ratio, &output_flow);
-	result_accumulator_calculate_output_flow_i2c(&accumulator, min_valid_ratio, &output_i2c);
-
 	i2c_frame f;
 	i2c_integral_frame f_integral;
 
-	/* write the i2c_frame */
-	f.frame_count = accumulator.last.frame_count;
-	f.pixel_flow_x_sum = output_flow.flow_x;
-	f.pixel_flow_y_sum = output_flow.flow_y;
-	f.flow_comp_m_x = floor(output_flow.flow_comp_m_x * 1000.0f + 0.5f);
-	f.flow_comp_m_y = floor(output_flow.flow_comp_m_y * 1000.0f + 0.5f);
-	f.qual = output_flow.quality;
-	f.ground_distance = output_i2c.ground_distance;
-
-	f.gyro_x_rate = output_i2c.gyro_x;
-	f.gyro_y_rate = output_i2c.gyro_y;
-	f.gyro_z_rate = output_i2c.gyro_z;
-	f.gyro_range = getGyroRange();
-
-	if (output_i2c.time_delta_distance_us < 255 * 1000) {
-		f.sonar_timestamp = output_i2c.time_delta_distance_us / 1000; //convert to ms
-	} else {
-		f.sonar_timestamp = 255;
-	}
-
-	/* write the i2c_integral_frame */
-	f_integral.frame_count_since_last_readout = output_i2c.valid_frames;
-	f_integral.gyro_x_rate_integral = output_i2c.integrated_gyro_x;		//mrad*10
-	f_integral.gyro_y_rate_integral = output_i2c.integrated_gyro_y;		//mrad*10
-	f_integral.gyro_z_rate_integral = output_i2c.integrated_gyro_z; 	//mrad*10
-	f_integral.pixel_flow_x_integral = output_i2c.rad_flow_x; 			//mrad*10
-	f_integral.pixel_flow_y_integral = output_i2c.rad_flow_y; 			//mrad*10
-	f_integral.integration_timespan = output_i2c.integration_time;      //microseconds
-	f_integral.ground_distance = output_i2c.ground_distance;		    //mmeters
-	f_integral.sonar_timestamp = output_i2c.time_delta_distance_us;  	//microseconds
-	f_integral.qual = output_i2c.quality;										//0-255 linear quality measurement 0=bad, 255=best
-	f_integral.gyro_temperature = output_i2c.temperature;						//Temperature * 100 in centi-degrees Celsius
+	result_accumulator_fill_i2c_data(&accumulator, &f, &f_integral);
 
 	/* perform buffer swapping */
 	notpublishedIndexFrame1 = 1 - publishedIndexFrame1; // choose not the current published 1 buffer
 	notpublishedIndexFrame2 = 1 - publishedIndexFrame2; // choose not the current published 2 buffer
 
-	// HACK!! To get the data
-TODO(TODO:Tom Please fix this);
-        uavcan_export(&pd->frame, &f, I2C_FRAME_SIZE);
-        uavcan_export(&pd->integral_frame, &f_integral, I2C_INTEGRAL_FRAME_SIZE);
 
-        // fill I2C transmitbuffer1 with frame1 values
+  // fill I2C transmitbuffer1 with frame1 values
 	memcpy(&(txDataFrame1[notpublishedIndexFrame1]),
 		&f, I2C_FRAME_SIZE);
 
@@ -315,18 +282,4 @@ TODO(TODO:Tom Please fix this);
 	if (readout_done_frame2) {
 		publishedIndexFrame2 = 1 - publishedIndexFrame2;
 	}
-}
-
-char readI2CAddressOffset(void) {
-	//read 3bit address offset of 7 bit address
-	offset = 0x00;
-	offset = GPIO_ReadInputData(GPIOC ) >> 13; //bit 0
-	offset = offset | ((GPIO_ReadInputData(GPIOC ) >> 14) << 1); //bit 1
-	offset = offset | ((GPIO_ReadInputData(GPIOC ) >> 15) << 2); //bit 2
-	offset = (~offset) & 0x07;
-	return offset;
-}
-
-char i2c_get_ownaddress1(void) {
-	return (I2C1_OWNADDRESS_1_BASE + readI2CAddressOffset()) << 1; //add offset to base and shift 1 bit to generate valid 7 bit address
 }

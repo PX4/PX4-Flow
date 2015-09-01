@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "i2c_frame.h"
 
 
 typedef struct _result_accumulator_ctx {
@@ -144,6 +145,7 @@ void result_accumulator_feed(result_accumulator_ctx *ctx, float dt, float x_rate
 void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow *out);
 void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow_rad *out);
 void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow_i2c *out);
+void result_accumulator_fill_i2c_data(result_accumulator_ctx *ctx, i2c_frame* f, i2c_integral_frame* f_integral);
 
 /**	Resets the accumulator to prepare it for the next accumulation phase.
  */
