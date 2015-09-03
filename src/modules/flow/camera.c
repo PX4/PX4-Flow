@@ -59,7 +59,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 	ctx->sensor    = sensor;
 	ctx->transport = transport;
 	// check parameter:
-	if (buffer_count > CONFIG_CAMERA_MAX_BUFFER_COUNT && buffer_count < 2) {
+	if (buffer_count > CONFIG_CAMERA_MAX_BUFFER_COUNT || buffer_count < 2) {
 		return false;
 	}
 	uint32_t img_size = (uint32_t)img_param->size.x * (uint32_t)img_param->size.y;
@@ -134,11 +134,10 @@ static void uint32_t_memcpy(uint32_t *dst, const uint32_t *src, size_t count) {
 	}
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic warning "-Warray-bounds"
-static void camera_buffer_fifo_remove_front(camera_ctx *ctx, int *out, size_t count) {
+static bool camera_buffer_fifo_remove_front(camera_ctx *ctx, int *out, size_t count) {
 	size_t bc = ctx->buf_avail_count;
 	size_t i;
+	if (count > bc) return false;
 	// read out:
 	for (i = 0; i < count; ++i) {
 		*out++ = ctx->buf_avail[i];
@@ -148,18 +147,20 @@ static void camera_buffer_fifo_remove_front(camera_ctx *ctx, int *out, size_t co
 		ctx->buf_avail[i - count] = ctx->buf_avail[i];
 	}
 	ctx->buf_avail_count = bc - count;
+	return true;
 }
-#pragma GCC diagnostic pop
 
-static void camera_buffer_fifo_remove_back(camera_ctx *ctx, int *out, size_t count) {
+static bool camera_buffer_fifo_remove_back(camera_ctx *ctx, int *out, size_t count) {
 	size_t bc = ctx->buf_avail_count;
 	size_t i;
+	if (count > bc) return false;
 	// read out:
 	for (i = bc - count; i < bc; ++i) {
 		*out++ = ctx->buf_avail[i];
 	}
 	// reduce count:
 	ctx->buf_avail_count = bc - count;
+	return true;
 }
 
 static void camera_buffer_fifo_push_at(camera_ctx *ctx, size_t pos, const int *in, size_t count) {
@@ -310,11 +311,14 @@ void camera_transport_transfer_done_fn(void *usr, const void *buffer, size_t siz
 				ctx->cur_frame_param.p.size.y  == ctx->img_stream_param.p.size.y) {
 				if (img_data_valid) {
 					// get least recently used buffer from the available buffers:
-					camera_buffer_fifo_remove_back(ctx, &ctx->cur_frame_target_buf_idx, 1);
-					ctx->cur_frame_target_buf   = &ctx->buffers[ctx->cur_frame_target_buf_idx];
-					/* if there are no more buffers in the fifo reset the flag again: */
-					if (ctx->buf_avail_count == 0) {
-						ctx->new_frame_arrived = false;
+					if (camera_buffer_fifo_remove_back(ctx, &ctx->cur_frame_target_buf_idx, 1)) {
+						ctx->cur_frame_target_buf   = &ctx->buffers[ctx->cur_frame_target_buf_idx];
+						/* if there are no more buffers in the fifo reset the flag again: */
+						if (ctx->buf_avail_count == 0) {
+							ctx->new_frame_arrived = false;
+						}
+					} else {
+						ctx->cur_frame_target_buf_idx = -1;
 					}
 				}
 			}
@@ -502,7 +506,13 @@ void camera_snapshot_acknowledge(camera_ctx *ctx) {
 static bool camera_img_stream_get_buffers_idx(camera_ctx *ctx, int bidx[], size_t count, bool reset_new_frm) {
 	int i;
 	__disable_irq();
-	camera_buffer_fifo_remove_front(ctx, bidx, count);
+	if (!camera_buffer_fifo_remove_front(ctx, bidx, count)) {
+		if (reset_new_frm) {
+			ctx->new_frame_arrived = false;
+		}
+		__enable_irq();
+		return false;
+	}
 	/* check that the buffers are in consecutive order: */
 	bool consecutive = true;
 	uint32_t exp_frame = ctx->buffers[bidx[0]].frame_number - 1;
