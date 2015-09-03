@@ -388,6 +388,7 @@ int main(void)
 							}
 						}
 						klt_preprocess_image(frames[i]->buffer, klt_images[i]);
+						klt_images[i]->meta = frames[i]->frame_number;
 					}
 				}
 			}
