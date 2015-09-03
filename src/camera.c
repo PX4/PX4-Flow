@@ -59,7 +59,7 @@ bool camera_init(camera_ctx *ctx, const camera_sensor_interface *sensor, const c
 	ctx->sensor    = sensor;
 	ctx->transport = transport;
 	// check parameter:
-	if (buffer_count > CONFIG_CAMERA_MAX_BUFFER_COUNT && buffer_count < 2) {
+	if (buffer_count > CONFIG_CAMERA_MAX_BUFFER_COUNT || buffer_count < 2) {
 		return false;
 	}
 	uint32_t img_size = (uint32_t)img_param->size.x * (uint32_t)img_param->size.y;
