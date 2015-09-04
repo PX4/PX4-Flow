@@ -36,7 +36,6 @@
  ****************************************************************************/
 
 #include <px4_config.h>
-#include <px4_macros.h>
 #include <bsp/board.h>
 
 #include <stdlib.h>
@@ -68,6 +67,7 @@
 #include "usbd_cdc_vcp.h"
 #include "main.h"
 #include <uavcan_if.h>
+#include <px4_macros.h>
 
 //#define CONFIG_USE_PROBES
 #include <bsp/probes.h>

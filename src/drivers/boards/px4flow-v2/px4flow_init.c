@@ -54,14 +54,13 @@
 #include <debug.h>
 #include <errno.h>
 
-#include <px4_macros.h>
+#include "board_config.h"
+#include <bsp/board.h>
 
 #include <chip.h>
 #include "stm32f4xx_gpio.h"
 
-#include "board_config.h"
-#include <bsp/board.h>
-
+#include <px4_macros.h>
 
 /****************************************************************************
  * Pre-Processor Definitions
@@ -78,10 +77,10 @@
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
-
+static int errn;
 int *__errno _PARAMS ((void))
 {
-  0;
+  return &errn;
 }
 
 /****************************************************************************
