@@ -113,8 +113,6 @@ LIBC	 := $(shell ${CC} ${ARCHCPUFLAGS} -print-file-name=libc.a)
 ARCHCFLAGS		 = -std=gnu99
 ARCHCXXFLAGS		 = -fno-exceptions -fno-rtti -std=gnu++0x -fno-threadsafe-statics 
 
-$(info deal with -D__CUSTOM_FILE_IO__)
-
 # Provide defaults, but allow for module override
 WUSEPACKED ?= -Wpacked
 WFRAME_LARGER_THAN ?= 1024
