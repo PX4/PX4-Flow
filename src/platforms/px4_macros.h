@@ -98,8 +98,12 @@
 #endif
 
 #if !defined(TODO)
-# define DO_PRAGMA(x) _Pragma (#x)
-# define TODO(x) DO_PRAGMA(message ("TODO - " #x))
+#  if !defined(NO_PRINT_TODOS)
+#   define DO_PRAGMA(x) _Pragma (#x)
+#   define TODO(x) DO_PRAGMA(message ("TODO - " #x))
+# else
+#   define TODO(x)
+# endif
 #endif
 
 #if !defined(STRINGIFY)
