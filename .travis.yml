@@ -49,10 +49,12 @@ env:
 script:
  - ccache -z
  - arm-none-eabi-gcc --version
- - cmake .
+ - make archives
+ - ccache -s
  - make
  - ccache -s
- - zip Flow.zip px4flow.px4
+ - zip Flow.zip Images/*.px4
+
 
 after_script:
   - git clone git://github.com/PX4/CI-Tools.git
