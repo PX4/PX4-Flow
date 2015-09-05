@@ -32,6 +32,10 @@
 #
 # Top-level Makefile for building PX4 firmware images.
 #
+LEGACY_ELF = $(BUILD_DIR)px4flow-v1_default.build/firmware.elf
+LEGACY_PX4 = $(IMAGE_DIR)px4flow-v1_default.px4
+
+export EXTRADEFINES += -DNO_PRINT_TODOS
 
 TARGETS	:= baremetal
 EXPLICIT_TARGET	:= $(filter $(TARGETS),$(MAKECMDGOALS))
@@ -201,6 +205,58 @@ clean:
 distclean: clean
 	@echo > /dev/null
 	$(Q) $(REMOVE) $(ARCHIVE_DIR)*.export
+
+
+ifneq ($(filter upload-jtag,$(MAKECMDGOALS)),)
+ifeq ($(words $(EXPLICIT_CONFIGS)),1)
+LEGACY_ELF = $(BUILD_DIR)$(EXPLICIT_CONFIGS).build/firmware.elf
+endif
+endif
+
+.PHONY:	upload-jtag
+upload-jtag:		all flash-both
+
+.PHONY:	flash
+flash:
+	$(OPENOCD) --search ../px4_flow -f $(JTAGCONFIG) -f stm32f4x.cfg  -c init -c "reset halt" -c "flash write_image erase $(LEGACY_ELF)" -c "reset run" -c shutdown
+
+.PHONY: flash-bootloader
+flash-bootloader:
+	$(OPENOCD) --search ../px4_flow -f $(JTAGCONFIG) -f stm32f4x.cfg  -c init -c "reset halt" -c "flash write_image erase px4flow_bl.elf" -c "reset run" -c shutdown
+
+.PHONY:	flash-both
+flash-both:
+	$(OPENOCD) --search ../px4_flow -f $(JTAGCONFIG) -f stm32f4x.cfg  -c init -c "reset halt" -c "flash write_image erase $(LEGACY_ELF)" -c "reset run" -c init -c "reset halt" -c "flash write_image erase px4flow_bl.elf" -c "reset run" -c shutdown
+
+# FOR GDB
+.PHONY:	flash-both-no-shutdown
+flash-both-no-shutdown:
+	$(OPENOCD) --search ../px4_flow -f $(JTAGCONFIG) -f stm32f4x.cfg  -c init -c "reset halt" -c "flash write_image erase $(LEGACY_ELF)" -c "reset run" -c init -c "reset halt" -c "flash write_image erase px4flow_bl.elf" -c "reset run"
+
+# serial port defaults by operating system.
+SYSTYPE			 = $(shell uname)
+ifeq ($(SYSTYPE),Darwin)
+SERIAL_PORTS		?= "/dev/tty.usbmodemPX1,/dev/tty.usbmodemPX2,/dev/tty.usbmodemPX3,/dev/tty.usbmodemPX4,/dev/tty.usbmodem1,/dev/tty.usbmodem2,/dev/tty.usbmodem3,/dev/tty.usbmodem4"
+endif
+ifeq ($(SYSTYPE),Linux)
+SERIAL_PORTS		?= "/dev/ttyACM5,/dev/ttyACM4,/dev/ttyACM3,/dev/ttyACM2,/dev/ttyACM1,/dev/ttyACM0"
+endif
+ifeq ($(SERIAL_PORTS),)
+SERIAL_PORTS		 = "\\\\.\\COM32,\\\\.\\COM31,\\\\.\\COM30,\\\\.\\COM29,\\\\.\\COM28,\\\\.\\COM27,\\\\.\\COM26,\\\\.\\COM25,\\\\.\\COM24,\\\\.\\COM23,\\\\.\\COM22,\\\\.\\COM21,\\\\.\\COM20,\\\\.\\COM19,\\\\.\\COM18,\\\\.\\COM17,\\\\.\\COM16,\\\\.\\COM15,\\\\.\\COM14,\\\\.\\COM13,\\\\.\\COM12,\\\\.\\COM11,\\\\.\\COM10,\\\\.\\COM9,\\\\.\\COM8,\\\\.\\COM7,\\\\.\\COM6,\\\\.\\COM5,\\\\.\\COM4,\\\\.\\COM3,\\\\.\\COM2,\\\\.\\COM1,\\\\.\\COM0"
+endif
+
+ifneq ($(filter upload-usb,$(MAKECMDGOALS)),)
+ifeq ($(words $(EXPLICIT_CONFIGS)),1)
+LEGACY_PX4 = $(IMAGE_DIR)$(EXPLICIT_CONFIGS).px4
+endif
+endif
+
+.PHONY:	 upload-usb
+upload-usb: archives all
+	@echo Attempting to flash $(notdir $(LEGACY_PX4)) PX4FLOW board via USB
+	@python -u Tools/px_uploader.py $(LEGACY_PX4) --baud 921600 --port $(SERIAL_PORTS)
+
+
 #
 # Print some help text
 #
@@ -238,6 +294,10 @@ ifeq ($(PX4_TARGET_OS),baremetal)
 	@$(ECHO) "    When exactly one config is being built, add this target to upload the"
 	@$(ECHO) "    firmware to the board when the build is complete. Not supported for"
 	@$(ECHO) "    all configurations."
+	@$(ECHO) ""
+	@$(ECHO) "  upload-usb"
+	@$(ECHO) "    Uploads the $(notdir $(LEGACY_PX4)) imange firmware to the board when"
+	@$(ECHO) "    the build is complete. Not supported for all configurations."
 	@$(ECHO) ""
 endif
 	@$(ECHO) "  testbuild"

@@ -12,12 +12,31 @@ http://px4.io/modules/px4flow
 Dev guide / toolchain installation:
 http://px4.io/dev/px4flow
 
+For help, run:
+
+```
+make help
+
+```
+
+
 To build, run:
 ```
+  make archives - this needs to be done only once
   make
+
 ```
 
 To flash via the PX4 bootloader (first run this command, then connect the board):
 ```
   make upload-usb
 ```
+
+By default the px4flow-v1_default is uploaded to upload a different version
+
+```
+  make <target> upload-usb
+```
+Where <target> is one of the px4flow tatgets listed by ```make help```
+
+

@@ -25,6 +25,9 @@ extern void (*__fini_array_end []) (void) __attribute__((weak));
 
 extern void _init (void);
 extern void _fini (void);
+void __libc_init_array (void);
+void __libc_fini_array (void);
+
 
 void _init(void)
 {

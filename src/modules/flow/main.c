@@ -36,7 +36,6 @@
  ****************************************************************************/
 
 #include <px4_config.h>
-#include <px4_macros.h>
 #include <bsp/board.h>
 
 #include <stdlib.h>
@@ -68,6 +67,7 @@
 #include "usbd_cdc_vcp.h"
 #include "main.h"
 #include <uavcan_if.h>
+#include <px4_macros.h>
 
 //#define CONFIG_USE_PROBES
 #include <bsp/probes.h>
@@ -77,6 +77,7 @@
 #ifndef SCB_CPACR
 #define SCB_CPACR (*((uint32_t*) (((0xE000E000UL) + 0x0D00UL) + 0x088)))
 #endif
+
 
 
 /* prototypes */

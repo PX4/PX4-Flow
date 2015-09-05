@@ -266,13 +266,13 @@ class RestartRequestHandler: public uavcan::IRestartRequestHandler
 
 int UavcanNode::publish(range_data_t *pdata)
 {
-  ::uavcan::equipment::range_sensor::RangeMeasurement m;
-  m.timestamp.husec = pdata->time_stamp_utc;
+  ::uavcan::equipment::range_sensor::Measurement m;
+  m.timestamp.usec = pdata->time_stamp_utc;
   m.sensor_id = pdata->sensor_id;
-  m.beam_orientation.fixed_axis_roll_pitch_yaw[0] = pdata->roll  * m.beam_orientation.ANGLE_MULTIPLIER;
-  m.beam_orientation.fixed_axis_roll_pitch_yaw[1] = pdata->pitch * m.beam_orientation.ANGLE_MULTIPLIER;
-  m.beam_orientation.fixed_axis_roll_pitch_yaw[2] = pdata->yaw   * m.beam_orientation.ANGLE_MULTIPLIER;
-  m.beam_orientation.orientation_defined = true;
+  m.beam_orientation_in_body_frame.fixed_axis_roll_pitch_yaw[0] = pdata->roll  * m.beam_orientation_in_body_frame.ANGLE_MULTIPLIER;
+  m.beam_orientation_in_body_frame.fixed_axis_roll_pitch_yaw[1] = pdata->pitch * m.beam_orientation_in_body_frame.ANGLE_MULTIPLIER;
+  m.beam_orientation_in_body_frame.fixed_axis_roll_pitch_yaw[2] = pdata->yaw   * m.beam_orientation_in_body_frame.ANGLE_MULTIPLIER;
+  m.beam_orientation_in_body_frame.orientation_defined = true;
   m.field_of_view = pdata->field_of_view;
   m.sensor_type = pdata->sensor_type;
   m.reading_type= pdata->reading_type;
@@ -283,7 +283,7 @@ int UavcanNode::publish(range_data_t *pdata)
 int UavcanNode::publish(legacy_12c_data_t *pdata)
 {
   ::threedr::equipment::flow::optical_flow::LegacyRawSample r;
-  r.time.husec = pdata->time_stamp_utc;
+  r.time.usec = pdata->time_stamp_utc;
   r.frame.frame_count = pdata->frame.frame_count;
   r.frame.pixel_flow_x_sum = pdata->frame.pixel_flow_x_sum;
   r.frame.pixel_flow_y_sum = pdata->frame.pixel_flow_y_sum;
