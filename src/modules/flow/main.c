@@ -70,6 +70,7 @@
 #include "usbd_desc.h"
 #include "usbd_cdc_vcp.h"
 #include "main.h"
+#include "hrt.h"
 #include <uavcan_if.h>
 
 //#define CONFIG_USE_PROBES
@@ -110,10 +111,9 @@ static camera_ctx cam_ctx;
 static camera_img_param img_stream_param;
 
 typedef struct __attribute__((packed)) {
-	uint32_t flags;
-	uint32_t timestamp;
+	uint64_t timestamp;
 	uint32_t exposure;
-	uint32_t reserved;
+	uint32_t ground_distance_mm;
 	uint8_t snapshot_buffer_mem[USB_IMAGE_PIXELS * USB_IMAGE_PIXELS];
 } usb_packet_format;
 
@@ -225,13 +225,16 @@ static void send_image_step(void) {
 	}
 }
 
-static void start_send_image(void) {
+static void start_send_image(float ground_distance_m) {
 	usb_image_transfer_active = true;
 	usb_image_pos = 0;
-	usb_packet.flags = 0;
-	usb_packet.timestamp = snapshot_buffer.timestamp; // TODO: use UAVCAN timestamp instead of local timestamp
+#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
+	usb_packet.timestamp = hrt_absolute_time();
+#else
+	usb_packet.timestamp = 0;
+#endif
 	usb_packet.exposure = snapshot_buffer.param.exposure;
-	usb_packet.reserved = 0;
+	usb_packet.ground_distance_mm = ground_distance_m * 1000.0f;
 	DCD_EP_Flush(&USB_OTG_dev, IMAGE_IN_EP);
 	send_image_step();
 }
@@ -349,13 +352,31 @@ int main(void)
 		
 		fmu_comm_run();
 		
+		distance_valid = distance_read(&distance_filtered, &distance_raw);
+		/* reset to zero for invalid distances */
+		if (!distance_valid) {
+			distance_filtered = 0.0f;
+			distance_raw = 0.0f;
+		}
+		
+		/* decide which distance to use */
+		float ground_distance = 0.0f;
+		if(FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]))
+		{
+			ground_distance = distance_filtered;
+		}
+		else
+		{
+			ground_distance = distance_raw;
+		}
+		
 		if (snap_capture_done) {
 			snap_capture_done = false;
 			camera_snapshot_acknowledge(&cam_ctx);
 			snap_ready = true;
 			if (snap_capture_success) {
 				/* send the snapshot! */
-				start_send_image();
+				start_send_image(ground_distance);
 			}
 		}
 
@@ -371,13 +392,6 @@ int main(void)
 		float x_rate =   y_rate_sensor; // change x and y rates
 		float y_rate = - x_rate_sensor;
 		float z_rate =   z_rate_sensor; // z is correct
-
-		distance_valid = distance_read(&distance_filtered, &distance_raw);
-		/* reset to zero for invalid distances */
-		if (!distance_valid) {
-			distance_filtered = 0.0f;
-			distance_raw = 0.0f;
-		}
 		
 		bool use_klt = !FLOAT_EQ_INT(global_data.param[PARAM_ALGORITHM_CHOICE], 0);
 
@@ -495,18 +509,6 @@ int main(void)
 
 		/* return the image buffers */
 		camera_img_stream_return_buffers(&cam_ctx, frames, 2);
-		
-		/* decide which distance to use */
-		float ground_distance = 0.0f;
-
-		if(FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]))
-		{
-			ground_distance = distance_filtered;
-		}
-		else
-		{
-			ground_distance = distance_raw;
-		}
 
 		/* update I2C transmit buffer */
 		fmu_comm_update(frame_dt, 

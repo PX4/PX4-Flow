@@ -22,15 +22,15 @@ while True:
     data = endpoint.read(64 * (1 + (READ_SIZE) / 64), timeout=20000) # Round up to include the zero-length packet
     
     if len(data) != READ_SIZE:
-        # We read a partial image from killing a previous instance of This
+        # We read a partial image from killing a previous instance of this
         # program in the middle of a transfer. We should be using an interface
         # alternate setting to enable and reset the endpoint.
         print "Ignoring partial buffer of", len(data)
         continue
         
-    (flags, timestamp, exposure, reserved) = struct.unpack('<IIII', data[:HEADER_SIZE])
+    (timestamp, exposure, distance) = struct.unpack('<QII', data[:HEADER_SIZE])
     
-    print "Time: ", timestamp, "Exposure:", exposure
+    print "Time: ", timestamp, "Exposure:", exposure, "Distance:", distance, "mm"
         
     image = np.frombuffer(data[HEADER_SIZE:], dtype='uint8').reshape(SIZE, SIZE)
     imshow.set_data(image)
