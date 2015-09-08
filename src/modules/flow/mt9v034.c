@@ -206,8 +206,6 @@ bool mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 		return false;
 	}
 	
-	bool update_exposure;
-	bool update_gain;
 	int context_idx;
 	if (ctx->do_switch_context) {
 		context_idx = ctx->desired_context;
@@ -258,25 +256,21 @@ bool mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 		fine_sw_total = 260;
 	}
 	uint32_t real_exposure = coarse_sw_total * (uint32_t)row_time + fine_sw_total;
-	if (ctx_param->exposure != real_exposure) {
-		update_exposure = true;
-	}
+	bool update_exposure = (ctx_param->exposure != real_exposure);
 	/**
 	 * Analog Gain
 	 * [6:0] Analog Gain:		Range 16 - 64
 	 *  [15] Force 0.75X:       0 = Disabled.
      */
-	uint16_t analog_gain = gain * 16;
+	uint16_t analog_gain = gain * 16 + 0.5f;
 	/* limit: */
 	if (analog_gain < 16) {
 		analog_gain = 16;
 	} else if (analog_gain > 64) {
 		analog_gain = 64;
 	}
+	bool update_gain = ((uint16_t)(ctx_param->analog_gain * 16 + 0.05f) != analog_gain);
 	float real_analog_gain = analog_gain * 0.0625f;
-	if (!FLOAT_EQ_FLOAT(ctx_param->analog_gain, real_analog_gain)) {
-		update_gain = true;
-	}
 	
 	uint16_t sw_for_blanking = coarse_sw_total;
 	if (sw_for_blanking < ctx_param->p.size.y) {
@@ -664,7 +658,7 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 		analog_gain = 64;
 	}
 	float real_analog_gain = analog_gain * 0.0625f;
-	if (ctx_param->analog_gain != real_analog_gain) {
+	if ((uint16_t)(ctx_param->analog_gain * 16 + 0.05f) != analog_gain) {
 		update_gain = true;
 	}
 	
