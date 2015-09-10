@@ -37,7 +37,6 @@
  ****************************************************************************/
 
 #include <px4_config.h>
-#include <px4_macros.h>
 #include <bsp/board.h>
 
 #include <stdlib.h>
@@ -72,6 +71,7 @@
 #include "main.h"
 #include "hrt.h"
 #include <uavcan_if.h>
+#include <px4_macros.h>
 
 //#define CONFIG_USE_PROBES
 #include <bsp/probes.h>

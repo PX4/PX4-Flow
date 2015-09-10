@@ -53,11 +53,11 @@
 #include <debug.h>
 #include <errno.h>
 
-#include <px4_macros.h>
 
 #include "board_config.h"
 #include <bsp/board.h>
 
+#include <px4_macros.h>
 
 /****************************************************************************
  * Pre-Processor Definitions
@@ -90,17 +90,6 @@
 
 __EXPORT void board_initialize(void)
 {
-
-  /*
-     * GPIO config.
-     * Forced pull up on CAN2 is required for Pixhawk v1 where the second interface lacks a transceiver.
-     * If no transceiver is connected, the RX pin will float, occasionally causing CAN controller to
-     * fail during initialization.
-     */
-TODO( Code stm32_configgpio(GPIO_CAN1_RX));
-//    stm32_configgpio(GPIO_CAN1_RX);
-//    stm32_configgpio(GPIO_CAN1_TX);
-
 }
 
 /****************************************************************************
