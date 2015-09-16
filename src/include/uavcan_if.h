@@ -41,11 +41,11 @@
 #include "hrt.h"
 
 
-typedef struct legacy_12c_data_t {
+typedef struct legacy_i2c_data_t {
     uint64_t    time_stamp_utc;
     i2c_frame   frame;
     i2c_integral_frame integral_frame;
-} legacy_12c_data_t;
+} legacy_i2c_data_t;
 
 
 typedef enum  range_sensor_type_t {
@@ -77,7 +77,7 @@ typedef struct range_data_t {
 
 __BEGIN_DECLS
 __EXPORT int uavcannode_run(void);
-__EXPORT int uavcannode_publish_flow(legacy_12c_data_t *pdata);
+__EXPORT int uavcannode_publish_flow(legacy_i2c_data_t *pdata);
 __EXPORT int uavcannode_publish_range(range_data_t *pdata);
 __EXPORT int uavcannode_main(bool start_not_stop);
 __END_DECLS

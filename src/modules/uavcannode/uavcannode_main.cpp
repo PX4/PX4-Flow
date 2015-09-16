@@ -279,31 +279,20 @@ int UavcanNode::publish(range_data_t *pdata)
   _range_pulisher.broadcast(m);
   return PX4_OK;
 }
-int UavcanNode::publish(legacy_12c_data_t *pdata)
+int UavcanNode::publish(legacy_i2c_data_t *pdata)
 {
-  ::threedr::equipment::flow::optical_flow::LegacyRawSample r;
+  ::threedr::equipment::flow::optical_flow::RawSample r;
   r.time.usec = pdata->time_stamp_utc;
-  r.frame.frame_count = pdata->frame.frame_count;
-  r.frame.pixel_flow_x_sum = pdata->frame.pixel_flow_x_sum;
-  r.frame.pixel_flow_y_sum = pdata->frame.pixel_flow_y_sum;
-  r.frame.flow_comp_m_x = pdata->frame.flow_comp_m_x;
-  r.frame.flow_comp_m_y = pdata->frame.flow_comp_m_y;
-  r.frame.qual = pdata->frame.qual;
-  r.frame.gyro_x_rate = pdata->frame.gyro_x_rate;
-  r.frame.gyro_y_rate = pdata->frame.gyro_y_rate;
-  r.frame.gyro_z_rate = pdata->frame.gyro_z_rate;
-  r.frame.gyro_range = pdata->frame.gyro_range;
-  r.integral.frame_count_since_last_readout = pdata->integral_frame.frame_count_since_last_readout;
-  r.integral.pixel_flow_x_integral = pdata->integral_frame.pixel_flow_x_integral;
-  r.integral.pixel_flow_y_integral = pdata->integral_frame.pixel_flow_y_integral;
-  r.integral.gyro_x_rate_integral = pdata->integral_frame.gyro_x_rate_integral;
-  r.integral.gyro_y_rate_integral = pdata->integral_frame.gyro_y_rate_integral;
-  r.integral.gyro_z_rate_integral = pdata->integral_frame.gyro_z_rate_integral;
-  r.integral.integration_timespan = pdata->integral_frame.integration_timespan;
-  r.integral.distance_timestamp = pdata->integral_frame.distance_timestamp;
-  r.integral.ground_distance = pdata->integral_frame.ground_distance;
-  r.integral.gyro_temperature = pdata->integral_frame.gyro_temperature;
-  r.integral.qual = pdata->integral_frame.qual;
+  r.flow_integral_xy_radians[0] = static_cast<float>(pdata->integral_frame.pixel_flow_x_integral) / 10000.0f;
+  r.flow_integral_xy_radians[1] = static_cast<float>(pdata->integral_frame.pixel_flow_y_integral) / 10000.0f;
+  r.gyro_rate_integral_xyz_radians[0] = static_cast<float>(pdata->integral_frame.gyro_x_rate_integral) / 10000.0f;
+  r.gyro_rate_integral_xyz_radians[1] = static_cast<float>(pdata->integral_frame.gyro_y_rate_integral) / 10000.0f;
+  r.gyro_rate_integral_xyz_radians[2] = static_cast<float>(pdata->integral_frame.gyro_z_rate_integral) / 10000.0f;
+  r.integration_time_usec = pdata->integral_frame.integration_timespan;
+  //FIXME: r.max_axis_velocity_radians_sec
+  r.samples_matched_pct = pdata->integral_frame.qual / 255.0f;
+  r.gyro_temperature_celsius = pdata->integral_frame.gyro_temperature / 100.0f;
+  //FIXME: r.gyro_rate_integral_xyz_covariance
   _flow_pulisher.broadcast(r);
   return PX4_OK;
 
@@ -393,7 +382,7 @@ TODO(Need non vol Paramter sotrage)
 	return UavcanNode::start(node_id, bitrate);
 }
 
-__EXPORT int uavcannode_publish_flow(legacy_12c_data_t *pdata)
+__EXPORT int uavcannode_publish_flow(legacy_i2c_data_t *pdata)
 {
 
   UavcanNode *const inst = UavcanNode::instance();

@@ -9,7 +9,7 @@
 #include "uavcan_if.h"
 
 static result_accumulator_ctx accumulator;
-static legacy_12c_data_t i2c_data;
+static legacy_i2c_data_t i2c_data;
 static range_data_t range_data;
 
 __EXPORT void fmu_comm_init() {
