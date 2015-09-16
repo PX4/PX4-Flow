@@ -283,6 +283,7 @@ int UavcanNode::publish(legacy_i2c_data_t *pdata)
 {
   ::threedr::equipment::flow::optical_flow::RawSample r;
   r.time.usec = pdata->time_stamp_utc;
+  r.sensor_id = 0;
   r.flow_integral_xy_radians[0] = static_cast<float>(pdata->integral_frame.pixel_flow_x_integral) / 10000.0f;
   r.flow_integral_xy_radians[1] = static_cast<float>(pdata->integral_frame.pixel_flow_y_integral) / 10000.0f;
   r.gyro_rate_integral_xyz_radians[0] = static_cast<float>(pdata->integral_frame.gyro_x_rate_integral) / 10000.0f;
