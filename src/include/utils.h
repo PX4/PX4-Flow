@@ -42,6 +42,5 @@
 */
 char* ftoa(float f);
 void ltoa(char *buf, unsigned long i, int base);
-void itoa(char *buf, unsigned int i, int base);
 
 #endif /* UTILS_H_ */

@@ -40,7 +40,6 @@
 #include "no_warnings.h"
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
-#include "utils.h"
 #include "dcmi.h"
 #include "timer.h"
 #include "stm32f4xx_gpio.h"

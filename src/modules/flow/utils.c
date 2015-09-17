@@ -157,29 +157,3 @@ void ltoa(char *buf, unsigned long i, int base)
 		}
 	strcpy(buf, s);
 }
-
-void itoa(char *buf, unsigned int i, int base)
-{
-	char *s;
-	const int len = 10;
-	int rem;
-	char rev[len+1];
-
-	if (i == 0)
-		s = "0";
-	else
-		{
-		rev[len] = 0;
-		s = &rev[len];
-		while (i)
-			{
-			rem = i % base;
-			if (rem < 10)
-				*--s = rem + '0';
-			else if (base == 16)
-				*--s = "abcdef"[rem - 10];
-			i /= base;
-			}
-		}
-	strcpy(buf, s);
-}

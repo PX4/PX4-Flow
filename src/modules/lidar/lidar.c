@@ -35,7 +35,6 @@
 #include "distance.h"
 #include "usbd_cdc_vcp.h"
 #include "main.h"
-#include "utils.h"
 #include "distance_mode_filter.h"
 
 #include "stm32f4xx.h"

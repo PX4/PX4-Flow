@@ -51,7 +51,6 @@
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "settings.h"
-#include "utils.h"
 #include "filter.h"
 #include "result_accumulator.h"
 #include "flow.h"
