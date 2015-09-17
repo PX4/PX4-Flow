@@ -45,7 +45,6 @@
 #include <mavlink.h>
 #include "flow.h"
 #include "dcmi.h"
-#include "debug.h"
 #include "timer.h"
 
 #define __INLINE inline

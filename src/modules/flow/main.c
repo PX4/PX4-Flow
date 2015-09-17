@@ -62,7 +62,6 @@
 #include "usart.h"
 #include "distance.h"
 #include "communication.h"
-#include "debug.h"
 #include "usbd_cdc_core.h"
 #include "usbd_usr.h"
 #include "usbd_desc.h"
@@ -178,7 +177,6 @@ static void send_video_fn(void) {
 }
 
 static void send_params_fn(void) {
-	debug_message_send_one();
 	communication_parameter_send();
 }
 
