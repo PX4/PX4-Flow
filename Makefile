@@ -254,7 +254,7 @@ endif
 .PHONY:	 upload-usb
 upload-usb: archives all
 	@echo Attempting to flash $(notdir $(LEGACY_PX4)) PX4FLOW board via USB
-	@python -u Tools/px_uploader.py $(LEGACY_PX4) --baud 921600 --port $(SERIAL_PORTS)
+	@python2 -u Tools/px_uploader.py $(LEGACY_PX4) --baud 921600 --port $(SERIAL_PORTS)
 
 
 #
