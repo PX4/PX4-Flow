@@ -123,10 +123,6 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_ALGORITHM_CHOICE], "ALG_CHOICE");
 	global_data.param_access[PARAM_ALGORITHM_CHOICE] = READ_WRITE;
 
-	global_data.param[PARAM_ALGORITHM_IMAGE_FILTER] = 0;
-	strcpy(global_data.param_name[PARAM_ALGORITHM_IMAGE_FILTER], "ALG_IMG_FILT");
-	global_data.param_access[PARAM_ALGORITHM_IMAGE_FILTER] = READ_WRITE;
-
 	global_data.param[PARAM_ALGORITHM_CORNER_KAPPA] = 0.06;
 	strcpy(global_data.param_name[PARAM_ALGORITHM_CORNER_KAPPA], "ALG_CORN_KAPPA");
 	global_data.param_access[PARAM_ALGORITHM_CORNER_KAPPA] = READ_WRITE;

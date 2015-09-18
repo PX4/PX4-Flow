@@ -36,7 +36,6 @@ SRCS += 		main.c \
           reset.c \
           distance_mode_filter.c \
 	   camera.c \
-	   filter.c \
 	   result_accumulator.c \
 	   timer.c \
 	   usb_composite.c \
