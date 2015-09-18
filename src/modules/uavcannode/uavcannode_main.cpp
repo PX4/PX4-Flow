@@ -282,8 +282,7 @@ int UavcanNode::publish(range_data_t *pdata)
 int UavcanNode::publish(legacy_i2c_data_t *pdata)
 {
   ::threedr::equipment::flow::optical_flow::RawSample r;
-  r.time.usec = pdata->time_stamp_utc;
-  r.sensor_id = 0;
+  r.timestamp.usec = pdata->time_stamp_utc;
   r.flow_integral_xy_radians[0] = static_cast<float>(pdata->integral_frame.pixel_flow_x_integral) / 10000.0f;
   r.flow_integral_xy_radians[1] = static_cast<float>(pdata->integral_frame.pixel_flow_y_integral) / 10000.0f;
   r.gyro_rate_integral_xyz_radians[0] = static_cast<float>(pdata->integral_frame.gyro_x_rate_integral) / 10000.0f;
@@ -291,7 +290,7 @@ int UavcanNode::publish(legacy_i2c_data_t *pdata)
   r.gyro_rate_integral_xyz_radians[2] = static_cast<float>(pdata->integral_frame.gyro_z_rate_integral) / 10000.0f;
   r.integration_time_usec = pdata->integral_frame.integration_timespan;
   //FIXME: r.max_axis_velocity_radians_sec
-  r.samples_matched_pct = pdata->integral_frame.qual / 255.0f;
+  r.samples_matched_pct = pdata->integral_frame.qual;
   r.gyro_temperature_celsius = pdata->integral_frame.gyro_temperature / 100.0f;
   //FIXME: r.gyro_rate_integral_xyz_covariance
   _flow_pulisher.broadcast(r);

@@ -1,18 +1,16 @@
 # Raw (unfused) optical flow sample
 
-uavcan.Timestamp time
-
-uint8 sensor_id
+uavcan.Timestamp timestamp
 
 # Lateral flow (displacement) in radians & delta angle over timestep
 float16[2] flow_integral_xy_radians
 float16[3] gyro_rate_integral_xyz_radians
 # The time period over which the flow & gyro data was collected
-uint21 integration_time_usec
+uint24 integration_time_usec
 # The maximum velocity (rad/s) for which the flow data can be trusted
 float16 max_axis_velocity_radians_sec
 # The percentage (0 to 1) of tiles for which the optical flow feature tracker could find a displacement
-float16 samples_matched_pct
+uint8 samples_matched_pct
 # Gyro temperature
 float16 gyro_temperature_celsius
 # Gyro covariance matrix
