@@ -429,6 +429,13 @@ static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx, bool initial) {
 		 */
 		ctx->pixel_frame_line_ctrl_reg = 0x0000;
 		mt9v034_WriteReg(MTV_PIXEL_FRAME_LINE_CTRL_REG, ctx->pixel_frame_line_ctrl_reg);
+		
+		// Write reserved registers per Rev G datasheet table 8 recommendations
+		mt9v034_WriteReg(0x13, 0x2D2E);
+		mt9v034_WriteReg(0x20, 0x03C7);
+		mt9v034_WriteReg(0x24, 0x001B);
+		mt9v034_WriteReg(0x2B, 0x0003);
+		mt9v034_WriteReg(0x2F, 0x0003);
 	}
 	
 	/* settings that are the same for both contexts: */
