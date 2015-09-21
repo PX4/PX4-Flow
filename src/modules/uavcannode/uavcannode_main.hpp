@@ -41,8 +41,6 @@
 #include <threedr/equipment/flow/optical_flow/RawSample.hpp>
 #include <uavcan/node/timer.hpp>
 
-#include "uavcan_if.h"
-
 /**
  * @file uavcan_main.hpp
  *
@@ -103,9 +101,9 @@ public:
 
 	static UavcanNode *instance() { return _instance; }
 
-        int             run();
-        int             publish(legacy_i2c_data_t *pdata);
-        int             publish(range_data_t *pdata);
+	int run();
+	int publish(::threedr::equipment::flow::optical_flow::RawSample&);
+	int publish(uavcan::equipment::range_sensor::Measurement&);
 
 	/* The bit rate that can be passed back to the bootloader */
 
