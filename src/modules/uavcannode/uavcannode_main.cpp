@@ -102,10 +102,10 @@ UavcanNode *UavcanNode::_instance;
 UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &system_clock) :
 	active_bitrate(0),
 	_node(can_driver, system_clock),
-	_fw_update_listner(_node),
+	_fw_update_listener(_node),
 	_time_sync_slave(_node),
-	_flow_pulisher(_node),
-	_range_pulisher(_node),
+	_flow_publisher(_node),
+	_range_publisher(_node),
 	_reset_timer(_node)
 {
 
@@ -246,7 +246,7 @@ int UavcanNode::init(uavcan::NodeID node_id)
 
 	fill_node_info();
 
-	const int srv_start_res = _fw_update_listner.start(BeginFirmwareUpdateCallBack(this,
+	const int srv_start_res = _fw_update_listener.start(BeginFirmwareUpdateCallBack(this,
 				  &UavcanNode::cb_beginfirmware_update));
 
 	if (srv_start_res < 0) {
@@ -274,13 +274,13 @@ class RestartRequestHandler: public uavcan::IRestartRequestHandler
 
 int UavcanNode::publish(::uavcan::equipment::range_sensor::Measurement &m)
 {
-  _range_pulisher.broadcast(m);
+  _range_publisher.broadcast(m);
   return PX4_OK;
 }
 
 int UavcanNode::publish(::threedr::equipment::flow::optical_flow::RawSample &r)
 {
-  _flow_pulisher.broadcast(r);
+  _flow_publisher.broadcast(r);
   return PX4_OK;
 
 }
