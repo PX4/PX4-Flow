@@ -51,8 +51,6 @@
 #include "mavlink_bridge_header.h"
 #include <mavlink.h>
 #include "settings.h"
-#include "utils.h"
-#include "filter.h"
 #include "result_accumulator.h"
 #include "flow.h"
 #include "timer.h"
@@ -63,14 +61,12 @@
 #include "usart.h"
 #include "distance.h"
 #include "communication.h"
-#include "debug.h"
 #include "usbd_cdc_core.h"
 #include "usbd_usr.h"
 #include "usbd_desc.h"
 #include "usbd_cdc_vcp.h"
 #include "main.h"
 #include "hrt.h"
-#include <uavcan_if.h>
 #include <px4_macros.h>
 
 //#define CONFIG_USE_PROBES
@@ -179,7 +175,6 @@ static void send_video_fn(void) {
 }
 
 static void send_params_fn(void) {
-	debug_message_send_one();
 	communication_parameter_send();
 }
 
@@ -415,11 +410,6 @@ int main(void)
 			bool used_klt_image[2] = {false, false};
 			for (i = 0; i < 2; ++i) {
 				if (frames[i]->frame_number != frames[i]->meta) {
-					// the image is new. apply pre-processing:
-					/* filter the new image */
-					if (FLOAT_AS_BOOL(global_data.param[PARAM_ALGORITHM_IMAGE_FILTER])) {
-						filter_image(frames[i]->buffer, frames[i]->param.p.size.x);
-					}
 					/* update meta data to mark it as an up-to date image: */
 					frames[i]->meta = frames[i]->frame_number;
 				} else {

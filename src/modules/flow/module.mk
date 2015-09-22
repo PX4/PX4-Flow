@@ -22,7 +22,6 @@ SRCS = 	$(ST_LIB)startup_stm32f4xx.s \
 					
 
 SRCS += 		main.c \
-          utils.c \
           settings.c \
           communication.c \
           flow.c \
@@ -30,7 +29,6 @@ SRCS += 		main.c \
           mt9v034.c \
           gyro.c \
           usart.c \
-          debug.c \
           usb_bsp.c \
           usbd_cdc_vcp.c \
           usbd_desc.c \
@@ -38,7 +36,6 @@ SRCS += 		main.c \
           reset.c \
           distance_mode_filter.c \
 	   camera.c \
-	   filter.c \
 	   result_accumulator.c \
 	   timer.c \
 	   usb_composite.c \

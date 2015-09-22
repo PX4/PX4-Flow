@@ -46,7 +46,6 @@
 #include "stm32f4xx_tim.h"
 #include "stm32f4xx_dma.h"
 #include "misc.h"
-#include "utils.h"
 #include "usart.h"
 #include "settings.h"
 #include "distance.h"

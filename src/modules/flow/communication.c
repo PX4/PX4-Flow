@@ -45,7 +45,6 @@
 #include "mt9v034.h"
 #include "dcmi.h"
 #include "gyro.h"
-#include "debug.h"
 #include "communication.h"
 #include "timer.h"
 
@@ -241,21 +240,9 @@ void handle_mavlink_message(mavlink_channel_t chan,
 							{
 								notify_changed_camera_parameters();
 							}
-							/* handle calibration on/off */
-							else if(i == PARAM_VIDEO_ONLY)
-							{
-								if(FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
-									debug_string_message_buffer("Calibration Mode On");
-								else
-									debug_string_message_buffer("Calibration Mode Off");
-							}
 							else if(i == PARAM_GYRO_SENSITIVITY_DPS)
 							{
 								l3gd20_config();
-							}
-							else
-							{
-								debug_int_message_buffer("Parameter received, param id =", i);
 							}
 
 							/* report back new value */
