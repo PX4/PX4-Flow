@@ -9,9 +9,7 @@ float16[3] gyro_rate_integral_xyz_radians
 uint24 integration_time_usec
 # The maximum velocity (rad/s) for which the flow data can be trusted
 float16 max_axis_velocity_radians_sec
-# The percentage (0 to 1) of tiles for which the optical flow feature tracker could find a displacement
+# The percentage (scaled from 0 to 255) of tiles for which the optical flow feature tracker could find a displacement
 uint8 samples_matched_pct
 # Gyro temperature
 float16 gyro_temperature_celsius
-# Gyro covariance matrix
-float16[<=9] gyro_rate_integral_xyz_covariance  # Radians^2 / Radians
