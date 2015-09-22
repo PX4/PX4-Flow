@@ -67,7 +67,6 @@
 #include "usbd_cdc_vcp.h"
 #include "main.h"
 #include "hrt.h"
-#include <uavcan_if.h>
 #include <px4_macros.h>
 
 //#define CONFIG_USE_PROBES

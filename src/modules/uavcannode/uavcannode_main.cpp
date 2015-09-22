@@ -40,6 +40,15 @@
 #include "boot_app_shared.h"
 
 #include <px4_macros.h>
+#include <px4_config.h>
+#include <visibility.h>
+
+extern "C" {
+	#include "settings.h"
+	#include "hrt.h"
+	#include "fmu_comm.h"
+	#include "result_accumulator.h"
+}
 
 #define FW_GIT STRINGIFY(GIT_VERSION)
 
@@ -93,10 +102,10 @@ UavcanNode *UavcanNode::_instance;
 UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &system_clock) :
 	active_bitrate(0),
 	_node(can_driver, system_clock),
-	_fw_update_listner(_node),
+	_fw_update_listener(_node),
 	_time_sync_slave(_node),
-	_flow_pulisher(_node),
-	_range_pulisher(_node),
+	_flow_publisher(_node),
+	_range_publisher(_node),
 	_reset_timer(_node)
 {
 
@@ -237,7 +246,7 @@ int UavcanNode::init(uavcan::NodeID node_id)
 
 	fill_node_info();
 
-	const int srv_start_res = _fw_update_listner.start(BeginFirmwareUpdateCallBack(this,
+	const int srv_start_res = _fw_update_listener.start(BeginFirmwareUpdateCallBack(this,
 				  &UavcanNode::cb_beginfirmware_update));
 
 	if (srv_start_res < 0) {
@@ -263,37 +272,15 @@ class RestartRequestHandler: public uavcan::IRestartRequestHandler
 
 
 
-int UavcanNode::publish(range_data_t *pdata)
+int UavcanNode::publish(::uavcan::equipment::range_sensor::Measurement &m)
 {
-  ::uavcan::equipment::range_sensor::Measurement m;
-  m.timestamp.usec = pdata->time_stamp_utc;
-  m.sensor_id = pdata->sensor_id;
-  m.beam_orientation_in_body_frame.fixed_axis_roll_pitch_yaw[0] = pdata->roll  * m.beam_orientation_in_body_frame.ANGLE_MULTIPLIER;
-  m.beam_orientation_in_body_frame.fixed_axis_roll_pitch_yaw[1] = pdata->pitch * m.beam_orientation_in_body_frame.ANGLE_MULTIPLIER;
-  m.beam_orientation_in_body_frame.fixed_axis_roll_pitch_yaw[2] = pdata->yaw   * m.beam_orientation_in_body_frame.ANGLE_MULTIPLIER;
-  m.beam_orientation_in_body_frame.orientation_defined = true;
-  m.field_of_view = pdata->field_of_view;
-  m.sensor_type = pdata->sensor_type;
-  m.reading_type= pdata->reading_type;
-  m.range = pdata->range;
-  _range_pulisher.broadcast(m);
+  _range_publisher.broadcast(m);
   return PX4_OK;
 }
-int UavcanNode::publish(legacy_i2c_data_t *pdata)
+
+int UavcanNode::publish(::threedr::equipment::flow::optical_flow::RawSample &r)
 {
-  ::threedr::equipment::flow::optical_flow::RawSample r;
-  r.timestamp.usec = pdata->time_stamp_utc;
-  r.flow_integral_xy_radians[0] = static_cast<float>(pdata->integral_frame.pixel_flow_x_integral) / 10000.0f;
-  r.flow_integral_xy_radians[1] = static_cast<float>(pdata->integral_frame.pixel_flow_y_integral) / 10000.0f;
-  r.gyro_rate_integral_xyz_radians[0] = static_cast<float>(pdata->integral_frame.gyro_x_rate_integral) / 10000.0f;
-  r.gyro_rate_integral_xyz_radians[1] = static_cast<float>(pdata->integral_frame.gyro_y_rate_integral) / 10000.0f;
-  r.gyro_rate_integral_xyz_radians[2] = static_cast<float>(pdata->integral_frame.gyro_z_rate_integral) / 10000.0f;
-  r.integration_time_usec = pdata->integral_frame.integration_timespan;
-  //FIXME: r.max_axis_velocity_radians_sec
-  r.samples_matched_pct = pdata->integral_frame.qual;
-  r.gyro_temperature_celsius = pdata->integral_frame.gyro_temperature / 100.0f;
-  //FIXME: r.gyro_rate_integral_xyz_covariance
-  _flow_pulisher.broadcast(r);
+  _flow_publisher.broadcast(r);
   return PX4_OK;
 
 }
@@ -330,16 +317,6 @@ int
 UavcanNode::teardown()
 {
 	return 0;
-}
-
-
-/*
- * App entry point
- */
-static void print_usage()
-{
-	PX4_INFO("usage: \n"
-	      "\tuavcannode {start|status|stop|arm|disarm}");
 }
 
 static int uavcannode_start()
@@ -382,69 +359,77 @@ TODO(Need non vol Paramter sotrage)
 	return UavcanNode::start(node_id, bitrate);
 }
 
-__EXPORT int uavcannode_publish_flow(legacy_i2c_data_t *pdata)
-{
+static result_accumulator_ctx accumulator;
 
-  UavcanNode *const inst = UavcanNode::instance();
-
-    if (!inst) {
-            PX4_ERR( "application not running");
-            return 1;
-    }
-    return inst->publish(pdata);
-}
-
-__EXPORT int uavcannode_publish_range(range_data_t *pdata)
-{
-
-  UavcanNode *const inst = UavcanNode::instance();
-
-    if (!inst) {
-            PX4_ERR( "application not running");
-            return 1;
-    }
-    return inst->publish(pdata);
-}
-
-__EXPORT int uavcannode_run()
-{
-  UavcanNode *const inst = UavcanNode::instance();
-
-  if (!inst) {
-          PX4_ERR( "application not running");
-          return 1;
-  }
-  return inst->run();
-
-}
-
-
-int uavcannode_main(bool start_not_stop)
-{
-	if (start_not_stop) {
-
-		if (UavcanNode::instance()) {
-		    PX4_ERR("already started");
-		    return 1;
-		}
-
-		return uavcannode_start();
+__EXPORT void fmu_comm_init() {
+	result_accumulator_init(&accumulator);
+	if (!UavcanNode::instance()) {
+			uavcannode_start();
 	}
+}
 
-	/* commands below require the app to be started */
+__EXPORT void fmu_comm_run() {
 	UavcanNode *const inst = UavcanNode::instance();
 
 	if (!inst) {
-                PX4_ERR( "application not running");
-                return 1;
+		PX4_ERR( "application not running");
+		return;
 	}
 
-
-	if (!start_not_stop) {
-		inst->stop();
-                return 0;
-	}
-
-	print_usage();
-        return 1;
+	inst->run();
 }
+
+__EXPORT void fmu_comm_update(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
+  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
+  bool distance_valid, float ground_distance, uint32_t distance_age) {
+
+	/* feed the accumulator and recalculate */
+	result_accumulator_feed(&accumulator, dt, x_rate, y_rate, z_rate, gyro_temp,
+	            qual, pixel_flow_x, pixel_flow_y, rad_per_pixel, 
+	            distance_valid, ground_distance, distance_age);
+
+	if (accumulator.frame_count % 32 == 0) {
+		UavcanNode *const inst = UavcanNode::instance();
+
+		if (!inst) {
+			PX4_ERR( "UAVCAN not running");
+			return;
+		}
+
+		uint64_t timestamp = hrt_absolute_time();
+
+		result_accumulator_output_flow_rad flow_rad;
+		result_accumulator_calculate_output_flow_rad(&accumulator, global_data.param[PARAM_ALGORITHM_MIN_VALID_RATIO], &flow_rad);
+		::threedr::equipment::flow::optical_flow::RawSample r;
+		r.timestamp.usec = timestamp;
+		r.flow_integral_xy_radians[0] = flow_rad.integrated_x;
+		r.flow_integral_xy_radians[1] = flow_rad.integrated_y;
+		r.gyro_rate_integral_xyz_radians[0] = flow_rad.integrated_xgyro;
+		r.gyro_rate_integral_xyz_radians[1] = flow_rad.integrated_ygyro;
+		r.gyro_rate_integral_xyz_radians[2] = flow_rad.integrated_zgyro;
+		r.integration_time_usec = flow_rad.integration_time;
+		//FIXME: r.max_axis_velocity_radians_sec
+		r.samples_matched_pct = flow_rad.quality;
+		r.gyro_temperature_celsius = flow_rad.temperature / 100.0f;
+		//FIXME: r.gyro_rate_integral_xyz_covariance
+		inst->publish(r);
+
+		::uavcan::equipment::range_sensor::Measurement m;
+		m.timestamp.usec = timestamp;
+		m.sensor_id = 0;
+		m.beam_orientation_in_body_frame.fixed_axis_roll_pitch_yaw[0] = 0 * m.beam_orientation_in_body_frame.ANGLE_MULTIPLIER;
+		m.beam_orientation_in_body_frame.fixed_axis_roll_pitch_yaw[1] = 0 * m.beam_orientation_in_body_frame.ANGLE_MULTIPLIER;
+		m.beam_orientation_in_body_frame.fixed_axis_roll_pitch_yaw[2] = 0 * m.beam_orientation_in_body_frame.ANGLE_MULTIPLIER;
+		m.beam_orientation_in_body_frame.orientation_defined = true;
+		m.field_of_view = 0;
+		m.sensor_type = ::uavcan::equipment::range_sensor::Measurement::SENSOR_TYPE_LIDAR;
+		m.reading_type = (accumulator.last.ground_distance >= 0) 
+			? ::uavcan::equipment::range_sensor::Measurement::READING_TYPE_VALID_RANGE
+			: ::uavcan::equipment::range_sensor::Measurement::READING_TYPE_UNDEFINED;
+		m.range = accumulator.last.ground_distance;
+		inst->publish(m);
+
+		result_accumulator_reset(&accumulator);
+	}
+}
+

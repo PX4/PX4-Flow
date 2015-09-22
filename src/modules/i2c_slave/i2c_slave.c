@@ -32,7 +32,6 @@
  ****************************************************************************/
  
 #include <stdbool.h>
-#include <uavcan_if.h>
 #include "fmu_comm.h"
 
 #include "px4_config.h"
