@@ -187,6 +187,7 @@ uint32_t get_boot_time_us(void)
 	do {
 		// read the value:
 		val_us_base = boot_time_us_base;
+		if (SCB->ICSR & SCB_ICSR_PENDSTSET_Msk) val_us_base += 1000;
 		val_tick = SysTick->VAL;
 		// make sure it did not roll over in the mean-time:
 	} while(SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk);
