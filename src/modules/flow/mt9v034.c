@@ -127,8 +127,20 @@ const camera_sensor_interface *mt9v034_get_sensor_interface() {
 	return &mt9v034_sensor_interface;
 }
 
-uint32_t mt9v034_get_clks_per_row(uint16_t width, int binning) {
-	width  = width * binning;
+static uint16_t mt9v034_hor_blanking(uint16_t raw_width, int binning) {
+	/* 
+	 * Horizontal Blanking
+	 * Number of blank columns in a row. 
+	 * Minimum horizontal blanking is 61 for normal mode, 
+	 * 71 for column bin 2 mode, and 91 for column bin 4 mode.
+	 * 
+	 * The MT9V034 uses column parallel analog-digital converters, thus short row timing is not possible. 
+	 * The minimum total row time is 690 columns (horizontal width + horizontal blanking). The minimum 
+	 * horizontal blanking is 61( / 71 / 91). When the window width is set below 627, horizontal blanking 
+	 * must be increased.
+	 * 
+	 * In old code for bin 4 and 64 pixels it was 350 + 91.
+	 */
 	uint16_t hor_blanking = 61;
 	/* init to minimum: */
 	switch (binning) {
@@ -137,9 +149,15 @@ uint32_t mt9v034_get_clks_per_row(uint16_t width, int binning) {
 		case 4: hor_blanking = 91; break;
 	}
 	/* increase if window is smaller: */
-	if (width < 690 - hor_blanking) {
-		hor_blanking = 690 - width;
+	if (raw_width < 690 - hor_blanking) {
+		hor_blanking = 690 - raw_width;
 	}
+	return hor_blanking;
+}
+
+uint32_t mt9v034_get_clks_per_row(uint16_t width, int binning) {
+	width  = width * binning;
+	uint16_t hor_blanking = mt9v034_hor_blanking(width, binning);
 	return width + hor_blanking;
 }
 
@@ -199,50 +217,10 @@ bool mt9v034_prepare_update_param(void *usr, const camera_img_param_ex *img_para
 	return true;
 }
 
-bool mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
-	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
-	/* check whether i2c is in use: */
-	if (ctx->seq_i2c_in_use) {
-		return false;
-	}
-	
-	int context_idx;
-	if (ctx->do_switch_context) {
-		context_idx = ctx->desired_context;
-	} else {
-		context_idx = ctx->cur_context;
-	}
+static bool mt9v034_configure_exposure_param(mt9v034_sensor_ctx *ctx, int context_idx, uint32_t exposure, float gain, bool full_refresh) {
 	camera_img_param_ex *ctx_param = &ctx->context_p[context_idx];
 	
-	/* image dimensions */
-	uint16_t width  = ctx_param->p.size.x * ctx_param->p.binning;
-	
-	/* 
-	 * Horizontal Blanking
-	 * Number of blank columns in a row. 
-	 * Minimum horizontal blanking is 61 for normal mode, 
-	 * 71 for column bin 2 mode, and 91 for column bin 4 mode.
-	 * 
-	 * The MT9V034 uses column parallel analog-digital converters, thus short row timing is not possible. 
-	 * The minimum total row time is 690 columns (horizontal width + horizontal blanking). The minimum 
-	 * horizontal blanking is 61( / 71 / 91). When the window width is set below 627, horizontal blanking 
-	 * must be increased.
-	 * 
-	 * In old code for bin 4 and 64 pixels it was 350 + 91.
-	 */
-	uint16_t hor_blanking = 61;
-	/* init to minimum: */
-	switch (ctx_param->p.binning) {
-		case 1: hor_blanking = 61; break;
-		case 2: hor_blanking = 71; break;
-		case 4: hor_blanking = 91; break;
-	}
-	/* increase if window is smaller: */
-	if (width < 690 - hor_blanking) {
-		hor_blanking = 690 - width;
-	}
-	
-	uint16_t row_time = hor_blanking + width;
+	uint16_t row_time = mt9v034_get_clks_per_row(ctx_param->p.size.x, ctx_param->p.binning);
 	
 	/*
 	 * Coarse Shutter Width Total
@@ -269,7 +247,7 @@ bool mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 	} else if (analog_gain > 64) {
 		analog_gain = 64;
 	}
-	bool update_gain = ((uint16_t)(ctx_param->analog_gain * 16 + 0.05f) != analog_gain);
+	bool update_gain = ((uint16_t)(ctx_param->analog_gain * 16 + 0.5f) != analog_gain);
 	float real_analog_gain = analog_gain * 0.0625f;
 	
 	uint16_t sw_for_blanking = coarse_sw_total;
@@ -293,27 +271,27 @@ bool mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 
 	switch (context_idx) {
 		case 0:
-			if (update_exposure || DEBUG_TEST_WORSTCASE_LATENCY) {
+			if (full_refresh || update_exposure || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_A, coarse_sw_total);
 				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_A, fine_sw_total);
 			}
-			if (update_gain || DEBUG_TEST_WORSTCASE_LATENCY) {
+			if (full_refresh || update_gain || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_A, analog_gain);
 			}
-			if (ver_blanking != ctx->ver_blnk_ctx_a_reg || DEBUG_TEST_WORSTCASE_LATENCY) {
+			if (full_refresh || ver_blanking != ctx->ver_blnk_ctx_a_reg || DEBUG_TEST_WORSTCASE_LATENCY) {
 				ctx->ver_blnk_ctx_a_reg = ver_blanking;
 				mt9v034_WriteReg(MTV_VER_BLANKING_REG_A, ctx->ver_blnk_ctx_a_reg);
 			}
 			break;
 		case 1:
-			if (update_exposure || DEBUG_TEST_WORSTCASE_LATENCY) {
+			if (full_refresh || update_exposure || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_B, coarse_sw_total);
 				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_B, fine_sw_total);
 			}
-			if (update_gain || DEBUG_TEST_WORSTCASE_LATENCY) {
+			if (full_refresh || update_gain || DEBUG_TEST_WORSTCASE_LATENCY) {
 				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_B, analog_gain);
 			}
-			if (ver_blanking != ctx->ver_blnk_ctx_b_reg || DEBUG_TEST_WORSTCASE_LATENCY) {
+			if (full_refresh || ver_blanking != ctx->ver_blnk_ctx_b_reg || DEBUG_TEST_WORSTCASE_LATENCY) {
 				ctx->ver_blnk_ctx_b_reg = ver_blanking;
 				mt9v034_WriteReg(MTV_VER_BLANKING_REG_B, ctx->ver_blnk_ctx_b_reg);
 			}
@@ -325,6 +303,23 @@ bool mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
 	ctx_param->analog_gain = real_analog_gain;
 	
 	return true;
+}
+
+bool mt9v034_update_exposure_param(void *usr, uint32_t exposure, float gain) {
+	mt9v034_sensor_ctx *ctx = (mt9v034_sensor_ctx *)usr;
+	/* check whether i2c is in use: */
+	if (ctx->seq_i2c_in_use) {
+		return false;
+	}
+	
+	int context_idx;
+	if (ctx->do_switch_context) {
+		context_idx = ctx->desired_context;
+	} else {
+		context_idx = ctx->cur_context;
+	}
+
+	return mt9v034_configure_exposure_param(ctx, context_idx, exposure, gain, false);
 }
 
 void mt9v034_restore_previous_param(void *usr) {
@@ -579,8 +574,6 @@ static void mt9v034_configure_general(mt9v034_sensor_ctx *ctx, bool initial) {
 static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, const camera_img_param_ex *img_param, bool full_refresh) {
 	bool update_size    = full_refresh;
 	bool update_binning = full_refresh;
-	bool update_exposure= full_refresh;
-	bool update_gain    = full_refresh;
 	if (context_idx < 0 || context_idx >= 2) return false;
 	camera_img_param_ex *ctx_param = &ctx->context_p[context_idx];
 	/* check which sets of parameters we need to update: */
@@ -602,84 +595,8 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 
 	uint16_t col_start = 1 + (752 - width)  / 2;
 	uint16_t row_start = 4 + (480 - height) / 2;
-	
-	/* 
-	 * Horizontal Blanking
-	 * Number of blank columns in a row. 
-	 * Minimum horizontal blanking is 61 for normal mode, 
-	 * 71 for column bin 2 mode, and 91 for column bin 4 mode.
-	 * 
-	 * The MT9V034 uses column parallel analog-digital converters, thus short row timing is not possible. 
-	 * The minimum total row time is 690 columns (horizontal width + horizontal blanking). The minimum 
-	 * horizontal blanking is 61( / 71 / 91). When the window width is set below 627, horizontal blanking 
-	 * must be increased.
-	 * 
-	 * In old code for bin 4 and 64 pixels it was 350 + 91.
-	 */
-	uint16_t hor_blanking = 61;
-	/* init to minimum: */
-	switch (img_param->p.binning) {
-		case 1: hor_blanking = 61; break;
-		case 2: hor_blanking = 71; break;
-		case 4: hor_blanking = 91; break;
-	}
-	/* increase if window is smaller: */
-	if (width < 690 - hor_blanking) {
-		hor_blanking = 690 - width;
-	}
-	
-	uint16_t row_time = hor_blanking + width;
-	
-	/*
-	 * Coarse Shutter Width Total
-	 * Total integration time in number of rows. This value is used only when AEC is disabled.
-	 * Default: 0x01E0
-	 */
-	uint16_t coarse_sw_total = img_param->exposure / row_time;
-	uint16_t fine_sw_total   = img_param->exposure % row_time;
-	/* ensure minimum: */
-	if (coarse_sw_total < 1 && fine_sw_total < 260) {
-		fine_sw_total = 260;
-	}
-	uint32_t real_exposure = coarse_sw_total * row_time + fine_sw_total;
-	if (ctx_param->exposure != real_exposure) {
-		update_exposure = true;
-	}
-	/**
-	 * Analog Gain
-	 * [6:0] Analog Gain:		Range 16 - 64
-	 *  [15] Force 0.75X:       0 = Disabled.
-     */
-	uint16_t analog_gain = img_param->analog_gain * 16 + 0.5f;
-	/* limit: */
-	if (analog_gain < 16) {
-		analog_gain = 16;
-	} else if (analog_gain > 64) {
-		analog_gain = 64;
-	}
-	float real_analog_gain = analog_gain * 0.0625f;
-	if ((uint16_t)(ctx_param->analog_gain * 16 + 0.05f) != analog_gain) {
-		update_gain = true;
-	}
-	
-	uint16_t sw_for_blanking = coarse_sw_total;
-	if (sw_for_blanking < img_param->p.size.y) {
-		sw_for_blanking = img_param->p.size.y;
-	}
-	/* 
-	 * Vertical Blanking
-	 * Number of blank rows in a frame. V-Blank value must meet the following minimums:
-	 * Linear Mode:
-	 * V-Blank (min) = SW_total - R0x08 + 7
-	 * R0x08 (Coarse Shutter Width 1)
-	 * If manual exposure    then SW_total = R0x0B. (Coarse Shutter Width Total)
-	 * If auto-exposure mode then SW_total = R0xAD. (Maximum Coarse Shutter Width)
-	 * 
-	 * If Auto-Knee Point enabled, then V-Blank (min) = (t2 + t3 + 7).
-	 * t2 = Tint_tot * (1/2) ^ T2 Ratio -> 4
-	 * t3 = Tint_tot * (1/2) ^ T3 Ratio -> 1
-	 */
-	uint16_t ver_blanking = (sw_for_blanking >> 4) + (sw_for_blanking >> 6) + 7;
+		
+	uint16_t hor_blanking = mt9v034_hor_blanking(width, img_param->p.binning);
 
 	/*
 	 * Read Mode
@@ -709,17 +626,6 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 				mt9v034_WriteReg(MTV_COLUMN_START_REG_A, col_start);
 				mt9v034_WriteReg(MTV_ROW_START_REG_A, row_start);
 			}
-			if (ver_blanking != ctx->ver_blnk_ctx_a_reg || full_refresh || DEBUG_TEST_WORSTCASE_LATENCY) {
-				ctx->ver_blnk_ctx_a_reg = ver_blanking;
-				mt9v034_WriteReg(MTV_VER_BLANKING_REG_A, ctx->ver_blnk_ctx_a_reg);
-			}
-			if (update_exposure || DEBUG_TEST_WORSTCASE_LATENCY) {
-				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_A, coarse_sw_total);
-				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_A, fine_sw_total);
-			}
-			if (update_gain || DEBUG_TEST_WORSTCASE_LATENCY) {
-				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_A, analog_gain);
-			}
 			break;
 		case 1:
 			if (update_size || update_binning || DEBUG_TEST_WORSTCASE_LATENCY) {
@@ -730,25 +636,14 @@ static bool mt9v034_configure_context(mt9v034_sensor_ctx *ctx, int context_idx, 
 				mt9v034_WriteReg(MTV_COLUMN_START_REG_B, col_start);
 				mt9v034_WriteReg(MTV_ROW_START_REG_B, row_start);
 			}
-			if (ver_blanking != ctx->ver_blnk_ctx_b_reg || full_refresh || DEBUG_TEST_WORSTCASE_LATENCY) {
-				ctx->ver_blnk_ctx_b_reg = ver_blanking;
-				mt9v034_WriteReg(MTV_VER_BLANKING_REG_B, ctx->ver_blnk_ctx_b_reg);
-			}
-			if (update_exposure || DEBUG_TEST_WORSTCASE_LATENCY) {
-				mt9v034_WriteReg(MTV_COARSE_SW_TOTAL_REG_B, coarse_sw_total);
-				mt9v034_WriteReg(MTV_FINE_SW_TOTAL_REG_B, fine_sw_total);
-			}
-			if (update_gain || DEBUG_TEST_WORSTCASE_LATENCY) {
-				mt9v034_WriteReg(MTV_ANALOG_GAIN_CTRL_REG_B, analog_gain);
-			}
 			break;
 	}
-	
+
 	/* update the current settings: */
-	*ctx_param = *img_param;
-	ctx_param->exposure = real_exposure;
-	ctx_param->analog_gain = real_analog_gain;
+	ctx_param->p = img_param->p;
 	
+	mt9v034_configure_exposure_param(ctx, context_idx, img_param->exposure, img_param->analog_gain, full_refresh);
+
 	return true;
 }
 
