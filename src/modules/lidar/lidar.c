@@ -175,20 +175,12 @@ static bool i2c_read(uint8_t address, uint8_t *data, uint8_t length)
 /* Data from the LIDAR */
 
 float sample, sample_filter;
-uint8_t swver = 0, hwver = 0;
 uint32_t measure_time = 0;
 bool sample_valid = false;
 
 __EXPORT void distance_init(void)
 {
 	i2c_init_master();
-	uint8_t out[1] = { REG_HWVER };
-	uint8_t in[1] = { 0 };
-	if(i2c_write(LIDAR_ADDRESS, out, 1) && i2c_read(LIDAR_ADDRESS, in, 1))
-		hwver = in[0];
-	out[0] = REG_SWVER; in[0] = 0;
-	if(i2c_write(LIDAR_ADDRESS, out, 1) && i2c_read(LIDAR_ADDRESS, in, 1))
-		swver = in[0];
 
 	/* Run interrupt-based drivers after config */
 	I2C_ITConfig(I2C1, I2C_IT_EVT, ENABLE);
@@ -222,6 +214,13 @@ __EXPORT void distance_trigger(void)
 {
 	if(!i2c_started)
 		return;
+		
+	if (ld_state != IDLE) {
+		// Previous reading did not complete
+		distance_init();
+		sample_valid = false;
+	}
+	
 	ld_state = WRITE;
 	ld_reg = REG_CONTROL;
 	ld_buffer[0] = BITS_ACQUIRE_WITH_CORRECTION;
@@ -332,6 +331,7 @@ __EXPORT void I2C1_ER_IRQHandler(void) {
 		I2C1->SR1 &= 0x00FF;
 		ld_state = IDLE;
 	}
+	sample_valid = false;
 }
 
 static void lidar_process(void)
