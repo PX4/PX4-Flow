@@ -109,7 +109,7 @@ static camera_img_param img_stream_param;
 typedef struct __attribute__((packed)) {
 	uint64_t timestamp;
 	uint32_t exposure;
-	uint32_t ground_distance_mm;
+	int32_t ground_distance_mm;
 	uint8_t snapshot_buffer_mem[USB_IMAGE_PIXELS * USB_IMAGE_PIXELS];
 } usb_packet_format;
 
@@ -350,12 +350,12 @@ int main(void)
 		distance_valid = distance_read(&distance_filtered, &distance_raw);
 		/* reset to zero for invalid distances */
 		if (!distance_valid) {
-			distance_filtered = 0.0f;
-			distance_raw = 0.0f;
+			distance_filtered = -1.0f;
+			distance_raw = -1.0f;
 		}
 		
 		/* decide which distance to use */
-		float ground_distance = 0.0f;
+		float ground_distance;
 		if(FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]))
 		{
 			ground_distance = distance_filtered;
@@ -499,18 +499,24 @@ int main(void)
 
 		/* return the image buffers */
 		camera_img_stream_return_buffers(&cam_ctx, frames, 2);
+		
+		result_accumulator_frame frame_data = {
+			.dt = frame_dt,
+			.x_rate = x_rate,
+			.y_rate = y_rate,
+			.z_rate = z_rate,
+			.gyro_temp = gyro_temp,
+			.qual = qual,
+			.pixel_flow_x = pixel_flow_x,
+			.pixel_flow_y = pixel_flow_y,
+			.rad_per_pixel = 1.0f / focal_length_px,
+			.ground_distance = ground_distance,
+			.distance_age = get_time_delta_us(get_distance_measure_time())
+		};
 
 		/* update I2C transmit buffer */
-		fmu_comm_update(frame_dt, 
-						 x_rate, y_rate, z_rate, gyro_temp, 
-						 qual, pixel_flow_x, pixel_flow_y, 1.0f / focal_length_px, 
-						 distance_valid, ground_distance, get_time_delta_us(get_distance_measure_time()));
-
-		/* accumulate the results */
-		result_accumulator_feed(&mavlink_accumulator, frame_dt, 
-								x_rate, y_rate, z_rate, gyro_temp, 
-								qual, pixel_flow_x, pixel_flow_y, 1.0f / focal_length_px, 
-								distance_valid, ground_distance, get_time_delta_us(get_distance_measure_time()));
+		fmu_comm_update(&frame_data);
+		result_accumulator_feed(&mavlink_accumulator, &frame_data);
 
 		uint32_t computaiton_time_us = get_time_delta_us(start_computations);
 

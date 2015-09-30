@@ -379,14 +379,10 @@ __EXPORT void fmu_comm_run() {
 	inst->run();
 }
 
-__EXPORT void fmu_comm_update(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
-  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
-  bool distance_valid, float ground_distance, uint32_t distance_age) {
+__EXPORT void fmu_comm_update(const result_accumulator_frame* frame_data) {
 
 	/* feed the accumulator and recalculate */
-	result_accumulator_feed(&accumulator, dt, x_rate, y_rate, z_rate, gyro_temp,
-	            qual, pixel_flow_x, pixel_flow_y, rad_per_pixel, 
-	            distance_valid, ground_distance, distance_age);
+	result_accumulator_feed(&accumulator, frame_data);
 
 	if (accumulator.frame_count % 32 == 0) {
 		UavcanNode *const inst = UavcanNode::instance();
@@ -423,10 +419,10 @@ __EXPORT void fmu_comm_update(float dt, float x_rate, float y_rate, float z_rate
 		m.beam_orientation_in_body_frame.orientation_defined = true;
 		m.field_of_view = 0;
 		m.sensor_type = ::uavcan::equipment::range_sensor::Measurement::SENSOR_TYPE_LIDAR;
-		m.reading_type = (accumulator.last.ground_distance >= 0) 
+		m.reading_type = (accumulator.last_ground_distance >= 0) 
 			? ::uavcan::equipment::range_sensor::Measurement::READING_TYPE_VALID_RANGE
 			: ::uavcan::equipment::range_sensor::Measurement::READING_TYPE_UNDEFINED;
-		m.range = accumulator.last.ground_distance;
+		m.range = accumulator.last_ground_distance;
 		inst->publish(m);
 
 		result_accumulator_reset(&accumulator);

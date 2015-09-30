@@ -232,9 +232,7 @@ void I2C1_ER_IRQHandler(void) {
 }
 
 
-__EXPORT void fmu_comm_update(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
-					  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
-					  bool distance_valid, float ground_distance, uint32_t distance_age) {
+__EXPORT void fmu_comm_update(const result_accumulator_frame* frame_data) {
 	static result_accumulator_ctx accumulator;
 	static bool initialized = false;
 
@@ -250,9 +248,7 @@ __EXPORT void fmu_comm_update(float dt, float x_rate, float y_rate, float z_rate
 	}
 
 	/* feed the accumulator and recalculate */
-	result_accumulator_feed(&accumulator, dt, x_rate, y_rate, z_rate, gyro_temp,
-							qual, pixel_flow_x, pixel_flow_y, rad_per_pixel, 
-							distance_valid, ground_distance, distance_age);
+	result_accumulator_feed(&accumulator, frame_data);
 
 	i2c_frame f;
 	i2c_integral_frame f_integral;

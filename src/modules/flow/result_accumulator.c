@@ -48,60 +48,46 @@ void result_accumulator_init(result_accumulator_ctx *ctx)
 	memset(ctx, 0, sizeof(result_accumulator_ctx));
 	/* set non-zero initial values */
 	ctx->min_quality = 255;
-	ctx->last.ground_distance = -1;
+	ctx->last_ground_distance = -1;
 }
 
-void result_accumulator_feed(result_accumulator_ctx *ctx, float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp, 
-							 uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
-							 bool distance_valid, float ground_distance, uint32_t distance_age)
-{
-	/* update last value in struct */
-	ctx->last.dt = dt;
-	ctx->last.x_rate = x_rate;
-	ctx->last.y_rate = y_rate;
-	ctx->last.z_rate = z_rate;
-	ctx->last.temperature = gyro_temp;
-	ctx->last.qual   = qual;
-	ctx->last.pixel_flow_x = pixel_flow_x;
-	ctx->last.pixel_flow_y = pixel_flow_y;
-	ctx->last.flow_x_rad   =   pixel_flow_y * rad_per_pixel;
-	ctx->last.flow_y_rad   = - pixel_flow_x * rad_per_pixel;
-	ctx->last.ground_distance = distance_valid ? ground_distance : -1;
-	ctx->last.distance_age    = distance_age;
-	if(ctx->last.ground_distance >= 0) {
-		ctx->last.flow_x_m = ctx->last.flow_x_rad * ctx->last.ground_distance;
-		ctx->last.flow_y_m = ctx->last.flow_y_rad * ctx->last.ground_distance;
-	}else{
-		ctx->last.flow_x_m = 0;
-		ctx->last.flow_y_m = 0;
-	}
+void result_accumulator_feed(result_accumulator_ctx *ctx, const result_accumulator_frame* frame)
+{	
+	ctx->last_ground_distance = frame->ground_distance;
+	ctx->last_distance_age    = frame->distance_age;
+	ctx->last_gyro_temp       = frame->gyro_temp;
+	
 	/* accumulate the values */
-	if (qual > 0) {
-		ctx->px_flow_x_accu += ctx->last.pixel_flow_x;
-		ctx->px_flow_y_accu += ctx->last.pixel_flow_y;
-		ctx->rad_flow_x_accu += ctx->last.flow_x_rad;
-		ctx->rad_flow_y_accu += ctx->last.flow_y_rad;
+	if (frame->qual > 0) {
+		ctx->px_flow_x_accu += frame->pixel_flow_x;
+		ctx->px_flow_y_accu += frame->pixel_flow_y;
+		
+		float flow_x_rad = frame->pixel_flow_y * frame->rad_per_pixel;
+		float flow_y_rad = - frame->pixel_flow_x * frame->rad_per_pixel;
+		ctx->rad_flow_x_accu += flow_x_rad;
+		ctx->rad_flow_y_accu += flow_y_rad;
 
-		ctx->gyro_x_accu += x_rate * dt;
-		ctx->gyro_y_accu += y_rate * dt;
-		ctx->gyro_z_accu += z_rate * dt;
+		ctx->gyro_x_accu += frame->x_rate * frame->dt;
+		ctx->gyro_y_accu += frame->y_rate * frame->dt;
+		ctx->gyro_z_accu += frame->z_rate * frame->dt;
+		
 		/* the quality is the minimum of all quality measurements */
-		if (qual < ctx->min_quality || ctx->valid_data_count == 0) {
-			ctx->min_quality = qual;
+		if (frame->qual < ctx->min_quality || ctx->valid_data_count == 0) {
+			ctx->min_quality = frame->qual;
 		}
+		
 		ctx->valid_data_count++;
-		ctx->valid_time += dt;
-		if(ctx->last.ground_distance >= 0){
-			ctx->m_flow_x_accu += ctx->last.flow_x_m; 
-			ctx->m_flow_y_accu += ctx->last.flow_y_m; 
-			ctx->valid_dist_time += dt;
+		ctx->valid_time += frame->dt;
+		
+		if(ctx->last_ground_distance >= 0){
+			ctx->m_flow_x_accu += flow_x_rad * ctx->last_ground_distance; 
+			ctx->m_flow_y_accu += flow_y_rad * ctx->last_ground_distance; 
+			ctx->valid_dist_time += frame->dt;
 		}
 	}
 	ctx->data_count++;
 	ctx->frame_count++;
-	ctx->full_time += dt;
-
-	ctx->last.frame_count = ctx->frame_count;
+	ctx->full_time += frame->dt;
 }
 
 void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow *out)
@@ -130,7 +116,7 @@ void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint1
 		out->quality = 0;
 	}
 	/* averaging the distance is no use */
-	out->ground_distance = ctx->last.ground_distance;
+	out->ground_distance = ctx->last_ground_distance;
 }
 
 void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow_rad *out)
@@ -145,7 +131,7 @@ void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, u
 		out->integrated_zgyro = ctx->gyro_z_accu;
 		out->quality = ctx->min_quality;
 		/* averaging the distance and temperature is no use */
-		out->temperature = ctx->last.temperature;
+		out->temperature = ctx->last_gyro_temp;
 	} else {
 		/* not enough valid data */
 		out->integration_time = 0;
@@ -155,10 +141,10 @@ void result_accumulator_calculate_output_flow_rad(result_accumulator_ctx *ctx, u
 		out->integrated_ygyro = 0;
 		out->integrated_zgyro = 0;
 		out->quality = 0;
-		out->temperature = ctx->last.temperature;
+		out->temperature = ctx->last_gyro_temp;
 	}
-	out->time_delta_distance_us = ctx->last.distance_age;
-	out->ground_distance = ctx->last.ground_distance;
+	out->time_delta_distance_us = ctx->last_distance_age;
+	out->ground_distance = ctx->last_ground_distance;
 }
 
 void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow_i2c *out)
@@ -177,7 +163,7 @@ void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, u
 		out->gyro_y = floor(ctx->gyro_y_accu * (100.0f / ctx->valid_time) + 0.5f);
 		out->gyro_z = floor(ctx->gyro_z_accu * (100.0f / ctx->valid_time) + 0.5f);
 		out->quality = ctx->min_quality;
-		out->temperature = ctx->last.temperature;
+		out->temperature = ctx->last_gyro_temp;
 	} else {
 		/* not enough valid data */
 		out->frame_count = ctx->frame_count;
@@ -192,11 +178,11 @@ void result_accumulator_calculate_output_flow_i2c(result_accumulator_ctx *ctx, u
 		out->gyro_y = 0;
 		out->gyro_z = 0;
 		out->quality = 0;
-		out->temperature = ctx->last.temperature;
+		out->temperature = ctx->last_gyro_temp;
 	}
-	out->time_delta_distance_us = ctx->last.distance_age;
-	if (ctx->last.ground_distance >= 0) {
-		out->ground_distance = floor(ctx->last.ground_distance * 1000.0f + 0.5f);
+	out->time_delta_distance_us = ctx->last_distance_age;
+	if (ctx->last_ground_distance >= 0) {
+		out->ground_distance = floor(ctx->last_ground_distance * 1000.0f + 0.5f);
 	} else {
 		out->ground_distance = 0;
 	}
@@ -211,7 +197,7 @@ void result_accumulator_fill_i2c_data(result_accumulator_ctx *ctx, i2c_frame* f,
 	result_accumulator_calculate_output_flow_i2c(ctx, min_valid_ratio, &output_i2c);
 
 	/* write the i2c_frame */
-	f->frame_count = ctx->last.frame_count;
+	f->frame_count = ctx->frame_count;
 	f->pixel_flow_x_sum = output_flow.flow_x;
 	f->pixel_flow_y_sum = output_flow.flow_y;
 	f->flow_comp_m_x = floor(output_flow.flow_comp_m_x * 1000.0f + 0.5f);

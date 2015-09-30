@@ -36,6 +36,7 @@
 /// Abstraction over the FMU communications interface -- I2C slave or UAVCAN
 
 #include <inttypes.h>
+#include "result_accumulator.h"
 
 /// Call on boot to initialize
 void fmu_comm_init(void);
@@ -44,9 +45,7 @@ void fmu_comm_init(void);
 void fmu_comm_run(void);
 
 /// Call every frame to update with new data
-void fmu_comm_update(float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
-  uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
-  bool distance_valid, float ground_distance, uint32_t distance_age);
+void fmu_comm_update(const result_accumulator_frame* frame);
 
 #endif
 

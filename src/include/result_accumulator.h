@@ -38,25 +38,21 @@
 #include <stdbool.h>
 #include "i2c_frame.h"
 
+typedef struct _result_accumulator_frame {
+	float dt;					///< The time delta of this sample.
+	float x_rate;				///< The current x_rate of the gyro in rad / sec. (Image/Flow coordinates)
+	float y_rate;				///< The current y_rate of the gyro in rad / sec. (Image/Flow coordinates)
+	float z_rate;				///< The current z_rate of the gyro in rad / sec. (Image/Flow coordinates)
+	int16_t gyro_temp;		///< Temperature * 100 in centi-degrees Celsius
+	uint8_t qual;				///< The quality output of the flow algorithm.
+	float rad_per_pixel;  ///< Pixel to radian conversion factor.
+	float pixel_flow_x;			///< The measured x-flow in the current image in pixel. Sensor linear motion along the positive X axis induces a negative flow.
+	float pixel_flow_y;			///< The measured y-flow in the current image in pixel. Sensor linear motion along the positive Y axis induces a negative flow.
+	float ground_distance;		///< The measured distance to the ground in meter.
+	uint32_t distance_age;		///< Age of the distance measurement in us.
+} result_accumulator_frame;
 
 typedef struct _result_accumulator_ctx {
-	struct _last {
-		uint32_t frame_count;		///< Frame counter.
-		float dt;					///< The time delta of this sample.
-		float x_rate;				///< The current x_rate of the gyro in rad / sec. (Image/Flow coordinates)
-		float y_rate;				///< The current y_rate of the gyro in rad / sec. (Image/Flow coordinates)
-		float z_rate;				///< The current z_rate of the gyro in rad / sec. (Image/Flow coordinates)
-		int16_t temperature;		///< Temperature * 100 in centi-degrees Celsius
-		uint8_t qual;				///< The quality output of the flow algorithm.
-		float pixel_flow_x;			///< The measured x-flow in the current image in pixel. Sensor linear motion along the positive X axis induces a negative flow.
-		float pixel_flow_y;			///< The measured y-flow in the current image in pixel. Sensor linear motion along the positive Y axis induces a negative flow.
-		float flow_x_rad;			///< Flow in radians around X axis (Sensor RH rotation about the X axis induces a positive flow. Sensor linear motion along the positive Y axis induces a negative flow.)
-		float flow_y_rad;			///< Flow in radians around Y axis (Sensor RH rotation about the Y axis induces a positive flow. Sensor linear motion along the positive X axis induces a positive flow.)
-		float flow_x_m;				///< The measured x-flow in the current image in meters.
-		float flow_y_m;				///< The measured x-flow in the current image in meters.
-		float ground_distance;		///< The measured distance to the ground in meter.
-		uint32_t distance_age;		///< Age of the distance measurement in us.
-	} last;
 	uint32_t frame_count;
 	float px_flow_x_accu;
 	float px_flow_y_accu;
@@ -73,6 +69,9 @@ typedef struct _result_accumulator_ctx {
 	float gyro_x_accu;
 	float gyro_y_accu;
 	float gyro_z_accu;
+	int16_t last_gyro_temp;		///< Temperature * 100 in centi-degrees Celsius
+	float last_ground_distance;		///< The measured distance to the ground in meter.
+	uint32_t last_distance_age;		///< Age of the distance measurement in us.
 } result_accumulator_ctx;
 
 
@@ -120,25 +119,7 @@ typedef struct _result_accumulator_output_flow_i2c {
 /**	Initializes the result accumulator.
  */
 void result_accumulator_init(result_accumulator_ctx *ctx);
-
-/**	Feeds the result accumulator with new data. It will take care of handling invalid data.
- *	@param ctx The result accumulator context to use.
- *	@param dt  The time delta of this sample.
- *	@param x_rate The current x_rate of the gyro in rad / sec. (flow sensor coordinates)
- *	@param y_rate The current y_rate of the gyro in rad / sec. (flow sensor coordinates)
- *	@param z_rate The current z_rate of the gyro in rad / sec. (flow sensor coordinates)
- *	@param gyro_temp The current gyro temperature in centi-degrees Celsius
- *	@param qual   The quality output of the flow algorithm.
- *	@param pixel_flow_x The measured x-flow in the current image in pixel.
- *	@param pixel_flow_y The measured y-flow in the current image in pixel.
- *	@param rad_per_pixel Pixel to radian conversion factor.
- *  @param distance_valid True when the distance sensor reports that its distance is valid.
- *	@param ground_distance The measured distance to the ground in meter.
- *	@param distance_age Age of the distance measurement in us.
- */
-void result_accumulator_feed(result_accumulator_ctx *ctx, float dt, float x_rate, float y_rate, float z_rate, int16_t gyro_temp,
-							 uint8_t qual, float pixel_flow_x, float pixel_flow_y, float rad_per_pixel,
-							 bool distance_valid, float ground_distance, uint32_t distance_age);
+void result_accumulator_feed(result_accumulator_ctx *ctx, const result_accumulator_frame* frame);
 
 /**	Recalculates the output values of the result_accumulator. Call this before using any of the output values.
  */
