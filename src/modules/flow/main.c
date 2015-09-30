@@ -476,12 +476,12 @@ int main(void)
 			/* no result for this frame. */
 			flow_rslt_count = 0;
 		}
-		/* determine capability: */
-		flow_capability flow_rslt_cap;
+		/* determine velocity capability: */
+		float flow_mv_cap;
 		if (!use_klt) {
-			get_flow_capability(&flow_rslt_cap);
+			flow_mv_cap = get_flow_capability();
 		} else {
-			get_flow_klt_capability(&flow_rslt_cap);
+			flow_mv_cap = get_flow_klt_capability();
 		}
 
 		/* calculate flow value from the raw results */
@@ -534,7 +534,7 @@ int main(void)
 			.rad_per_pixel = 1.0f / focal_length_px,
 			.ground_distance = ground_distance,
 			.distance_age = get_time_delta_us(get_distance_measure_time()),
-			.flow_cap = flow_rslt_cap,
+			.max_px_frame = flow_mv_cap,
 		};
 
 		/* update I2C transmit buffer */

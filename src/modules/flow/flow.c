@@ -390,11 +390,9 @@ static inline uint32_t compute_sad_8x8(uint8_t *image1, uint8_t *image2, uint16_
 	return acc;
 }
 
-void get_flow_capability(flow_capability *cap) {
+float get_flow_capability() {
 	const uint16_t search_size = SEARCH_SIZE;
-	
-	cap->max_x_px_frame = search_size + 0.5;
-	cap->max_y_px_frame = search_size + 0.5;
+	return search_size + 0.5;
 }
 
 uint16_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate,
@@ -546,11 +544,9 @@ void klt_preprocess_image(uint8_t *image, flow_klt_image *klt_image) {
 	}
 }
 
-void get_flow_klt_capability(flow_capability *cap) {
+float get_flow_klt_capability() {
 	uint16_t topPyrStep = 1 << (PYR_LVLS - 1);
-
-	cap->max_x_px_frame = topPyrStep * 2;
-	cap->max_y_px_frame = topPyrStep * 2;
+  return topPyrStep * 2;
 }
 
 uint16_t compute_klt(flow_klt_image *image1, flow_klt_image *image2, float x_rate, float y_rate, float z_rate,

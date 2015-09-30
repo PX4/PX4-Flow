@@ -404,10 +404,9 @@ __EXPORT void fmu_comm_update(const result_accumulator_frame* frame_data) {
 		r.gyro_rate_integral_xyz_radians[1] = flow_rad.integrated_ygyro;
 		r.gyro_rate_integral_xyz_radians[2] = flow_rad.integrated_zgyro;
 		r.integration_time_usec = flow_rad.integration_time;
-		//FIXME: r.max_axis_velocity_radians_sec
+		r.max_axis_velocity_radians_sec = accumulator.flow_cap_mv_rad;
 		r.samples_matched_pct = flow_rad.quality;
 		r.gyro_temperature_celsius = flow_rad.temperature / 100.0f;
-		//FIXME: r.gyro_rate_integral_xyz_covariance
 		inst->publish(r);
 
 		::uavcan::equipment::range_sensor::Measurement m;

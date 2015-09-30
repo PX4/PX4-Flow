@@ -96,20 +96,14 @@ void result_accumulator_feed(result_accumulator_ctx *ctx, const result_accumulat
 	}
 	
 	/* convert the algorithm's capability into a velocity in rad / s: */
-	float flow_cap_mvx_rad = frame->flow_cap.max_y_px_frame * frame->rad_per_pixel / frame->dt;
-	float flow_cap_mvy_rad = frame->flow_cap.max_x_px_frame * frame->rad_per_pixel / frame->dt;
+	float flow_cap_mv_rad = frame->max_px_frame * frame->rad_per_pixel / frame->dt;
 
 	if (ctx->data_count > 0) {
-		/* accumulate the minimum value: */
-		if (flow_cap_mvx_rad < ctx->flow_cap_mvx_rad) {
-			ctx->flow_cap_mvx_rad = flow_cap_mvx_rad;
-		}
-		if (flow_cap_mvy_rad < ctx->flow_cap_mvy_rad) {
-			ctx->flow_cap_mvy_rad = flow_cap_mvy_rad;
+		if (flow_cap_mv_rad < ctx->flow_cap_mv_rad) {
+			ctx->flow_cap_mv_rad = flow_cap_mv_rad;
 		}
 	} else {
-		ctx->flow_cap_mvx_rad = flow_cap_mvx_rad;
-		ctx->flow_cap_mvy_rad = flow_cap_mvy_rad;
+		ctx->flow_cap_mv_rad = flow_cap_mv_rad;
 	}
 
 	ctx->data_count++;
