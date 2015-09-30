@@ -40,6 +40,7 @@
 
 typedef struct _result_accumulator_frame {
 	float dt;					///< The time delta of this sample.
+	float dropped_dt; ///< The time delta of samples that have been dropped before this sample
 	float x_rate;				///< The current x_rate of the gyro in rad / sec. (Image/Flow coordinates)
 	float y_rate;				///< The current y_rate of the gyro in rad / sec. (Image/Flow coordinates)
 	float z_rate;				///< The current z_rate of the gyro in rad / sec. (Image/Flow coordinates)

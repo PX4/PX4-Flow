@@ -87,7 +87,7 @@ void result_accumulator_feed(result_accumulator_ctx *ctx, const result_accumulat
 	}
 	ctx->data_count++;
 	ctx->frame_count++;
-	ctx->full_time += frame->dt;
+	ctx->full_time += frame->dt + frame->dropped_dt;
 }
 
 void result_accumulator_calculate_output_flow(result_accumulator_ctx *ctx, uint16_t min_valid_data_count_percent, result_accumulator_output_flow *out)

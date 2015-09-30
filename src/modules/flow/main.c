@@ -339,6 +339,8 @@ int main(void)
 	
 	uint32_t last_frame_index = 0;
 	
+	uint32_t last_processed_frame_timestamp = get_boot_time_us();
+	
 	/* main loop */
 	while (1)
 	{
@@ -447,8 +449,10 @@ int main(void)
 			}
 		}
 		
-		float frame_dt = (frames[0]->timestamp - frames[1]->timestamp) * 0.000001f;
-
+		float frame_dt   = calculate_time_delta_us(frames[0]->timestamp, frames[1]->timestamp)           * 0.000001f;
+		float dropped_dt = calculate_time_delta_us(frames[1]->timestamp, last_processed_frame_timestamp) * 0.000001f;
+		last_processed_frame_timestamp = frames[0]->timestamp;
+		
 		/* compute gyro rate in pixels and change to image coordinates */
 		float x_rate_px = - y_rate * (focal_length_px * frame_dt);
 		float y_rate_px =   x_rate * (focal_length_px * frame_dt);
@@ -502,6 +506,7 @@ int main(void)
 		
 		result_accumulator_frame frame_data = {
 			.dt = frame_dt,
+			.dropped_dt = dropped_dt,
 			.x_rate = x_rate,
 			.y_rate = y_rate,
 			.z_rate = z_rate,
