@@ -109,7 +109,7 @@ static camera_img_param img_stream_param;
 typedef struct __attribute__((packed)) {
 	uint64_t timestamp;
 	uint32_t exposure;
-	int32_t ground_distance_mm;
+	uint32_t ground_distance_mm;
 	uint8_t snapshot_buffer_mem[USB_IMAGE_PIXELS * USB_IMAGE_PIXELS];
 } usb_packet_format;
 
@@ -229,7 +229,11 @@ static void start_send_image(float ground_distance_m) {
 	usb_packet.timestamp = 0;
 #endif
 	usb_packet.exposure = snapshot_buffer.param.exposure;
-	usb_packet.ground_distance_mm = ground_distance_m * 1000.0f;
+	if (ground_distance_m > 0) {
+		usb_packet.ground_distance_mm = ground_distance_m * 1000.0f;
+	} else {
+		usb_packet.ground_distance_mm = 0;
+	}
 	DCD_EP_Flush(&USB_OTG_dev, IMAGE_IN_EP);
 	send_image_step();
 }
