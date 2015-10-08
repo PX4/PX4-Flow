@@ -149,20 +149,14 @@ void I2C1_EV_IRQHandler(void) {
 	static uint8_t txDataIndex1 = 0x00;
 	static uint8_t txDataIndex2 = 0x00;
 	static uint8_t rxDataIndex = 0x00;
-	switch (I2C_GetLastEvent(I2C1 )) {
-
-	case I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED : {
-		I2C1 ->SR1;
-		I2C1 ->SR2;
-		rxDataIndex = 0;
-		break;
-	}
-	case I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED : {
-		I2C1 ->SR1;
-		I2C1 ->SR2;
-		break;
-	}
-	case I2C_EVENT_SLAVE_BYTE_RECEIVED : {
+  
+	if (I2C_GetITStatus(I2C1, I2C_IT_ADDR) == SET)  {
+		uint8_t sr2 = I2C1->SR2;
+		if (sr2 & I2C_SR2_TRA) {
+			// Write
+			rxDataIndex = 0;
+		}
+	} else if (I2C_GetITStatus(I2C1, I2C_IT_RXNE)) {
 		//receive address offset
 		dataRX = I2C_ReceiveData(I2C1 );
 		rxDataIndex++;
@@ -177,11 +171,7 @@ void I2C1_EV_IRQHandler(void) {
 			//indicate sending
 		readout_done_frame1 = 0;
 		readout_done_frame2 = 0;
-		break;
-	}
-	case I2C_EVENT_SLAVE_BYTE_TRANSMITTING :
-	case I2C_EVENT_SLAVE_BYTE_TRANSMITTED : {
-
+	} else if (I2C_GetITStatus(I2C1, I2C_IT_TXE)) {
 		if (txDataIndex1 < (I2C_FRAME_SIZE)) {
 			I2C_SendData(I2C1,
 					txDataFrame1[publishedIndexFrame1][txDataIndex1]);
@@ -192,7 +182,6 @@ void I2C1_EV_IRQHandler(void) {
 			if (txDataIndex2 < I2C_INTEGRAL_FRAME_SIZE) {
 				txDataIndex2++;
 			}
-
 		}
 
 		//check whether last byte is read frame1
@@ -205,20 +194,10 @@ void I2C1_EV_IRQHandler(void) {
 			readout_done_frame2 = 1;
 			stop_accumulation = 1;
 		}
-
-		break;
-	}
-
-	case I2C_EVENT_SLAVE_ACK_FAILURE : {
-		I2C1 ->SR1 &= 0x00FF;
-		break;
-	}
-
-	case I2C_EVENT_SLAVE_STOP_DETECTED : {
-		I2C1 ->SR1;
-		I2C1 ->CR1 |= 0x1;
-		break;
-	}
+	} else if (I2C_GetITStatus(I2C1, I2C_IT_AF)) {
+		I2C_ClearITPendingBit(I2C1, I2C_IT_AF);
+	} else if (I2C_GetITStatus(I2C1, I2C_IT_STOPF)) {
+		I2C_Cmd(I2C1, ENABLE);
 	}
 }
 
