@@ -149,8 +149,8 @@ static uint16_t mt9v034_hor_blanking(uint16_t raw_width, int binning) {
 		case 4: hor_blanking = 91; break;
 	}
 	/* increase if window is smaller: */
-	if (raw_width < 690 - hor_blanking) {
-		hor_blanking = 690 - raw_width;
+	if (raw_width < 800 - hor_blanking) {
+		hor_blanking = 800 - raw_width;
 	}
 	return hor_blanking;
 }
