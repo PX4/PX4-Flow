@@ -41,7 +41,7 @@ MODULES		+= modules/libc
 # Flow
 MODULES		+= modules/flow
 
-MODULES		+= modules/lidar
+MODULES		+= modules/lidar-lite
 
 # Generate parameter XML file
 #GEN_PARAM_XML = 1
