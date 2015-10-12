@@ -37,24 +37,22 @@
 /**
  * insert-only ring buffer of distance data, needs to be of uneven size
  * the initialization to zero will make the filter respond zero for the
- * first N inserted readinds, which is a decent startup-logic.
+ * first N inserted readings, which is a decent startup-logic.
  */
 static float distance_values[5] = { 0.0f };
 static unsigned insert_index = 0;
 
-static void distance_bubble_sort(float distance_values[], unsigned n);
-
-void distance_bubble_sort(float distance_values[], unsigned n)
+static void distance_bubble_sort(float distances[], unsigned n)
 {
 	float t;
 
 	for (unsigned i = 0; i < (n - 1); i++) {
 		for (unsigned j = 0; j < (n - i - 1); j++) {
-			if (distance_values[j] > distance_values[j+1]) {
+			if (distances[j] > distances[j+1]) {
 				/* swap two values */
-				t = distance_values[j];
-				distance_values[j] = distance_values[j + 1];
-				distance_values[j + 1] = t;
+				t = distances[j];
+				distances[j] = distances[j + 1];
+				distances[j + 1] = t;
 			}
 		}
 	}
