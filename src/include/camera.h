@@ -72,7 +72,7 @@
  * If there is a certain amount of change in the image brightness the tolerance band will decide after
  * how much brightness delta the exposure algorithm will start to re-adjust the exposure time.
  */
-#define CONFIG_CAMERA_DESIRED_EXPOSURE_TOL_8B (24u)
+#define CONFIG_CAMERA_DESIRED_EXPOSURE_TOL_8B (24)
 /**
  * The smoothing factor of the exposure time. This is the constant of an exponential filter.
  * 
@@ -84,7 +84,7 @@
 /**
  * The interval between updating the exposure value in number of frames. Snapshot and invalid frames are skipped.
  */
-#define CONFIG_CAMERA_EXPOSURE_UPDATE_INTERVAL (4u)
+#define CONFIG_CAMERA_EXPOSURE_UPDATE_INTERVAL (4)
 
 struct _camera_sensor_interface;
 typedef struct _camera_sensor_interface camera_sensor_interface;
@@ -393,7 +393,7 @@ struct _camera_ctx {
 	camera_img_param_ex img_stream_param;					///< The parameters of the image streaming mode.
 	camera_img_param img_stream_param_pend;					///< The pending image streaming mode parameters.
 	camera_image_buffer buffers[CONFIG_CAMERA_MAX_BUFFER_COUNT];///< The image buffers for image stream mode.
-	int buffer_count;										///< Total number of buffers.
+	size_t buffer_count;										///< Total number of buffers.
 	volatile uint8_t buf_avail[CONFIG_CAMERA_MAX_BUFFER_COUNT];///< Indexes to the buffers that are available. Ordered in the MRU order.
 	volatile uint8_t buf_avail_count;						///< Number of buffer indexes in the avail_bufs array.
 	volatile uint8_t buf_put_back_pos;						///< Position where to put back the reserved buffers.
