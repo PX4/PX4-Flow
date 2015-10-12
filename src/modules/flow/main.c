@@ -97,6 +97,9 @@ static volatile bool snap_capture_success = false;
 static bool snap_ready = true;
 volatile bool usb_image_transfer_active = false;
 
+static void check_for_frame(void);
+static float latest_ground_distance(void);
+
 /* timer constants */
 #define DISTANCE_POLL_MS	 	100	/* steps in milliseconds ticks */
 #define SYSTEM_STATE_MS		1000/* steps in milliseconds ticks */
@@ -220,7 +223,8 @@ static void send_image_step(void) {
 	}
 }
 
-static void start_send_image(float ground_distance_m) {
+static void start_send_image(void) {
+	float ground_distance_m = latest_ground_distance();
 	usb_image_transfer_active = true;
 	usb_image_pos = 0;
 #if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
@@ -259,6 +263,17 @@ static uint8_t image_buffer_8bit_4[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribut
 static uint8_t image_buffer_8bit_5[FLOW_IMAGE_SIZE * FLOW_IMAGE_SIZE] __attribute__((section(".ccm")));
 
 static flow_klt_image flow_klt_images[2] __attribute__((section(".ccm")));
+
+/* variables */
+uint32_t counter = 0;
+
+result_accumulator_ctx mavlink_accumulator;
+uint32_t fps_timing_start;
+uint16_t fps_counter = 0;
+uint16_t fps_skipped_counter = 0;
+
+uint32_t last_frame_index = 0;
+uint32_t last_processed_frame_timestamp;
 
 /**
   * @brief  Main function.
@@ -313,12 +328,7 @@ int main(void)
 
 	/* usart config*/
 	usart_init();
-
   fmu_comm_init();
-
-	float distance_filtered = 0.0f; // distance in meter
-	float distance_raw = 0.0f; // distance in meter
-	bool distance_valid = false;
 	distance_init();
 
 	/* reset/start timers */
@@ -330,46 +340,16 @@ int main(void)
 	timer_register(take_snapshot_fn, 500);
 	//timer_register(switch_params_fn, 2000);
 
-	/* variables */
-	uint32_t counter = 0;
-
-	result_accumulator_ctx mavlink_accumulator;
-
 	result_accumulator_init(&mavlink_accumulator);
-	
-	uint32_t fps_timing_start = get_boot_time_us();
-	uint16_t fps_counter = 0;
-	uint16_t fps_skipped_counter = 0;
-	
-	uint32_t last_frame_index = 0;
-	
-	uint32_t last_processed_frame_timestamp = get_boot_time_us();
+	fps_timing_start = last_processed_frame_timestamp = get_boot_time_us();
 	
 	/* main loop */
 	while (1)
 	{
 		/* check timers */
 		timer_check();
-		
 		fmu_comm_run();
-		
-		distance_valid = distance_read(&distance_filtered, &distance_raw);
-		/* reset to zero for invalid distances */
-		if (!distance_valid) {
-			distance_filtered = -1.0f;
-			distance_raw = -1.0f;
-		}
-		
-		/* decide which distance to use */
-		float ground_distance;
-		if(FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]))
-		{
-			ground_distance = distance_filtered;
-		}
-		else
-		{
-			ground_distance = distance_raw;
-		}
+		check_for_frame();
 		
 		if (snap_capture_done) {
 			snap_capture_done = false;
@@ -377,10 +357,28 @@ int main(void)
 			snap_ready = true;
 			if (snap_capture_success) {
 				/* send the snapshot! */
-				start_send_image(ground_distance);
+				start_send_image();
 			}
 		}
+	}
+}
 
+static float latest_ground_distance(void) {
+	float distance_filtered, distance_raw;
+	bool distance_valid = distance_read(&distance_filtered, &distance_raw);
+	if (!distance_valid) {
+		return -1;
+	} else if(FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED])) {
+		return distance_filtered;
+	}	else {
+		return distance_raw;
+	}
+}
+
+static void check_for_frame(void) {
+	/* get recent images */
+	camera_image_buffer *frames[2];
+	if (camera_img_stream_get_buffers(&cam_ctx, frames, 2, true)) {
 		/* new gyroscope data */
 		float x_rate_sensor, y_rate_sensor, z_rate_sensor;
 		int16_t gyro_temp;
@@ -392,14 +390,8 @@ int main(void)
 		float z_rate =   z_rate_sensor; // z is correct
 		
 		bool use_klt = !FLOAT_EQ_INT(global_data.param[PARAM_ALGORITHM_CHOICE], 0);
-
-		uint32_t start_computations = 0;
 		
-		/* get recent images */
-		camera_image_buffer *frames[2];
-		camera_img_stream_get_buffers(&cam_ctx, frames, 2, true);
-		
-		start_computations = get_boot_time_us();
+		uint32_t start_computations = get_boot_time_us();
 		
 		int frame_delta = ((int32_t)frames[0]->frame_number - (int32_t)last_frame_index);
 		last_frame_index = frames[0]->frame_number;
@@ -536,7 +528,7 @@ int main(void)
 			.pixel_flow_x = pixel_flow_x,
 			.pixel_flow_y = pixel_flow_y,
 			.rad_per_pixel = 1.0f / focal_length_px,
-			.ground_distance = ground_distance,
+			.ground_distance = latest_ground_distance(),
 			.distance_age = get_time_delta_us(get_distance_measure_time()),
 			.max_px_frame = flow_mv_cap,
 		};

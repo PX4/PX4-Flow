@@ -535,33 +535,30 @@ static bool camera_img_stream_get_buffers_idx(camera_ctx *ctx, int bidx[], size_
 	return consecutive;
 }
 
-int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer *buffers[], size_t count, bool wait_for_new) {
+bool camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer *buffers[], size_t count, bool wait_for_new) {
 	if (ctx->buffers_are_reserved) return -1;
 	if (count > ctx->buffer_count - 1 || count <= 0) return -1;
 	/* buffer management needs to be performed atomically: */
 	int bidx[count];
 	size_t i;
-	while (1) {
-		if (wait_for_new) {
-			/* wait until a new frame is available: */
-			while(!ctx->new_frame_arrived) {
-				//TODO: camera_img_stream_get_buffers is calling fmu_comm_run()
-				fmu_comm_run();
-			}				
-		}
-		if (camera_img_stream_get_buffers_idx(ctx, bidx, count, wait_for_new)) {
-			/* update the pointers: */
-			for (i = 0; i < count; ++i) {
-				buffers[i] = &ctx->buffers[bidx[i]];
-			}
-			return 0;
-		} else {
-			/* not possible! check if we want to wait for the new frame: */
-			if (!wait_for_new) {
-				return 1;
-			}
+
+	if (wait_for_new) {
+		/* wait until a new frame is available: */
+		if (!ctx->new_frame_arrived) {
+			return false;
 		}
 	}
+	if (camera_img_stream_get_buffers_idx(ctx, bidx, count, wait_for_new)) {
+		/* update the pointers: */
+		for (i = 0; i < count; ++i) {
+			buffers[i] = &ctx->buffers[bidx[i]];
+		}
+		return true;
+	} else {
+		/* not possible! */
+		return false;
+	}
+
 }
 
 void camera_img_stream_return_buffers(camera_ctx *ctx, camera_image_buffer *buffers[], size_t count) {
