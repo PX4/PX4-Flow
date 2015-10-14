@@ -41,6 +41,7 @@
 #include "result_accumulator.h"
 #include "i2c_frame.h"
 #include "settings.h"
+#include "gyro.h"
 
 void result_accumulator_init(result_accumulator_ctx *ctx)
 {

@@ -32,6 +32,7 @@
  ****************************************************************************/
  
 #include <stdbool.h>
+#include <string.h>
 #include "fmu_comm.h"
 
 #include "px4_config.h"

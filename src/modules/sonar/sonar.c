@@ -38,6 +38,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include "stm32f4xx.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_adc.h"
@@ -96,7 +97,8 @@ __EXPORT void distance_readback() {}
 /**
   * @brief  Sonar interrupt handler
   */
-void UART4_IRQHandler(void)
+void UART4_IRQHandler(void);
+__EXPORT void UART4_IRQHandler(void)
 {
 	if (USART_GetITStatus(UART4, USART_IT_RXNE) != RESET)
 	{

@@ -36,6 +36,7 @@
 #include "usbd_cdc_vcp.h"
 #include "main.h"
 #include "distance_mode_filter.h"
+#include "timer.h"
 
 #include "stm32f4xx.h"
 #include "stm32f4xx_i2c.h"
@@ -129,6 +130,7 @@ static void lidar_process(uint16_t value);
 void I2C1_EV_IRQHandler(void);
 void I2C1_ER_IRQHandler(void);
 
+void I2C1_EV_IRQHandler(void);
 __EXPORT void I2C1_EV_IRQHandler(void)
 {
 	if (I2C_GetITStatus(I2C1, I2C_IT_SB)) {
@@ -147,6 +149,7 @@ __EXPORT void I2C1_EV_IRQHandler(void)
 	}
 }
 
+void I2C1_ER_IRQHandler(void);
 __EXPORT void I2C1_ER_IRQHandler(void) {
 	if((I2C_ReadRegister(I2C1, I2C_Register_SR1) & 0xFF00) != 0x00) {
 		I2C_GenerateSTOP(I2C1, ENABLE);

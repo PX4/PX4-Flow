@@ -50,7 +50,7 @@
 
 extern void systemreset(bool to_bootloader);
 
-extern void notify_changed_camera_parameters();
+extern void notify_changed_camera_parameters(void);
 
 mavlink_system_t mavlink_system;
 

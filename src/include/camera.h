@@ -72,7 +72,7 @@
  * If there is a certain amount of change in the image brightness the tolerance band will decide after
  * how much brightness delta the exposure algorithm will start to re-adjust the exposure time.
  */
-#define CONFIG_CAMERA_DESIRED_EXPOSURE_TOL_8B (24u)
+#define CONFIG_CAMERA_DESIRED_EXPOSURE_TOL_8B (24)
 /**
  * The smoothing factor of the exposure time. This is the constant of an exponential filter.
  * 
@@ -84,7 +84,7 @@
 /**
  * The interval between updating the exposure value in number of frames. Snapshot and invalid frames are skipped.
  */
-#define CONFIG_CAMERA_EXPOSURE_UPDATE_INTERVAL (4u)
+#define CONFIG_CAMERA_EXPOSURE_UPDATE_INTERVAL (4)
 
 struct _camera_sensor_interface;
 typedef struct _camera_sensor_interface camera_sensor_interface;
@@ -189,14 +189,14 @@ bool camera_img_stream_schedule_param_change(camera_ctx *ctx, const camera_img_p
  *					It is guaranteed to retrieve consecutive images.
  * @param count		Number of most recent images to retrieve. Must be lower than buffer_count - 1 which was 
  *					passed to camera_init.
- * @param wait_for_new When true the function will wait until the the requested images are available.
- * @return			 0 when a set of count consecutive most recent images have been retrieved.
- *					 1 it is not possible to return count consecutive frames. you need to wait until the frames are captured.
- *					-1 on error.
+ * @param check_for_new When true the function will return true only if a new frame is pending. It will then clear the
+                        pending flag.
+ * @return	true when a set of count consecutive most recent images have been retrieved.
+            false when two consecutive images are not ready
  * @note			When this function is successful (return value 0) the buffers need to be returned to the camera driver before 
  *					requesting new buffers. (use camera_img_stream_return_buffers)
  */
-int camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer *buffers[], size_t count, bool wait_for_new);
+bool camera_img_stream_get_buffers(camera_ctx *ctx, camera_image_buffer *buffers[], size_t count, bool wait_for_new);
 
 /**
  * Returns the buffers that have been retrieved by camera_img_stream_get_buffers back to the camera driver.
@@ -393,7 +393,7 @@ struct _camera_ctx {
 	camera_img_param_ex img_stream_param;					///< The parameters of the image streaming mode.
 	camera_img_param img_stream_param_pend;					///< The pending image streaming mode parameters.
 	camera_image_buffer buffers[CONFIG_CAMERA_MAX_BUFFER_COUNT];///< The image buffers for image stream mode.
-	int buffer_count;										///< Total number of buffers.
+	size_t buffer_count;										///< Total number of buffers.
 	volatile uint8_t buf_avail[CONFIG_CAMERA_MAX_BUFFER_COUNT];///< Indexes to the buffers that are available. Ordered in the MRU order.
 	volatile uint8_t buf_avail_count;						///< Number of buffer indexes in the avail_bufs array.
 	volatile uint8_t buf_put_back_pos;						///< Position where to put back the reserved buffers.
