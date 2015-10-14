@@ -537,7 +537,7 @@ static void check_for_frame(void) {
 		fmu_comm_update(&frame_data);
 		result_accumulator_feed(&mavlink_accumulator, &frame_data);
 
-		uint32_t computaiton_time_us = get_time_delta_us(start_computations);
+		uint32_t computation_time_us = get_time_delta_us(start_computations);
 
 		counter++;
 		fps_counter++;
@@ -555,7 +555,7 @@ static void check_for_frame(void) {
 				fps_counter = 0;
 				fps_skipped_counter = 0;
 
-				mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "TIMING", get_boot_time_us(), computaiton_time_us, fps, fps_skip);
+				mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "TIMING", get_boot_time_us(), computation_time_us, fps, fps_skip);
 			}
 			mavlink_msg_debug_vect_send(MAVLINK_COMM_2, "EXPOSURE", get_boot_time_us(), 
 					frames[0]->param.exposure, frames[0]->param.analog_gain, cam_ctx.last_brightness);
