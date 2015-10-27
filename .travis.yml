@@ -60,7 +60,7 @@ after_script:
   - git clone git://github.com/PX4/CI-Tools.git
   - ./CI-Tools/s3cmd-configure
 # upload newest build for this branch with s3 index
-  - ./CI-Tools/s3cmd-put px4flow.px4 CI-Tools/directory/index.html Flow/$TRAVIS_BRANCH/
+# Disabled while upgrading flow codebase  - ./CI-Tools/s3cmd-put px4flow.px4 CI-Tools/directory/index.html Flow/$TRAVIS_BRANCH/
 # archive newest build by date with s3 index
   - ./CI-Tools/s3cmd-put Flow.zip archives/Flow/$TRAVIS_BRANCH/`date "+%Y-%m-%d"`-$TRAVIS_BUILD_ID/
   - ./CI-Tools/s3cmd-put CI-Tools/directory/index.html archives/Flow/$TRAVIS_BRANCH/
