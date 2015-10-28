@@ -82,20 +82,7 @@
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 extern USBD_Class_cb_TypeDef custom_composite_cb;
 
-//TODO: this should use board-specific code instead of an ifdef here
-#ifdef CONFIG_ARCH_BOARD_PX4FLOW_V2
-// USB_IMAGE_PIXELS*USB_IMAGE_PIXELS % 1024 must equal 0
-#define USB_IMAGE_PIXELS (352)
-#else
-#define USB_IMAGE_PIXELS (128)
-#endif
-
 #define FLOW_IMAGE_SIZE (64)
-
-static volatile bool snap_capture_done = false;
-static volatile bool snap_capture_success = false;
-static bool snap_ready = true;
-volatile bool usb_image_transfer_active = false;
 
 static void check_for_frame(void);
 static float latest_ground_distance(void);
@@ -108,17 +95,6 @@ static float latest_ground_distance(void);
 
 static camera_ctx cam_ctx;
 static camera_img_param img_stream_param;
-
-typedef struct __attribute__((packed)) {
-	uint64_t timestamp;
-	uint32_t exposure;
-	uint32_t ground_distance_mm;
-	uint8_t snapshot_buffer_mem[USB_IMAGE_PIXELS * USB_IMAGE_PIXELS];
-} usb_packet_format;
-
-usb_packet_format usb_packet;
-
-static camera_image_buffer snapshot_buffer;
 
 static void distance_update_fn(void) {
 	static bool state = 0;
@@ -190,66 +166,6 @@ static void send_params_fn(void) {
 	camera_img_stream_schedule_param_change(&cam_ctx, &img_stream_param);
 }*/
 
-static void snapshot_captured_fn(bool success) {
-	snap_capture_done = true;
-	snap_capture_success = success;
-}
-
-static void take_snapshot_fn(void) {
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]) && FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]) && snap_ready && !usb_image_transfer_active) {
-		static camera_img_param snapshot_param;
-		snapshot_param.size.x = USB_IMAGE_PIXELS;
-		snapshot_param.size.y = USB_IMAGE_PIXELS;
-		snapshot_param.binning = 1;
-		if (camera_snapshot_schedule(&cam_ctx, &snapshot_param, &snapshot_buffer, snapshot_captured_fn)) {
-			snap_ready = false;
-		}
-	}
-}
-
-unsigned usb_image_pos = 0;
-#define MAX_TRANSFER (1023*64)
-
-static void send_image_step(void) {
-	unsigned size = sizeof(usb_packet) - usb_image_pos;
-	if (size > MAX_TRANSFER) size = MAX_TRANSFER;
-
-	DCD_EP_Tx(&USB_OTG_dev, IMAGE_IN_EP, &((uint8_t*)&usb_packet)[usb_image_pos], size);
-	if (size == 0 || size % 64 != 0) {
-		// We sent a short packet at the end of the transfer. When it completes, we're done.
-		usb_image_pos = (unsigned) -1;
-	} else {
-		usb_image_pos += size;
-	}
-}
-
-static void start_send_image(void) {
-	float ground_distance_m = latest_ground_distance();
-	usb_image_transfer_active = true;
-	usb_image_pos = 0;
-#if defined(CONFIG_ARCH_BOARD_PX4FLOW_V2)
-	usb_packet.timestamp = hrt_absolute_time();
-#else
-	usb_packet.timestamp = 0;
-#endif
-	usb_packet.exposure = snapshot_buffer.param.exposure;
-	if (ground_distance_m > 0) {
-		usb_packet.ground_distance_mm = ground_distance_m * 1000.0f;
-	} else {
-		usb_packet.ground_distance_mm = 0;
-	}
-	DCD_EP_Flush(&USB_OTG_dev, IMAGE_IN_EP);
-	send_image_step();
-}
-
-void send_image_completed(void) {
-	if (usb_image_pos != (unsigned) -1) {
-		send_image_step();
-	} else {
-		usb_image_transfer_active = false;
-	}
-}
-
 void notify_changed_camera_parameters(void) {
 	camera_reconfigure_general(&cam_ctx);
 }
@@ -281,7 +197,6 @@ uint32_t last_processed_frame_timestamp;
 int main(void)
 {
 	__enable_irq();
-	snapshot_buffer = BuildCameraImageBuffer(usb_packet.snapshot_buffer_mem);
 
 	/* load settings and parameters */
 	global_data_reset_param_defaults();
@@ -337,7 +252,6 @@ int main(void)
 	timer_register(system_receive_fn, SYSTEM_STATE_MS / 2);
 	timer_register(send_params_fn, PARAMS_MS);
 	timer_register(send_video_fn, global_data.param[PARAM_VIDEO_RATE]);
-	timer_register(take_snapshot_fn, 500);
 	//timer_register(switch_params_fn, 2000);
 
 	result_accumulator_init(&mavlink_accumulator);
@@ -350,16 +264,6 @@ int main(void)
 		timer_check();
 		fmu_comm_run();
 		check_for_frame();
-		
-		if (snap_capture_done) {
-			snap_capture_done = false;
-			camera_snapshot_acknowledge(&cam_ctx);
-			snap_ready = true;
-			if (snap_capture_success) {
-				/* send the snapshot! */
-				start_send_image();
-			}
-		}
 	}
 }
 
