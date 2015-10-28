@@ -80,7 +80,6 @@
 
 
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
-extern USBD_Class_cb_TypeDef custom_composite_cb;
 
 #define FLOW_IMAGE_SIZE (64)
 
@@ -215,7 +214,7 @@ int main(void)
 	USBD_Init(	&USB_OTG_dev,
 				USB_OTG_FS_CORE_ID,
 				&USR_desc,
-				&custom_composite_cb,
+				&USBD_CDC_cb,
 				&USR_cb);
 
 	/* init mavlink */

@@ -37,8 +37,7 @@ SRCS += 		main.c \
           distance_mode_filter.c \
 	   camera.c \
 	   result_accumulator.c \
-	   timer.c \
-	   usb_composite.c \
+	   timer.c
 	   
 
 SRCS += 	$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/misc.c \
