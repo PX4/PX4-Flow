@@ -30,6 +30,7 @@
 #include "stm32f4xx_it.h"
 #include "stm32f4xx_conf.h"
 #include "main.h"
+#include "timer.h"
 
 #include "usb_core.h"
 #include "usb_dcd_int.h"
@@ -135,7 +136,7 @@ void PendSV_Handler(void)
   */
 void SysTick_Handler(void)
 {
-	timer_update();
+	timer_interrupt_fn();
 }
 
 /******************************************************************************/

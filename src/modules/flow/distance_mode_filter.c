@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2014 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,12 +31,51 @@
  *
  ****************************************************************************/
 
-#pragma once
+#include "distance_mode_filter.h"
+#include <string.h>
 
-#include <px4_config.h>
-#include <px4_macros.h>
-#include <stdint.h>
+/**
+ * insert-only ring buffer of distance data, needs to be of uneven size
+ * the initialization to zero will make the filter respond zero for the
+ * first N inserted readings, which is a decent startup-logic.
+ */
+static float distance_values[5] = { 0.0f };
+static unsigned insert_index = 0;
 
-typedef struct legacy_12c_data_t {
-    uint64_t    time_stamp_utc;
-} legacy_12c_data_t;
+static void distance_bubble_sort(float distances[], unsigned n)
+{
+	float t;
+
+	for (unsigned i = 0; i < (n - 1); i++) {
+		for (unsigned j = 0; j < (n - i - 1); j++) {
+			if (distances[j] > distances[j+1]) {
+				/* swap two values */
+				t = distances[j];
+				distances[j] = distances[j + 1];
+				distances[j + 1] = t;
+			}
+		}
+	}
+}
+
+float insert_distance_value_and_get_mode_value(float insert)
+{
+	const unsigned distance_count = sizeof(distance_values) / sizeof(distance_values[0]);
+
+	distance_values[insert_index] = insert;
+	insert_index++;
+	if (insert_index == distance_count) {
+		insert_index = 0;
+	}
+
+	/* sort and return mode */
+
+	/* copy ring buffer */
+	float distance_temp[distance_count];
+	memcpy(distance_temp, distance_values, sizeof(distance_values));
+
+	distance_bubble_sort(distance_temp, distance_count);
+
+	/* the center element represents the mode after sorting */
+	return distance_temp[distance_count / 2];
+}

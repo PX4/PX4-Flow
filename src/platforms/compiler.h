@@ -58,9 +58,6 @@
 # define CONFIG_HAVE_FUNCTIONNAME 1 /* Has __FUNCTION__ */
 # define CONFIG_HAVE_FILENAME     1 /* Has __FILE__ */
 
-/* Indicate that a local variable is not used */
-
-# define UNUSED(a) ((void)(a))
 
 /* Attributes
  *

@@ -30,7 +30,7 @@ MODULES		+= drivers/boards/px4flow-v1
 #
 # General system control
 #
-##TODO EXPECT I2C - MODULES		+= modules/uavcannode
+MODULES		+= modules/i2c_slave
 
 # C support
 MODULES		+= modules/libc
@@ -38,6 +38,7 @@ MODULES		+= modules/libc
 # Flow
 MODULES		+= modules/flow
 
+MODULES		+= modules/sonar
 
 
 # Generate parameter XML file

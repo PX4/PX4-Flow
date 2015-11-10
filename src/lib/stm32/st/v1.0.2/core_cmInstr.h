@@ -463,9 +463,11 @@ __attribute__( ( always_inline ) ) static __INLINE uint32_t __LDREXW(volatile ui
  */
 __attribute__( ( always_inline ) ) static __INLINE uint32_t __STREXB(uint8_t value, volatile uint8_t *addr)
 {
-   uint32_t result;
+   register uint32_t result asm ("r0");
+   register uint8_t  value_r asm ("r1") = value;
+   register volatile uint8_t *addr_r asm ("r2") = addr;
   
-   __ASM volatile ("strexb %0, %2, [%1]" : "=r" (result) : "r" (addr), "r" (value) );
+   __ASM volatile ("strexb %0, %2, [%1]" : "=r" (result) : "r" (addr_r), "r" (value_r) );
    return(result);
 }
 
@@ -482,8 +484,10 @@ __attribute__( ( always_inline ) ) static __INLINE uint32_t __STREXB(uint8_t val
 __attribute__( ( always_inline ) ) static __INLINE uint32_t __STREXH(uint16_t value, volatile uint16_t *addr)
 {
    uint32_t result;
+   register uint16_t  value_r asm ("r1") = value;
+   register volatile uint16_t *addr_r asm ("r2") = addr;
   
-   __ASM volatile ("strexh %0, %2, [%1]" : "=r" (result) : "r" (addr), "r" (value) );
+   __ASM volatile ("strexh %0, %2, [%1]" : "=r" (result) : "r" (addr_r), "r" (value_r) );
    return(result);
 }
 
@@ -500,8 +504,10 @@ __attribute__( ( always_inline ) ) static __INLINE uint32_t __STREXH(uint16_t va
 __attribute__( ( always_inline ) ) static __INLINE uint32_t __STREXW(uint32_t value, volatile uint32_t *addr)
 {
    uint32_t result;
+   register uint32_t  value_r asm ("r1") = value;
+   register volatile uint32_t *addr_r asm ("r2") = addr;
   
-   __ASM volatile ("strex %0, %2, [%1]" : "=r" (result) : "r" (addr), "r" (value) );
+   __ASM volatile ("strex %0, %2, [%1]" : "=r" (result) : "r" (addr_r), "r" (value_r) );
    return(result);
 }
 

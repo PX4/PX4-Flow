@@ -34,11 +34,6 @@
 #ifndef __PX4_FLOWBOARD_H
 #define __PX4_FLOWBOARD_H
 
-extern uint32_t get_time_between_images(void);
-
-void timer_update(void);
-void timer_update_ms(void);
-uint32_t get_boot_time_ms(void);
-uint32_t get_boot_time_us(void);
+void notify_changed_camera_parameters(void);
 
 #endif /* __PX4_FLOWBOARD_H */

@@ -8,6 +8,7 @@ ABS_BOOTLOADER_SRC := $(PX4_BOOTLOADER_BASE)src/
 
 SRCS   = \
 		   px4flow_init.c \
+			 px4flow_led.c \
 
 BOOTLOADER_SRC =  \
 			$(ABS_BOOTLOADER_SRC)common/boot_app_shared.c \

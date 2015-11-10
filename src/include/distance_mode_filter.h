@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2014 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,26 +31,17 @@
  *
  ****************************************************************************/
 
-/**
- * @file i2c.h
- * I2C communication functions.
- * @author Thomas Boehm <thomas.boehm@fortiss.org>
- */
+#ifndef DISTANCE_MODE_FILTER_H_
+#define DISTANCE_MODE_FILTER_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#ifndef I2C_H_
-#define I2C_H_
-#include <inttypes.h>
-#include <uavcan_if.h>
+float insert_distance_value_and_get_mode_value(float insert);
 
-#define I2C1_OWNADDRESS_1_BASE 0x42 //7bit base address
-/**
- * @brief  Configures I2C1 for communication as a slave (default behaviour for STM32F)
- */
+#ifdef __cplusplus
+}
+#endif
 
-void i2c_init(void);
-void update_TX_buffer(float pixel_flow_x, float pixel_flow_y, float flow_comp_m_x, float flow_comp_m_y, uint8_t qual,
-        float ground_distance, float x_rate, float y_rate, float z_rate, int16_t gyro_temp, legacy_12c_data_t *pd);
-char i2c_get_ownaddress1(void);
-#endif /* I2C_H_ */
-
+#endif /* DISTANCE_MODE_FILTER_H_ */

@@ -4,7 +4,7 @@
 
 
 #include <stdio.h>
-#include "../inc/sonar_mode_filter.h"
+#include "../inc/distance_mode_filter.h"
 
 int main(int argc, char *argv[]) {
 
@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
 
 		float inf = in / 10.0f;
 
-		float out = insert_sonar_value_and_get_mode_value(inf);
+		float out = insert_distance_value_and_get_mode_value(inf);
 
 		printf("in: %f\tout: %f\n", (double)inf, (double)out);
 	}

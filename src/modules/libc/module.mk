@@ -55,8 +55,9 @@ STRINGSRCS =  string/lib_strncmp.c      \
 STDIOSRCS =   stdio/lib_printf.c         \
 
 STDLIBSRCS=   stdlib/lib_strtol.c        \
-							stdlib/lib_strtoul.c       \
-      				stdlib/lib_checkbase.c    \
+              stdlib/lib_strtoul.c       \
+	    stdlib/lib_checkbase.c     \
+              stdlib/lib_qsort.c     \
 
 
 SRCS = init.c \
