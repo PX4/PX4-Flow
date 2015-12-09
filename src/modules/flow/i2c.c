@@ -324,7 +324,9 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 	notpublishedIndexFrame2 = 1 - publishedIndexFrame2; // choose not the current published 2 buffer
 
 	// HACK!! To get the data
-TODO(TODO:Tom Please fix this);
+	// In a V2 hw build with can and uavcan these macros 
+	// are used to passs the data to uavcan.
+
         uavcan_export(&pd->frame, &f, I2C_FRAME_SIZE);
         uavcan_export(&pd->integral_frame, &f_integral, I2C_INTEGRAL_FRAME_SIZE);
 
