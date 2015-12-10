@@ -141,10 +141,13 @@ static bool camera_buffer_fifo_remove_front(camera_ctx *ctx, int *out, size_t co
 		*out++ = ctx->buf_avail[i];
 	}
 	// close gap:
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic warning "-Warray-bounds"
 	for (i = count; i < bc && i < CONFIG_CAMERA_MAX_BUFFER_COUNT; ++i) {
 		ctx->buf_avail[i - count] = ctx->buf_avail[i];
 	}
 	ctx->buf_avail_count = bc - count;
+	#pragma GCC diagnostic pop
 	return true;
 }
 
