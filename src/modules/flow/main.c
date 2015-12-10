@@ -146,7 +146,7 @@ static void send_video_fn(void) {
 	if (previous_image == NULL) return;
 	
 	/*  transmit raw 8-bit image */
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]) && !FLOAT_AS_BOOL(global_data.param[PARAM_VIDEO_ONLY]))
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))
 	{
 		mavlink_send_image(previous_image);
 	}
