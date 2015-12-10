@@ -79,9 +79,12 @@ void mt9v034_context_configuration(void)
 	uint16_t new_height_context_b = FULL_IMAGE_COLUMN_SIZE * 4;
 
 	/* blanking settings */
-	uint16_t new_hor_blanking_context_a = 350 + MINIMUM_HORIZONTAL_BLANKING;// 350 is minimum value without distortions
+	uint16_t new_hor_blanking_context_a = 709 + MINIMUM_HORIZONTAL_BLANKING;// 709 is minimum value without distortions
 	uint16_t new_ver_blanking_context_a = 10; // this value is the first without image errors (dark lines)
 	uint16_t new_hor_blanking_context_b = MAX_IMAGE_WIDTH - new_width_context_b + MINIMUM_HORIZONTAL_BLANKING;
+	if (new_hor_blanking_context_b < 800) {
+		new_hor_blanking_context_b = 800;
+	}
 	uint16_t new_ver_blanking_context_b = 10;
 
 
@@ -140,7 +143,7 @@ void mt9v034_context_configuration(void)
 	else
 	{
 		min_exposure = 0x0001;
-		max_exposure = 0x0040;
+		max_exposure = 0x0080;
 		desired_brightness = 16; // VALID RANGE: 8-64
 		resolution_ctrl = 0x0202;//10bit linear
 		hdr_enabled = 0x0000; // off
