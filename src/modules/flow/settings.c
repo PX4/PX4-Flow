@@ -206,11 +206,6 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_USB_SEND_QUAL_0], "USB_SEND_Q_0");
 	global_data.param_access[PARAM_USB_SEND_QUAL_0] = READ_WRITE;
 
-
-	global_data.param[PARAM_VIDEO_ONLY] = 1;
-	strcpy(global_data.param_name[PARAM_VIDEO_ONLY], "VIDEO_ONLY");
-	global_data.param_access[PARAM_VIDEO_ONLY] = READ_WRITE;
-
 	global_data.param[PARAM_VIDEO_RATE] = 150;
 	strcpy(global_data.param_name[PARAM_VIDEO_RATE], "VIDEO_RATE");
 	global_data.param_access[PARAM_VIDEO_RATE] = READ_WRITE;
