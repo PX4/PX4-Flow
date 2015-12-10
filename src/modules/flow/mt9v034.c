@@ -173,6 +173,16 @@ void mt9v034_context_configuration(void)
 	{
 		mt9v034_WriteReg16(MTV_CHIP_CONTROL_REG, new_control);
 
+		// Initialize frame control reg
+		mt9v034_WriteReg(0x72, 0x0000);
+
+		// Write reserved registers per Rev G datasheet table 8 recommendations
+		mt9v034_WriteReg16(0x13, 0x2D2E);
+		mt9v034_WriteReg16(0x20, 0x03C7);
+		mt9v034_WriteReg16(0x24, 0x001B);
+		mt9v034_WriteReg16(0x2B, 0x0003);
+		mt9v034_WriteReg16(0x2F, 0x0003);
+
 		/* Context A */
 		mt9v034_WriteReg16(MTV_WINDOW_WIDTH_REG_A, new_width_context_a);
 		mt9v034_WriteReg16(MTV_WINDOW_HEIGHT_REG_A, new_height_context_a);
