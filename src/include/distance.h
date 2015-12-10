@@ -1,7 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2015 PX4 Development Team. All rights reserved.
- *       Author: David Sidrane <david_s5@nscdg.com>
+ *   Copyright (c) 2013-2015 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,37 +30,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-#ifndef NO_WARNINGS_H_
-#define NO_WARNINGS_H_
 
+#ifndef DISTANCE_H_
+#define DISTANCE_H_
+#include <stdint.h>
 #include <stdbool.h>
 
-inline bool FLOAT_AS_BOOL(float f);
-inline int FLOAT_EQ_INT(float f , int i);
-inline int FLOAT_EQ_FLOAT(float f1 , float f2);
+void distance_init(void);
+void distance_trigger(void);
+void distance_readback(void);
+bool distance_read(float* distance_filtered, float* distance_raw);
+uint32_t get_distance_measure_time(void);
 
-inline bool FLOAT_AS_BOOL(float f)
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wfloat-equal"
-  return (f != 0.0f);
-#pragma GCC diagnostic pop
-}
-
-inline int FLOAT_EQ_INT(float f , int i)
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wfloat-equal"
-  return (f == i);
-#pragma GCC diagnostic pop
-}
-
-inline int FLOAT_EQ_FLOAT(float f1 , float f2)
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wfloat-equal"
-  return (f1 == f2);
-#pragma GCC diagnostic pop
-}
-
-#endif /* NO_WARNINGS_H_ */
+#endif //DISTANCE_H_

@@ -4,7 +4,7 @@ CFLAGS=-I. -I../src -lm
 
 all: tests
 
-TEST_FILES=../src/sonar_mode_filter.c \
+TEST_FILES=../src/distance_mode_filter.c \
 		tests.cpp
 
 tests: $(TEST_FILES)

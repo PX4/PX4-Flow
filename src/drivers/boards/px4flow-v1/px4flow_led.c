@@ -31,8 +31,40 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
+#include <px4_config.h>
 
-#include "led.h"
+#include <stdint.h>
+#include <stdbool.h>
+
+#include <bsp/board.h>
+#include <chip.h>
+#include "stm32f4xx_gpio.h"
+#include "stm32f4xx_rcc.h"
+#include "stm32f4xx_tim.h"
+#include "stm32f4xx_conf.h"
+#include "stm32f4xx.h"
+
+typedef enum
+{
+	LED_ACT = 0,	// Blue
+	LED_COM = 1, 	// Amber
+	LED_ERR = 2,	// Red
+} Led_TypeDef;
+
+
+#define LEDn						3
+
+#define LED_ACTIVITY_PIN			GPIO_Pin_3
+#define LED_ACTIVITY_GPIO_PORT		GPIOE
+#define LED_ACTIVITY_GPIO_CLK		RCC_AHB1Periph_GPIOE
+
+#define LED_BOOTLOADER_PIN			GPIO_Pin_2
+#define LED_BOOTLOADER_GPIO_PORT	GPIOE
+#define LED_BOOTLOADER_GPIO_CLK		RCC_AHB1Periph_GPIOE
+
+#define LED_TEST_PIN				GPIO_Pin_7
+#define LED_TEST_GPIO_PORT			GPIOE
+#define LED_TEST_GPIO_CLK			RCC_AHB1Periph_GPIOE
 
 /* LED GPIOs */
 GPIO_TypeDef* LED_GPIO_PORTS[LEDn] = {LED_ACTIVITY_GPIO_PORT, LED_BOOTLOADER_GPIO_PORT, LED_TEST_GPIO_PORT};
@@ -48,7 +80,7 @@ const uint32_t LED_GPIO_CLKS[LEDn] = {LED_ACTIVITY_GPIO_CLK, LED_BOOTLOADER_GPIO
   *     @arg LED_ERR
   * @retval None
   */
-void LEDInit(Led_TypeDef Led)
+static void LEDInit(Led_TypeDef Led)
 {
   GPIO_InitTypeDef  GPIO_InitStructure;
 
@@ -73,7 +105,7 @@ void LEDInit(Led_TypeDef Led)
   *     @arg LED_ERR
   * @retval None
   */
-void LEDOn(Led_TypeDef Led)
+static void LEDOn(Led_TypeDef Led)
 {
 	GPIO_ResetBits(LED_GPIO_PORTS[Led],LED_GPIO_PINS[Led]);
 }
@@ -87,7 +119,7 @@ void LEDOn(Led_TypeDef Led)
   *     @arg LED_ERR
   * @retval None
   */
-void LEDOff(Led_TypeDef Led)
+static void LEDOff(Led_TypeDef Led)
 {
 	GPIO_SetBits(LED_GPIO_PORTS[Led],LED_GPIO_PINS[Led]);
 }
@@ -101,7 +133,22 @@ void LEDOff(Led_TypeDef Led)
   *     @arg LED_ERR
   * @retval None
   */
-void LEDToggle(Led_TypeDef Led)
+static void LEDToggle(Led_TypeDef Led)
 {
 	GPIO_ToggleBits(LED_GPIO_PORTS[Led],LED_GPIO_PINS[Led]);
+}
+
+__EXPORT void board_led_initialize(void)
+{
+  LEDInit(LED_ACT);
+  LEDInit(LED_COM);
+  LEDInit(LED_ERR);
+}
+
+__EXPORT void board_led_status_update(float quality)
+{
+  UNUSED(quality);
+  LEDToggle(LED_ACT);
+  LEDOff(LED_COM);
+  LEDOff(LED_ERR);
 }

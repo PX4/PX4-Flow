@@ -22,8 +22,6 @@ SRCS = 	$(ST_LIB)startup_stm32f4xx.s \
 					
 
 SRCS += 		main.c \
-          utils.c \
-          led.c \
           settings.c \
           communication.c \
           flow.c \
@@ -31,15 +29,16 @@ SRCS += 		main.c \
           mt9v034.c \
           gyro.c \
           usart.c \
-          sonar.c \
-          debug.c \
           usb_bsp.c \
           usbd_cdc_vcp.c \
           usbd_desc.c \
           usbd_usr.c \
-          i2c.c \
           reset.c \
-          sonar_mode_filter.c
+          distance_mode_filter.c \
+	   camera.c \
+	   result_accumulator.c \
+	   timer.c
+	   
 
 SRCS += 	$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/misc.c \
     			$(ST_LIB)STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c \
