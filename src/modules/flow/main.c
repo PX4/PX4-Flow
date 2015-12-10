@@ -38,7 +38,6 @@
 #include <px4_config.h>
 #include <bsp/board.h>
 
-#include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
