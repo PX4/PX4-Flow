@@ -170,14 +170,14 @@ void debug_message_send_one(void)
 		case(DEBUG_INT):
 			strncat(msg, m_debug_buf_pointer[m_debug_index_read], DEBUG_MAX_LEN);
 			strncat(msg, " ", DEBUG_MAX_LEN);
-			strncat(msg, ftoa(m_debug_buf_int[m_debug_index_read]), DEBUG_MAX_LEN);
+			strncat(msg, flow_ftoa(m_debug_buf_int[m_debug_index_read]), DEBUG_MAX_LEN);
 			msg[strlen(msg) - 2] = '\0'; // TODO workaround: cut ".0" of float
 			break;
 
 		case(DEBUG_FLOAT):
 			strncat(msg, m_debug_buf_pointer[m_debug_index_read], DEBUG_MAX_LEN);
 			strncat(msg, " ", DEBUG_MAX_LEN);
-			strncat(msg, ftoa(m_debug_buf_float[m_debug_index_read]), DEBUG_MAX_LEN);
+			strncat(msg, flow_ftoa(m_debug_buf_float[m_debug_index_read]), DEBUG_MAX_LEN);
 			break;
 
 		default:

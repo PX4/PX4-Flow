@@ -40,8 +40,8 @@
 /**
 * @brief  Float to Ascii string
 */
-char* ftoa(float f);
-void ltoa(char *buf, unsigned long i, int base);
-void itoa(char *buf, unsigned int i, int base);
+char* flow_ftoa(float f);
+char* flow_ltoa(char *buf, unsigned long i, int base);
+char* flow_itoa(char *buf, unsigned int i, int base);
 
 #endif /* UTILS_H_ */

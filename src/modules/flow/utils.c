@@ -41,7 +41,7 @@ long	L;
 float	F;
 }	 LF_t;
 
-char *ftoa(float f) //, int *status)
+char *flow_ftoa(float f) //, int *status)
 {
 	long mantissa, int_part, frac_part;
 	short exp2;
@@ -97,7 +97,7 @@ char *ftoa(float f) //, int *status)
 		*p++ = '0';
 	else
 	{
-		ltoa(p, int_part, 10);
+		flow_ltoa(p, int_part, 10);
 		while (*p)
 		p++;
 	}
@@ -132,7 +132,7 @@ char *ftoa(float f) //, int *status)
 }
 
 
-void ltoa(char *buf, unsigned long i, int base)
+char* flow_ltoa(char *buf, unsigned long i, int base)
 {
 	char *s;
 	#define LEN	25
@@ -156,9 +156,11 @@ void ltoa(char *buf, unsigned long i, int base)
 			}
 		}
 	strcpy(buf, s);
+
+	return buf;
 }
 
-void itoa(char *buf, unsigned int i, int base)
+char* flow_itoa(char *buf, unsigned int i, int base)
 {
 	char *s;
 	const int len = 10;
@@ -182,4 +184,6 @@ void itoa(char *buf, unsigned int i, int base)
 			}
 		}
 	strcpy(buf, s);
+
+	return buf;
 }

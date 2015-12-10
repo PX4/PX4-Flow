@@ -136,7 +136,10 @@ void UART4_IRQHandler(void)
 					dt = ((float)(measure_time - last_measure_time)) / 1000000.0f;
 
 					valid_data = temp;
-					sonar_mode = insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
+					// the mode filter turned out to be more problematic
+					// than using the raw value of the sonar
+					//insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
+					sonar_mode = valid_data / SONAR_SCALE;
 					new_value = 1;
 					sonar_valid = true;
 				} else {
