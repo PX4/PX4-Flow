@@ -194,7 +194,7 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_COARSE_SW_1_REG_A, coarse_sw1);
 		mt9v034_WriteReg16(MTV_COARSE_SW_2_REG_A, coarse_sw2);
 		mt9v034_WriteReg16(MTV_COARSE_SW_CTRL_REG_A, shutter_width_ctrl);
-		mt9v034_WriteReg16(MTV_V2_CTRL_REG_A, total_shutter_width);
+		mt9v034_WriteReg16(MTV_COARSE_SW_TOTAL_REG_A, total_shutter_width);
 
 
 		/* Context B */
@@ -208,7 +208,7 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_COARSE_SW_1_REG_B, coarse_sw1);
 		mt9v034_WriteReg16(MTV_COARSE_SW_2_REG_B, coarse_sw2);
 		mt9v034_WriteReg16(MTV_COARSE_SW_CTRL_REG_B, shutter_width_ctrl);
-		mt9v034_WriteReg16(MTV_V2_CTRL_REG_B, total_shutter_width);
+		mt9v034_WriteReg16(MTV_COARSE_SW_TOTAL_REG_B, total_shutter_width);
 
 		/* General Settings */
 		mt9v034_WriteReg16(MTV_ROW_NOISE_CORR_CTRL_REG, row_noise_correction);
