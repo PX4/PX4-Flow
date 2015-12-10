@@ -132,7 +132,7 @@ char *ftoa(float f) //, int *status)
 }
 
 
-void ltoa(char *buf, unsigned long i, int base)
+char* ltoa(char *buf, unsigned long i, int base)
 {
 	char *s;
 	#define LEN	25
@@ -156,9 +156,11 @@ void ltoa(char *buf, unsigned long i, int base)
 			}
 		}
 	strcpy(buf, s);
+
+	return buf;
 }
 
-void itoa(char *buf, unsigned int i, int base)
+char* itoa(char *buf, unsigned int i, int base)
 {
 	char *s;
 	const int len = 10;
@@ -182,4 +184,6 @@ void itoa(char *buf, unsigned int i, int base)
 			}
 		}
 	strcpy(buf, s);
+
+	return buf;
 }
