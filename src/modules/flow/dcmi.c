@@ -38,8 +38,6 @@
 #include <px4_config.h>
 #include <px4_macros.h>
 #include "no_warnings.h"
-#include "mavlink_bridge_header.h"
-#include <mavlink.h>
 #include "dcmi.h"
 #include "timer.h"
 #include "stm32f4xx_gpio.h"
