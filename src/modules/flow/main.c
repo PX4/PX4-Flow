@@ -242,7 +242,7 @@ int main(void)
 
 	/* usart config*/
 	usart_init();
-  fmu_comm_init();
+	fmu_comm_init();
 	distance_init();
 
 	/* reset/start timers */
