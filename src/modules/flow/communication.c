@@ -54,7 +54,8 @@ extern void systemreset(bool to_bootloader);
 
 mavlink_system_t mavlink_system;
 
-static uint32_t m_parameter_i = 0;
+/* do not send params on boot */
+static uint32_t m_parameter_i = ONBOARD_PARAM_COUNT;
 
 /**
  * @brief Initialize MAVLINK system
