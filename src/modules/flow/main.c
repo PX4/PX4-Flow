@@ -233,7 +233,7 @@ int main(void)
 			BuildCameraImageBuffer(image_buffer_8bit_5)
 		};
 		camera_init(&cam_ctx, mt9v034_get_sensor_interface(), dcmi_get_transport_interface(), 
-					mt9v034_get_clks_per_row(64, 4) * 1, mt9v034_get_clks_per_row(64, 4) * 64, 2.0,
+					mt9v034_get_clks_per_row(64, 4) * 1, mt9v034_get_clks_per_row(64, 4) * 512, 2.0,
 					&img_stream_param, buffers, 5);
 	}
 
