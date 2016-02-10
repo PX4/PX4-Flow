@@ -332,6 +332,9 @@ int main(void)
 	int valid_frame_count = 0;
 	int pixel_flow_count = 0;
 
+	float rot_flow_x_lp = 0.0f;
+	float rot_flow_y_lp = 0.0f;
+
 	static float accumulated_flow_x = 0;
 	static float accumulated_flow_y = 0;
 	static float accumulated_gyro_x = 0;
@@ -573,9 +576,20 @@ int main(void)
 				/* send approximate local position estimate without heading */
 				if (FLOAT_AS_BOOL(global_data.param[PARAM_SYSTEM_SEND_LPOS]))
 				{
+					float pi = M_PI;
+					float fcut = 0.1; // cut all freq. below 0.1 hz
+					float dt = integration_timespan;
+					float alpha = 2*pi*dt*fcut/(2*pi*dt*fcut+1);
+					float rot_flow_x = ground_distance*accumulated_gyro_x;
+					float rot_flow_y = ground_distance*accumulated_gyro_y;
+					rot_flow_x_lp = rot_flow_x_lp*(1-alpha) + rot_flow_x*alpha;
+					rot_flow_y_lp = rot_flow_y_lp*(1-alpha) + rot_flow_y*alpha;
+					float rot_flow_x_hp = rot_flow_x - rot_flow_x_lp;
+					float rot_flow_y_hp = rot_flow_y - rot_flow_y_lp;
+
 					/* rough local position estimate for unit testing */
-					lpos.x += ground_distance*accumulated_flow_x;
-					lpos.y += ground_distance*accumulated_flow_y;
+					lpos.x += ground_distance*(accumulated_flow_x) - rot_flow_x_hp;
+					lpos.y += ground_distance*(accumulated_flow_y) - rot_flow_y_hp;
 					lpos.z = -ground_distance;
  					/* velocity not directly measured and not important for testing */
 					lpos.vx = 0;
