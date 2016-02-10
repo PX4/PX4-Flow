@@ -577,8 +577,8 @@ int main(void)
 				if (FLOAT_AS_BOOL(global_data.param[PARAM_SYSTEM_SEND_LPOS]))
 				{
 					float pi = M_PI;
-					float fcut = 0.1; // cut all freq. below 0.1 hz
-					float dt = integration_timespan;
+					float fcut = 0.01; // cut all freq. below 0.1 hz
+					float dt = integration_timespan/1000000.0f;
 					float alpha = 2*pi*dt*fcut/(2*pi*dt*fcut+1);
 					float rot_flow_x = ground_distance*accumulated_gyro_x;
 					float rot_flow_y = ground_distance*accumulated_gyro_y;
