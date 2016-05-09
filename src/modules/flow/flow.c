@@ -404,6 +404,8 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	const uint16_t hist_size = 2*(winmax-winmin+1)+1;
 
 	/* variables */
+        uint8_t qualValue=255;
+        uint8_t qualThreshold=15;
         uint16_t pixLo = SEARCH_SIZE + 1;
         uint16_t pixHi = FRAME_SIZE - (SEARCH_SIZE + 1) - TILE_SIZE;
         uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
@@ -744,6 +746,8 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 
 	/* calc quality */
 	uint8_t qual = (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
-
+    if (qual-qualValue > qualThreshold || qualValue-qual > qualThreshold){
+        qualValue=qual;
+    }
 	return qual;
 }
