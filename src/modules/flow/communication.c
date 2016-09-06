@@ -273,6 +273,23 @@ void handle_mavlink_message(mavlink_channel_t chan,
 								l3gd20_config();
 							}
 
+							/* shutter/ exposure params */
+							else if(i == PARAM_SHTR_W_1 ||
+									i == PARAM_SHTR_W_2 ||
+									i == PARAM_SHTR_W_TOT ||
+									i == PARAM_EXPOSURE_MAX ||
+									i == PARAM_HDR ||
+									i == PARAM_AEC ||
+									i == PARAM_AGC ||
+									i == PARAM_BRIGHT ||
+									i == PARAM_GAIN_MAX
+									)
+							{
+								mt9v034_context_configuration();
+								dma_reconfigure();
+								buffer_reset();
+							}
+
 							else
 							{
 								debug_int_message_buffer("Parameter received, param id =", i);

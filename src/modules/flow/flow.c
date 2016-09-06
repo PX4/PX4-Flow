@@ -501,23 +501,23 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	/* create flow image if needed (image1 is not needed anymore)
 	 * -> can be used for debugging purpose
 	 */
-//	if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
-//	{
-//
-//		for (j = pixLo; j < pixHi; j += pixStep)
-//		{
-//			for (i = pixLo; i < pixHi; i += pixStep)
-//			{
-//
-//				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
-//				if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
-//				{
-//					image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
-//				}
-//
-//			}
-//		}
-//	}
+	if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
+	{
+
+		for (j = pixLo; j < pixHi; j += pixStep)
+		{
+			for (i = pixLo; i < pixHi; i += pixStep)
+			{
+
+				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+				if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
+				{
+					image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
+				}
+
+			}
+		}
+	}
 
 	/* evaluate flow calculation */
 	if (meancount > 10)

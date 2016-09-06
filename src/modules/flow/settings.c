@@ -73,7 +73,7 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_SYSTEM_SEND_STATE], "SYS_SEND_STATE");
 	global_data.param_access[PARAM_SYSTEM_SEND_STATE] = READ_WRITE;
 
-	global_data.param[PARAM_SYSTEM_SEND_LPOS] = 0;
+	global_data.param[PARAM_SYSTEM_SEND_LPOS] = 1;
 	strcpy(global_data.param_name[PARAM_SYSTEM_SEND_LPOS], "SYS_SEND_LPOS");
 	global_data.param_access[PARAM_SYSTEM_SEND_LPOS] = READ_WRITE;
 
@@ -159,7 +159,7 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_VIDEO_ONLY], "VIDEO_ONLY");
 	global_data.param_access[PARAM_VIDEO_ONLY] = READ_WRITE;
 
-	global_data.param[PARAM_VIDEO_RATE] = 150;
+	global_data.param[PARAM_VIDEO_RATE] = 50;
 	strcpy(global_data.param_name[PARAM_VIDEO_RATE], "VIDEO_RATE");
 	global_data.param_access[PARAM_VIDEO_RATE] = READ_WRITE;
 
@@ -173,7 +173,7 @@ void global_data_reset_param_defaults(void){
 	global_data.param_access[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD] = READ_WRITE;
 
 //	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 100;
-	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 30; // threshold is irrelevant with this value
+	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 20; // threshold is irrelevant with this value
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD], "BFLOW_F_THLD");
 	global_data.param_access[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = READ_WRITE;
 
@@ -195,9 +195,45 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_WEIGHT_NEW], "BFLOW_W_NEW");
 	global_data.param_access[PARAM_BOTTOM_FLOW_WEIGHT_NEW] = READ_WRITE;
 
-	global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = 10.0f;
-	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR], "BFLOW_THROTT");
-	global_data.param_access[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] = READ_WRITE;
+	global_data.param[PARAM_BOTTOM_FLOW_PUB_RATE] = 10.0f;
+	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_PUB_RATE], "BFLOW_RATE");
+	global_data.param_access[PARAM_BOTTOM_FLOW_PUB_RATE] = READ_WRITE;
+
+	global_data.param[PARAM_EXPOSURE_MAX] = 2000;
+	strcpy(global_data.param_name[PARAM_EXPOSURE_MAX], "EXPOSURE_MAX");
+	global_data.param_access[PARAM_EXPOSURE_MAX] = READ_WRITE;
+
+	global_data.param[PARAM_GAIN_MAX] = 16;
+	strcpy(global_data.param_name[PARAM_GAIN_MAX], "GAIN_MAX");
+	global_data.param_access[PARAM_GAIN_MAX] = READ_WRITE;
+
+	global_data.param[PARAM_SHTR_W_1] = 443;
+	strcpy(global_data.param_name[PARAM_SHTR_W_1], "SHTR_W_1");
+	global_data.param_access[PARAM_SHTR_W_1] = READ_WRITE;
+
+	global_data.param[PARAM_SHTR_W_2] = 473;
+	strcpy(global_data.param_name[PARAM_SHTR_W_2], "SHTR_W_2");
+	global_data.param_access[PARAM_SHTR_W_2] = READ_WRITE;
+
+	global_data.param[PARAM_SHTR_W_TOT] = 480;
+	strcpy(global_data.param_name[PARAM_SHTR_W_TOT], "SHTR_W_TOT");
+	global_data.param_access[PARAM_SHTR_W_TOT] = READ_WRITE;
+
+	global_data.param[PARAM_HDR] = 1;
+	strcpy(global_data.param_name[PARAM_HDR], "HDR");
+	global_data.param_access[PARAM_HDR] = READ_WRITE;
+
+	global_data.param[PARAM_AEC] = 1;
+	strcpy(global_data.param_name[PARAM_AEC], "AEC");
+	global_data.param_access[PARAM_AEC] = READ_WRITE;
+
+	global_data.param[PARAM_AGC] = 1;
+	strcpy(global_data.param_name[PARAM_AGC], "AGC");
+	global_data.param_access[PARAM_AGC] = READ_WRITE;
+
+	global_data.param[PARAM_BRIGHT] = 15;
+	strcpy(global_data.param_name[PARAM_BRIGHT], "BRIGHT");
+	global_data.param_access[PARAM_BRIGHT] = READ_WRITE;
 
 	global_data.param[DEBUG_VARIABLE] = 1;
 	strcpy(global_data.param_name[DEBUG_VARIABLE], "DEBUG");

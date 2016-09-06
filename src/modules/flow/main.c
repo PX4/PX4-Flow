@@ -342,6 +342,7 @@ int main(void)
 	static uint32_t integration_timespan = 0;
 	static uint32_t lasttime = 0;
 	uint32_t time_since_last_sonar_update= 0;
+	uint32_t time_last_pub= 0;
 
 	uavcan_start();
 	/* main loop */
@@ -438,6 +439,22 @@ int main(void)
 			float flow_compx = pixel_flow_x / focal_length_px / (get_time_between_images() / 1000000.0f);
 			float flow_compy = pixel_flow_y / focal_length_px / (get_time_between_images() / 1000000.0f);
 
+			if (qual > 0)
+			{
+				valid_frame_count++;
+
+				uint32_t deltatime = (get_boot_time_us() - lasttime);
+				integration_timespan += deltatime;
+				accumulated_flow_x += pixel_flow_y  / focal_length_px * 1.0f; //rad axis swapped to align x flow around y axis
+				accumulated_flow_y += pixel_flow_x  / focal_length_px * -1.0f;//rad
+				accumulated_gyro_x += x_rate * deltatime / 1000000.0f;	//rad
+				accumulated_gyro_y += y_rate * deltatime / 1000000.0f;	//rad
+				accumulated_gyro_z += z_rate * deltatime / 1000000.0f;	//rad
+				accumulated_framecount++;
+				accumulated_quality += qual;
+			}
+
+
 			/* integrate velocity and output values only if distance is valid */
 			if (distance_valid)
 			{
@@ -451,17 +468,6 @@ int main(void)
 				{
 					velocity_x_sum += new_velocity_x;
 					velocity_y_sum += new_velocity_y;
-					valid_frame_count++;
-
-					uint32_t deltatime = (get_boot_time_us() - lasttime);
-					integration_timespan += deltatime;
-					accumulated_flow_x += pixel_flow_y  / focal_length_px * 1.0f; //rad axis swapped to align x flow around y axis
-					accumulated_flow_y += pixel_flow_x  / focal_length_px * -1.0f;//rad
-					accumulated_gyro_x += x_rate * deltatime / 1000000.0f;	//rad
-					accumulated_gyro_y += y_rate * deltatime / 1000000.0f;	//rad
-					accumulated_gyro_z += z_rate * deltatime / 1000000.0f;	//rad
-					accumulated_framecount++;
-					accumulated_quality += qual;
 
 					/* lowpass velocity output */
 					velocity_x_lp = global_data.param[PARAM_BOTTOM_FLOW_WEIGHT_NEW] * new_velocity_x +
@@ -533,8 +539,11 @@ int main(void)
                         PROBE_3(true);
 
             //serial mavlink  + usb mavlink output throttled
-			if (counter % (uint32_t)global_data.param[PARAM_BOTTOM_FLOW_SERIAL_THROTTLE_FACTOR] == 0)//throttling factor
+			uint32_t now = get_boot_time_us();
+			uint32_t time_since_last_pub = now - time_last_pub;
+			if (time_since_last_pub > (1.0e6f/global_data.param[PARAM_BOTTOM_FLOW_PUB_RATE]))
 			{
+				time_last_pub = now;
 
 				float flow_comp_m_x = 0.0f;
 				float flow_comp_m_y = 0.0f;
@@ -577,10 +586,9 @@ int main(void)
 					lpos.x += ground_distance*accumulated_flow_x;
 					lpos.y += ground_distance*accumulated_flow_y;
 					lpos.z = -ground_distance;
- 					/* velocity not directly measured and not important for testing */
-					lpos.vx = 0;
-					lpos.vy = 0;
-					lpos.vz = 0;
+					lpos.vx = ground_distance*accumulated_flow_x/integration_timespan;
+					lpos.vy = ground_distance*accumulated_flow_y/integration_timespan;
+					lpos.vz = 0; // no direct measurement, just ignore
 
 				} else {
 					/* toggling param allows user reset */
@@ -699,7 +707,7 @@ int main(void)
 			uint16_t frame = 0;
 			for (frame = 0; frame < image_size_send / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1; frame++)
 			{
-				mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) current_image)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
+				mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
 			}
 
 			send_image_now = false;

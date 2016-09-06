@@ -79,7 +79,7 @@ void mt9v034_context_configuration(void)
 	uint16_t new_height_context_b = FULL_IMAGE_COLUMN_SIZE * 4;
 
 	/* blanking settings */
-	uint16_t new_hor_blanking_context_a = 709 + MINIMUM_HORIZONTAL_BLANKING;// 709 is minimum value without distortions
+	uint16_t new_hor_blanking_context_a = 425 + MINIMUM_HORIZONTAL_BLANKING;// 709 is minimum value without distortions
 	uint16_t new_ver_blanking_context_a = 10; // this value is the first without image errors (dark lines)
 	uint16_t new_hor_blanking_context_b = MAX_IMAGE_WIDTH - new_width_context_b + MINIMUM_HORIZONTAL_BLANKING;
 	if (new_hor_blanking_context_b < 800) {
@@ -109,50 +109,37 @@ void mt9v034_context_configuration(void)
 	 * so we set max on 64 (lines) = 0x40
 	 */
 	uint16_t min_exposure = 0x0001; // default
-	uint16_t max_exposure = 0x01E0; // default
-	uint16_t new_max_gain = 64; // VALID RANGE: 16-64 (default)
 	uint16_t pixel_count = 4096; //64x64 take all pixels to estimate exposure time // VALID RANGE: 1-65535
-
-	uint16_t desired_brightness = 58; // default
-	uint16_t resolution_ctrl = 0x0203; // default
-	uint16_t hdr_enabled = 0x0100; // default
-	uint16_t aec_agc_enabled = 0x0003; // default
-	uint16_t coarse_sw1 = 0x01BB; // default from context A
-	uint16_t coarse_sw2 = 0x01D9; // default from context A
 	uint16_t shutter_width_ctrl = 0x0164; // default from context A
-	uint16_t total_shutter_width = 0x01E0; // default from context A
 	uint16_t aec_update_freq = 0x02; // default Number of frames to skip between changes in AEC VALID RANGE: 0-15
 	uint16_t aec_low_pass = 0x01; // default VALID RANGE: 0-2
 	uint16_t agc_update_freq = 0x02; // default Number of frames to skip between changes in AGC VALID RANGE: 0-15
 	uint16_t agc_low_pass = 0x02; // default VALID RANGE: 0-2
 
+	uint16_t resolution_ctrl = 0x0303; // 12 bit adc for low light
+	uint16_t max_gain = global_data.param[PARAM_GAIN_MAX];
+	uint16_t max_exposure = global_data.param[PARAM_EXPOSURE_MAX];
+	uint16_t coarse_sw1 = global_data.param[PARAM_SHTR_W_1];
+	uint16_t coarse_sw2 = global_data.param[PARAM_SHTR_W_2];
+	uint16_t total_shutter_width = global_data.param[PARAM_SHTR_W_TOT];
+	uint16_t hdr_enabled = 0x0000;
+	bool hdr_enable_flag = global_data.param[PARAM_HDR] > 0;
+	if (hdr_enable_flag) {
+		hdr_enabled = 0x0100;
+	}
 
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_LOW_LIGHT]))
-	{
-		min_exposure = 0x0001;
-		max_exposure = 0x0040;
-		desired_brightness = 58; // VALID RANGE: 8-64
-		resolution_ctrl = 0x0202;//10 bit linear
-		hdr_enabled = 0x0000; // off
-		aec_agc_enabled = 0x0303; // on
-		coarse_sw1 = 0x01BB; // default from context A
-		coarse_sw2 = 0x01D9; // default from context A
-		shutter_width_ctrl = 0x0164; // default from context A
-		total_shutter_width = 0x01E0; // default from context A
+	bool aec_enable_flag = global_data.param[PARAM_AEC] > 0;
+	uint16_t aec_agc_enabled = 0x0000;
+	if (aec_enable_flag) {
+		aec_agc_enabled |= (1 << 0);
 	}
-	else
-	{
-		min_exposure = 0x0001;
-		max_exposure = 0x0080;
-		desired_brightness = 16; // VALID RANGE: 8-64
-		resolution_ctrl = 0x0202;//10bit linear
-		hdr_enabled = 0x0000; // off
-		aec_agc_enabled = 0x0303; // on
-		coarse_sw1 = 0x01BB; // default from context A
-		coarse_sw2 = 0x01D9; // default from context A
-		shutter_width_ctrl = 0x0164; // default from context A
-		total_shutter_width = 0x01E0; // default from context A
+
+	bool agc_enable_flag = global_data.param[PARAM_AGC] > 0;
+	if (agc_enable_flag) {
+		aec_agc_enabled |= (1 << 1);
 	}
+
+	uint16_t desired_brightness = global_data.param[PARAM_BRIGHT];
 
 	uint16_t row_noise_correction = 0x0000; // default
 	uint16_t test_data = 0x0000; // default
@@ -216,7 +203,7 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_HDR_ENABLE_REG, hdr_enabled); // disable HDR on both contexts
 		mt9v034_WriteReg16(MTV_MIN_EXPOSURE_REG, min_exposure);
 		mt9v034_WriteReg16(MTV_MAX_EXPOSURE_REG, max_exposure);
-		mt9v034_WriteReg16(MTV_MAX_GAIN_REG, new_max_gain);
+		mt9v034_WriteReg16(MTV_MAX_GAIN_REG, max_gain);
 		mt9v034_WriteReg16(MTV_AGC_AEC_PIXEL_COUNT_REG, pixel_count);
 		mt9v034_WriteReg16(MTV_AGC_AEC_DESIRED_BIN_REG, desired_brightness);
 		mt9v034_WriteReg16(MTV_ADC_RES_CTRL_REG, resolution_ctrl); // here is the way to regulate darkness :)
