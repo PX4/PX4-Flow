@@ -275,21 +275,21 @@ void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image,
 }
 
 void whitened_image(uint8_t *source, uint8_t *dest, uint16_t image_size) {
-	double sum = 0.0;
+	float sum = 0.0f;
 	for (uint16_t pixel = 0; pixel < image_size; pixel++)
 		sum += source[pixel];
-	double mean = sum / image_size;
-	double rss = 0.0;
+	float mean = sum / image_size;
+	float rss = 0.0f;
 	for (uint16_t pixel = 0; pixel < image_size; pixel++)
-		rss += pow(source[pixel] - mean, 2);
-	double stddev = sqrt(rss/(image_size - 1));
+		rss += (source[pixel] - mean)*(source[pixel] - mean);
+	float stddev = sqrtf(rss/(image_size - 1));
 	dest[0] = stddev;
 
 	for (uint16_t pixel = 0; pixel < image_size; pixel++) {
-		double v = 127.0 + 32.0*(source[pixel] - mean)/stddev;
-		if (v < 0.0)
+		float v = 127.0f + 32.0f*(source[pixel] - mean)/stddev;
+		if (v < 0.0f)
 			v = 0;
-		if (v > 255.0)
+		if (v > 255.0f)
 			v = 255;
 		dest[pixel] = (uint8_t)v;
 	}
