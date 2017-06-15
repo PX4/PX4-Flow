@@ -108,10 +108,10 @@ volatile uint32_t boot_time10_us = 0;
 #define TIMER_LPOS		8
 #define MS_TIMER_COUNT		100 /* steps in 10 microseconds ticks */
 #define LED_TIMER_COUNT		500 /* steps in milliseconds ticks */
-#define SONAR_TIMER_COUNT 	100	/* steps in milliseconds ticks */
+#define SONAR_TIMER_COUNT	9999/* steps in milliseconds ticks */
 #define SYSTEM_STATE_COUNT	1000/* steps in milliseconds ticks */
 #define PARAMS_COUNT		100	/* steps in milliseconds ticks */
-#define LPOS_TIMER_COUNT 	100	/* steps in milliseconds ticks */
+#define LPOS_TIMER_COUNT	100	/* steps in milliseconds ticks */
 
 static volatile unsigned timer[NTIMERS];
 static volatile unsigned timer_ms = MS_TIMER_COUNT;
@@ -251,14 +251,14 @@ int main(void)
 	LEDOff(LED_ACT);
 	LEDOff(LED_COM);
 	LEDOff(LED_ERR);
-        board_led_rgb(255,255,255, 1);
-        board_led_rgb(  0,  0,255, 0);
-        board_led_rgb(  0,  0, 0, 0);
-        board_led_rgb(255,  0,  0, 1);
-        board_led_rgb(255,  0,  0, 2);
-        board_led_rgb(255,  0,  0, 3);
-                board_led_rgb(  0,255,  0, 3);
-        board_led_rgb(  0,  0,255, 4);
+	board_led_rgb(255,255,255, 1);
+	board_led_rgb(  0,  0,255, 0);
+	board_led_rgb(  0,  0, 0, 0);
+	board_led_rgb(255,  0,  0, 1);
+	board_led_rgb(255,  0,  0, 2);
+	board_led_rgb(255,  0,  0, 3);
+	board_led_rgb(  0,255,  0, 3);
+	board_led_rgb(  0,  0,255, 4);
 
 	/* enable FPU on Cortex-M4F core */
 	SCB_CPACR |= ((3UL << 10 * 2) | (3UL << 11 * 2)); /* set CP10 Full Access and set CP11 Full Access */
@@ -300,8 +300,8 @@ int main(void)
 	/* usart config*/
 	usart_init();
 
-    /* i2c config*/
-    i2c_init();
+	/* i2c config*/
+	i2c_init();
 
 	/* sonar config*/
 	float sonar_distance_filtered = 0.0f; // distance in meter
@@ -348,9 +348,10 @@ int main(void)
 	/* main loop */
 	while (1)
 	{
-                PROBE_1(false);
-                uavcan_run();
-                PROBE_1(true);
+		PROBE_1(false);
+		uavcan_run();
+		PROBE_1(true);
+
 		/* reset flow buffers if needed */
 		if(buffer_reset_needed)
 		{
@@ -427,6 +428,7 @@ int main(void)
 		{
 			/* copy recent image to faster ram */
 			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
+			whitened_image(current_image, current_image, image_size);
 
 			/* compute optical flow */
 			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
@@ -505,20 +507,12 @@ int main(void)
 
 			float ground_distance = 0.0f;
 
+			ground_distance = FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]) ? sonar_distance_filtered : sonar_distance_raw;
 
-			if(FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]))
-			{
-				ground_distance = sonar_distance_filtered;
-			}
-			else
-			{
-				ground_distance = sonar_distance_raw;
-			}
-
-                        uavcan_define_export(i2c_data, legacy_12c_data_t, ccm);
-                        uavcan_define_export(range_data, range_data_t, ccm);
+			uavcan_define_export(i2c_data, legacy_12c_data_t, ccm);
+			uavcan_define_export(range_data, range_data_t, ccm);
 			uavcan_timestamp_export(i2c_data);
-                        uavcan_assign(range_data.time_stamp_utc, i2c_data.time_stamp_utc);
+			uavcan_assign(range_data.time_stamp_utc, i2c_data.time_stamp_utc);
 			//update I2C transmitbuffer
 			if(valid_frame_count>0)
 			{
@@ -530,13 +524,13 @@ int main(void)
 				update_TX_buffer(pixel_flow_x, pixel_flow_y, 0.0f, 0.0f, qual,
 						ground_distance, x_rate, y_rate, z_rate, gyro_temp, uavcan_use_export(i2c_data));
 			}
-	                PROBE_2(false);
-                        uavcan_publish(range, 40, range_data);
-	                PROBE_2(true);
+			PROBE_2(false);
+			uavcan_publish(range, 40, range_data);
+			PROBE_2(true);
 
-                        PROBE_3(false);
-                        uavcan_publish(flow, 40, i2c_data);
-                        PROBE_3(true);
+			PROBE_3(false);
+			uavcan_publish(flow, 40, i2c_data);
+			PROBE_3(true);
 
             //serial mavlink  + usb mavlink output throttled
 			uint32_t now = get_boot_time_us();

@@ -251,35 +251,47 @@ void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image,
 	*current_image = *previous_image;
 	*previous_image = tmp_image;
 
-TODO(NB dma_copy_image_buffers is calling uavcan_run());
-
 	/* wait for new image if needed */
-	while(image_counter < image_step) {
-            PROBE_1(false);
-            uavcan_run();
-            PROBE_1(true);
-	}
+	while(image_counter < image_step);
 
 	image_counter = 0;
 
 	/* time between images */
 	time_between_images = time_between_next_images;
 
+	uint8_t *source = NULL;
+
 	/* copy image */
-	if (dcmi_image_buffer_unused == 1)
-	{
-		for (uint16_t pixel = 0; pixel < image_size; pixel++)
-			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_1[pixel]);
+	if (dcmi_image_buffer_unused == 1) {
+		source = dcmi_image_buffer_8bit_1;
+	} else if (dcmi_image_buffer_unused == 2) {
+		source = dcmi_image_buffer_8bit_2;
+	} else {
+		source = dcmi_image_buffer_8bit_3;
 	}
-	else if (dcmi_image_buffer_unused == 2)
-	{
-		for (uint16_t pixel = 0; pixel < image_size; pixel++)
-			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_2[pixel]);
-	}
-	else
-	{
-		for (uint16_t pixel = 0; pixel < image_size; pixel++)
-			(*current_image)[pixel] = (uint8_t)(dcmi_image_buffer_8bit_3[pixel]);
+
+	for (uint16_t pixel = 0; pixel < image_size; pixel++)
+		(*current_image)[pixel] = source[pixel];
+}
+
+void whitened_image(uint8_t *source, uint8_t *dest, uint16_t image_size) {
+	double sum = 0.0;
+	for (uint16_t pixel = 0; pixel < image_size; pixel++)
+		sum += source[pixel];
+	double mean = sum / image_size;
+	double rss = 0.0;
+	for (uint16_t pixel = 0; pixel < image_size; pixel++)
+		rss += pow(source[pixel] - mean, 2);
+	double stddev = sqrt(rss/(image_size - 1));
+	dest[0] = stddev;
+
+	for (uint16_t pixel = 0; pixel < image_size; pixel++) {
+		double v = 127.0 + 32.0*(source[pixel] - mean)/stddev;
+		if (v < 0.0)
+			v = 0;
+		if (v > 255.0)
+			v = 255;
+		dest[pixel] = (uint8_t)v;
 	}
 }
 
@@ -304,16 +316,11 @@ void send_calibration_image(uint8_t ** image_buffer_fast_1, uint8_t ** image_buf
 			100);
 
 	uint16_t frame = 0;
-	uint8_t image = 0;
 	uint8_t frame_buffer[MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN];
 
 	for (int i = 0; i < FULL_IMAGE_SIZE * 4; i++)
 	{
-
-		if (i % FULL_IMAGE_SIZE == 0 && i != 0)
-		{
-			image++;
-		}
+		uint8_t image = i / FULL_IMAGE_SIZE;
 
 		if (i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN == 0 && i != 0)
 		{
@@ -322,44 +329,39 @@ void send_calibration_image(uint8_t ** image_buffer_fast_1, uint8_t ** image_buf
 			delay(2);
 		}
 
-		if (image == 0 )
-		{
-			frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = (uint8_t)(*image_buffer_fast_1)[i % FULL_IMAGE_SIZE];
-		}
-		else if (image == 1 )
-		{
-			frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = (uint8_t)(*image_buffer_fast_2)[i % FULL_IMAGE_SIZE];
-		}
-		else if (image == 2)
-		{
+		// The whole camera capture is stored in five parts: two buffers given
+		// as arguments, and three internal DMA buffers.
+		uint8_t *source;
+
+		if (image == 0)
+			source = *image_buffer_fast_1;
+		else if (image == 1)
+			source = *image_buffer_fast_2;
+		else if (image == 2) {
 			if (calibration_unused == 1)
-				frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
+				source = dcmi_image_buffer_8bit_1;
 			else if (calibration_unused == 2)
-				frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
+				source = dcmi_image_buffer_8bit_2;
 			else
-				frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
-		}
-		else
-		{
-			if (calibration_used)
-			{
+				source = dcmi_image_buffer_8bit_3;
+		} else {
+			if (calibration_used) {
 				if (calibration_mem0 == 1)
-					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
+					source = dcmi_image_buffer_8bit_1;
 				else if (calibration_mem0 == 2)
-					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
+					source = dcmi_image_buffer_8bit_2;
 				else
-					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
-			}
-			else
-			{
+					source = dcmi_image_buffer_8bit_3;
+			} else {
 				if (calibration_mem1 == 1)
-					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_1[i % FULL_IMAGE_SIZE];
+					source = dcmi_image_buffer_8bit_1;
 				else if (calibration_mem1 == 2)
-					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_2[i % FULL_IMAGE_SIZE];
+					source = dcmi_image_buffer_8bit_2;
 				else
-					frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = dcmi_image_buffer_8bit_3[i % FULL_IMAGE_SIZE];
+					source = dcmi_image_buffer_8bit_3;
 			}
 		}
+		frame_buffer[i % MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN] = source[i % FULL_IMAGE_SIZE];
 	}
 
 	mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, frame_buffer);
