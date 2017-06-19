@@ -427,7 +427,11 @@ int main(void)
 		{
 			/* copy recent image to faster ram */
 			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
-			whitened_image(current_image, current_image, image_size);
+
+			if (FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_WHITEN])) {
+				/* whiten image for improved stability */
+				whitened_image(current_image, current_image, image_size);
+			}
 
 			/* compute optical flow */
 			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
