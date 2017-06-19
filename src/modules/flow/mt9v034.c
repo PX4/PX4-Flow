@@ -125,7 +125,7 @@ void mt9v034_context_configuration(void)
 	uint16_t aec_low_pass = 0x01; // default VALID RANGE: 0-2
 	uint16_t agc_update_freq = 0x02; // default Number of frames to skip between changes in AGC VALID RANGE: 0-15
 	uint16_t agc_low_pass = 0x02; // default VALID RANGE: 0-2
-	uint16_t analog_gain_control = 16;
+	uint16_t analog_gain_control = 1;
 	uint16_t black_level_control = 0x01;
 	uint16_t black_level_calibration = 0x50;
 
@@ -136,7 +136,7 @@ void mt9v034_context_configuration(void)
 		desired_brightness = 58; // VALID RANGE: 8-64
 		resolution_ctrl = 0x0202;//10 bit linear
 		hdr_enabled = 0x0000; // off
-		aec_agc_enabled = 0x0303; // on
+		aec_agc_enabled = 0x0101; // aec on, agc off
 		coarse_sw1 = 0x01BB; // default from context A
 		coarse_sw2 = 0x01D9; // default from context A
 		shutter_width_ctrl = 0x0164; // default from context A
@@ -149,7 +149,7 @@ void mt9v034_context_configuration(void)
 		desired_brightness = 16; // VALID RANGE: 8-64
 		resolution_ctrl = 0x0202;//10bit linear
 		hdr_enabled = 0x0000; // off
-		aec_agc_enabled = 0x0303; // on
+		aec_agc_enabled = 0x0101; // aec on, agc off
 		coarse_sw1 = 0x01BB; // default from context A
 		coarse_sw2 = 0x01D9; // default from context A
 		shutter_width_ctrl = 0x0164; // default from context A
