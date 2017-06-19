@@ -274,19 +274,27 @@ void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image,
 		(*current_image)[pixel] = source[pixel];
 }
 
+/**
+ * @brief Whiten image by mean shift and scaling by standard deviation
+ *
+ * @param source Source image
+ * @param dest Destination image (may be the same as source)
+ * @param image_size Size of source and dest images. Must be <= 256.
+ */
 void whitened_image(uint8_t *source, uint8_t *dest, uint16_t image_size) {
-	float sum = 0.0f;
+	uint32_t sum = 0;
 	for (uint16_t pixel = 0; pixel < image_size; pixel++)
 		sum += source[pixel];
-	float mean = sum / image_size;
-	float rss = 0.0f;
-	for (uint16_t pixel = 0; pixel < image_size; pixel++)
-		rss += (source[pixel] - mean)*(source[pixel] - mean);
-	float stddev = sqrtf(rss/(image_size - 1));
-	dest[0] = stddev;
+	uint8_t mean = sum / image_size;
+	uint32_t rss = 0;
+	for (uint16_t pixel = 0; pixel < image_size; pixel++) {
+		int16_t v = source[pixel] - mean;
+		rss += v*v;
+	}
+	float stddev = sqrtf(rss/(image_size - 1)) / WHITENING_STDDEV;
 
 	for (uint16_t pixel = 0; pixel < image_size; pixel++) {
-		float v = 127.0f + 32.0f*(source[pixel] - mean)/stddev;
+		float v = WHITENING_MEAN + (source[pixel] - mean)/stddev;
 		if (v < 0.0f)
 			v = 0;
 		if (v > 255.0f)
