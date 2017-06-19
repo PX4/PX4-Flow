@@ -108,7 +108,7 @@ volatile uint32_t boot_time10_us = 0;
 #define TIMER_LPOS		8
 #define MS_TIMER_COUNT		100 /* steps in 10 microseconds ticks */
 #define LED_TIMER_COUNT		500 /* steps in milliseconds ticks */
-#define SONAR_TIMER_COUNT	9999/* steps in milliseconds ticks */
+#define SONAR_TIMER_COUNT	100 /* steps in milliseconds ticks */
 #define SYSTEM_STATE_COUNT	1000/* steps in milliseconds ticks */
 #define PARAMS_COUNT		100	/* steps in milliseconds ticks */
 #define LPOS_TIMER_COUNT	100	/* steps in milliseconds ticks */
