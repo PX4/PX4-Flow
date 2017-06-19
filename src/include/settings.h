@@ -40,7 +40,15 @@
 #define ONBOARD_PARAM_NAME_LENGTH 		15
 #define BOTTOM_FLOW_IMAGE_HEIGHT		64
 #define BOTTOM_FLOW_IMAGE_WIDTH			64
-#define BOTTOM_FLOW_SEARCH_WINDOW_SIZE 	4
+#define BOTTOM_FLOW_SEARCH_WINDOW_SIZE 	8
+
+/* Translate normalized pixels to have their mean around 127. */
+#define WHITENING_MEAN					127.0f
+
+/* Rescale normalized pixels so 32 is one standard deviation,
+ * giving a range of four sigmas.
+ */
+#define WHITENING_STDDEV				32.0f
 
 /******************************************************************
   * ALL TYPE DEFINITIONS
@@ -117,6 +125,7 @@ enum global_param_id_t
 	PARAM_MAX_FLOW_PIXEL,
 	PARAM_IMAGE_LOW_LIGHT,
 	PARAM_IMAGE_ROW_NOISE_CORR,
+	PARAM_IMAGE_WHITEN,
 	PARAM_IMAGE_TEST_PATTERN,
 	PARAM_GYRO_SENSITIVITY_DPS,
 	PARAM_GYRO_COMPENSATION_THRESHOLD,
