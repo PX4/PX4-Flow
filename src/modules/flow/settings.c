@@ -111,9 +111,13 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_IMAGE_ROW_NOISE_CORR], "IMAGE_NOISE_C");
 	global_data.param_access[PARAM_IMAGE_ROW_NOISE_CORR] = READ_WRITE;
 
-	global_data.param[PARAM_IMAGE_WHITEN] = 1;
-	strcpy(global_data.param_name[PARAM_IMAGE_WHITEN], "IMAGE_WHITEN");
-	global_data.param_access[PARAM_IMAGE_WHITEN] = READ_WRITE;
+	global_data.param[PARAM_IMAGE_WHITENING] = IMAGE_WHITENING_AUTO;
+	strcpy(global_data.param_name[PARAM_IMAGE_WHITENING], "IMAGE_WHITEN");
+	global_data.param_access[PARAM_IMAGE_WHITENING] = READ_WRITE;
+
+	global_data.param[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD] = 150;
+	strcpy(global_data.param_name[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD], "IMAGE_WHIT_QTH");
+	global_data.param_access[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD] = READ_WRITE;
 
 	global_data.param[PARAM_IMAGE_TEST_PATTERN] = 0;
 	strcpy(global_data.param_name[PARAM_IMAGE_TEST_PATTERN], "IMAGE_TEST_PAT");

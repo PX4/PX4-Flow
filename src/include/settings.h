@@ -96,6 +96,18 @@ typedef enum
   DPS2000 = 2000	/*!< 2000 dps */
 } GyroSensitivity_TypeDef;
 
+/**
+  * @brief  gyro sensitivity enumeration
+  */
+typedef enum
+{
+  IMAGE_WHITENING_DISABLED = 0,   /*!< do not perform image whitening */
+  IMAGE_WHITENING_ALWAYS   = 1,   /*!< always perform image whitening */
+  IMAGE_WHITENING_AUTO     = 2,   /*!< perform image whitening, fall back to non-whitened images
+                                       if flow quality is lower than PARAM_IMAGE_WHITEN_QUALITY_THRESHOLD */
+} ImageWhitening_TypeDef;
+
+
 /******************************************************************
   * ALL SETTINGS VARIABLES
   */
@@ -125,7 +137,8 @@ enum global_param_id_t
 	PARAM_MAX_FLOW_PIXEL,
 	PARAM_IMAGE_LOW_LIGHT,
 	PARAM_IMAGE_ROW_NOISE_CORR,
-	PARAM_IMAGE_WHITEN,
+	PARAM_IMAGE_WHITENING,
+	PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD,
 	PARAM_IMAGE_TEST_PATTERN,
 	PARAM_GYRO_SENSITIVITY_DPS,
 	PARAM_GYRO_COMPENSATION_THRESHOLD,

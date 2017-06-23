@@ -88,6 +88,8 @@ __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 /* fast image buffers for calculations */
 uint8_t image_buffer_8bit_1[FULL_IMAGE_SIZE] __attribute__((section(".ccm")));
 uint8_t image_buffer_8bit_2[FULL_IMAGE_SIZE] __attribute__((section(".ccm")));
+uint8_t image_bottom_buffer_8bit_1[BOTTOM_FLOW_IMAGE_WIDTH * BOTTOM_FLOW_IMAGE_HEIGHT] __attribute__((section(".ccm")));
+uint8_t image_bottom_buffer_8bit_2[BOTTOM_FLOW_IMAGE_WIDTH * BOTTOM_FLOW_IMAGE_HEIGHT] __attribute__((section(".ccm")));
 uint8_t buffer_reset_needed;
 
 /* boot time in milliseconds ticks */
@@ -294,8 +296,16 @@ int main(void)
 		image_buffer_8bit_2[i] = 0;
 	}
 
+	for (int i = 0; i < BOTTOM_FLOW_IMAGE_WIDTH * BOTTOM_FLOW_IMAGE_HEIGHT; i++)
+	{
+		image_bottom_buffer_8bit_1[i] = 0;
+		image_bottom_buffer_8bit_2[i] = 0;
+	}
+
 	uint8_t * current_image = image_buffer_8bit_1;
 	uint8_t * previous_image = image_buffer_8bit_2;
+	uint8_t * current_image_whitened = image_bottom_buffer_8bit_1;
+	uint8_t * previous_image_whitened = image_bottom_buffer_8bit_2;
 
 	/* usart config*/
 	usart_init();
@@ -361,6 +371,13 @@ int main(void)
 				image_buffer_8bit_1[i] = 0;
 				image_buffer_8bit_2[i] = 0;
 			}
+
+			for (int i = 0; i < BOTTOM_FLOW_IMAGE_WIDTH * BOTTOM_FLOW_IMAGE_HEIGHT; i++)
+			{
+				image_bottom_buffer_8bit_1[i] = 0;
+				image_bottom_buffer_8bit_2[i] = 0;
+			}
+
 			delay(500);
 			continue;
 		}
@@ -429,13 +446,36 @@ int main(void)
 			/* copy recent image to faster ram */
 			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
 
-			if (FLOAT_AS_BOOL(global_data.param[PARAM_IMAGE_WHITEN])) {
-				/* whiten image for improved stability */
-				whitened_image(current_image, current_image, image_size);
-			}
+			if (FLOAT_EQ_INT(global_data.param[PARAM_IMAGE_WHITENING], IMAGE_WHITENING_DISABLED)) {
+				/* compute optical flow */
+				qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+			} else {
+				/* swap whitened image buffers */
+				uint8_t * tmp_image = current_image_whitened;
+				current_image_whitened = previous_image_whitened;
+				previous_image_whitened = tmp_image;
 
-			/* compute optical flow */
-			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+				/* whiten image */
+				whitened_image(current_image, current_image_whitened, image_size);
+
+				/* compute optical flow on whitened images*/
+				qual = compute_flow(previous_image_whitened, current_image_whitened, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+
+				if (FLOAT_EQ_INT(global_data.param[PARAM_IMAGE_WHITENING], IMAGE_WHITENING_AUTO) && (qual < global_data.param[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD])) {
+					float pixel_flow_x_no_whiten = 0.0f;
+					float pixel_flow_y_no_whiten = 0.0f;
+
+					/* compute optical flow on non-whitened images */
+					uint8_t qual_no_whiten = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x_no_whiten, &pixel_flow_y_no_whiten);
+
+					/* keep best optical flow (from whitened or non-whitened images) */
+					if (qual_no_whiten > qual) {
+						qual = qual_no_whiten;
+						pixel_flow_x = pixel_flow_x_no_whiten;
+						pixel_flow_y = pixel_flow_y_no_whiten;
+					}
+				}
+			}
 
 			/*
 			 * real point P (X,Y,Z), image plane projection p (x,y,z), focal-length f, distance-to-scene Z
@@ -705,7 +745,13 @@ int main(void)
 			uint16_t frame = 0;
 			for (frame = 0; frame < image_size_send / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1; frame++)
 			{
-				mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
+				// send whitened image if it was used
+				if (FLOAT_EQ_INT(global_data.param[PARAM_IMAGE_WHITENING], IMAGE_WHITENING_ALWAYS) ||
+				    (FLOAT_EQ_INT(global_data.param[PARAM_IMAGE_WHITENING], IMAGE_WHITENING_AUTO) && (qual > global_data.param[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD]))) {
+					mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image_whitened)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
+				} else {
+					mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
+				}
 			}
 
 			send_image_now = false;
