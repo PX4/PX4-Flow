@@ -173,7 +173,7 @@ void global_data_reset_param_defaults(void){
 	global_data.param_access[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD] = READ_WRITE;
 
 //	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 100;
-	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 20; // threshold is irrelevant with this value
+	global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = 40;
 	strcpy(global_data.param_name[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD], "BFLOW_F_THLD");
 	global_data.param_access[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD] = READ_WRITE;
 
@@ -270,4 +270,3 @@ void set_sensor_position_settings(uint8_t sensor_position)
 	debug_int_message_buffer("Set sensor position:", sensor_position);
 	return;
 }
-
