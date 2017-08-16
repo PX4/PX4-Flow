@@ -501,9 +501,8 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	/* create flow image if needed (image1 is not needed anymore)
 	 * -> can be used for debugging purpose
 	 */
-	if (global_data.param[PARAM_USB_SEND_VIDEO] )//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
 	{
-
 		for (j = pixLo; j < pixHi; j += pixStep)
 		{
 			for (i = pixLo; i < pixHi; i += pixStep)
