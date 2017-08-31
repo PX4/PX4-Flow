@@ -650,6 +650,8 @@ int main(void)
 							accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,
 							gyro_temp, accumulated_quality/accumulated_framecount,
 							time_since_last_sonar_update,ground_distance);
+
+					mavlink_msg_named_value_float_send(MAVLINK_COMM_2, get_boot_time_us(), "DT", integration_timespan / accumulated_framecount);
 				}
 
 
