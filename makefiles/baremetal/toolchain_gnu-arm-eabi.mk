@@ -50,7 +50,7 @@ OBJDUMP			 = $(CROSSDEV)objdump
 
 # Check if the right version of the toolchain is available
 #
-CROSSDEV_VER_SUPPORTED	 = 4.7.4 4.7.5 4.7.6 4.8.2 4.8.4 4.9.3 5.4.1
+CROSSDEV_VER_SUPPORTED	 = 4.7.4 4.7.5 4.7.6 4.8.2 4.8.4 4.9.3 5.4.1 7.1.0
 CROSSDEV_VER_FOUND	 = $(shell $(CC) -dumpversion)
 
 ifeq (,$(findstring $(CROSSDEV_VER_FOUND), $(CROSSDEV_VER_SUPPORTED)))
@@ -277,7 +277,3 @@ define SYM_TO_BIN
 	@$(MKDIR) -p $(dir $2)
 	$(Q) $(OBJCOPY) -O binary $1 $2
 endef
-<<<<<<< HEAD
-
-=======
->>>>>>> 11a9616... Add 4.8.2 as allowed compiler
