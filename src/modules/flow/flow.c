@@ -513,10 +513,11 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	 */
 	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
 	{
-		for (j = pixLo; j < pixHi; j += pixStep)
+		uint8_t offset = TILE_SIZE / 2 + 1;
 		block_id = 0;
+		for (j = pixLo + offset; j < pixHi + offset; j += pixStep)
 		{
-			for (i = pixLo; i < pixHi; i += pixStep)
+			for (i = pixLo + offset; i < pixHi + offset; i += pixStep)
 			{
 				if (used[block_id])
 				{
