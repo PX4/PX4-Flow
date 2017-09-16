@@ -511,20 +511,38 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	/* create flow image if needed (image1 is not needed anymore)
 	 * -> can be used for debugging purpose
 	 */
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))
 	{
 		uint8_t offset = TILE_SIZE / 2 + 1;
 		block_id = 0;
+		uint32_t used_block_id = 0;
 		for (j = pixLo + offset; j < pixHi + offset; j += pixStep)
 		{
 			for (i = pixLo + offset; i < pixHi + offset; i += pixStep)
 			{
 				if (used[block_id])
 				{
+					if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_DRAW_FLOW]))
+					{				
+						// Draw optic flow vector
+						uint8_t steps = fmax(abs(dirsx[used_block_id]), abs(dirsy[used_block_id]));
+						for (int8_t k = 0; k < steps; k++)
+						{
+							// Draw black segment to represent optic flow vector
+							int8_t dx = (k * dirsx[used_block_id]) / steps;
+							int8_t dy = (k * dirsy[used_block_id]) / steps;
+							image1[(j + dy) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i + dx] = 0;					
+						}
+					}
+
 					// Draw white dot if block was used
 					image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
+
+					// Next used block
+					used_block_id++;
 				}
 
+				// Next block
 				block_id++;
 			}
 		}

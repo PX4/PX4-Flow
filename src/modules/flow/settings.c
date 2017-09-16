@@ -143,6 +143,10 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_SONAR_KALMAN_L2], "SONAR_KAL_L2");
 	global_data.param_access[PARAM_SONAR_KALMAN_L2] = READ_WRITE;
 
+	global_data.param[PARAM_USB_DRAW_FLOW] = 1; // draw flow vectors on the video sent over USB
+	strcpy(global_data.param_name[PARAM_USB_DRAW_FLOW], "USB_DRAW_FLOW");
+	global_data.param_access[PARAM_USB_DRAW_FLOW] = READ_WRITE;
+
 	global_data.param[PARAM_USB_SEND_VIDEO] = 1; // send video over USB
 	strcpy(global_data.param_name[PARAM_USB_SEND_VIDEO], "USB_SEND_VIDEO");
 	global_data.param_access[PARAM_USB_SEND_VIDEO] = READ_WRITE;
