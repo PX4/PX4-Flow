@@ -414,6 +414,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	int8_t dirsx[NUM_BLOCKS*NUM_BLOCKS]; // shift directions in x
 	int8_t dirsy[NUM_BLOCKS*NUM_BLOCKS]; // shift directions in y
 	uint8_t subdirs[NUM_BLOCKS*NUM_BLOCKS]; // shift directions of best subpixels
+	bool used[NUM_BLOCKS*NUM_BLOCKS]; // store which blocks where used
 	float meanflowx = 0.0f;
 	float meanflowy = 0.0f;
 	uint16_t meancount = 0;
@@ -425,14 +426,19 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 
 	/* iterate over all patterns
 	 */
+	uint32_t block_id = 0; // id of this block
 	for (j = pixLo; j < pixHi; j += pixStep)
 	{
 		for (i = pixLo; i < pixHi; i += pixStep)
 		{
+			used[block_id] = false;
+
 			/* test pixel if it is suitable for flow tracking */
 			uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
 			if (diff < global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
 			{
+				/* Next block */
+				block_id++;
 				continue;
 			}
 
@@ -463,6 +469,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			/* acceptance SAD distance threshhold */
 			if (dist < global_data.param[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD])
 			{
+				used[block_id] = true;
 				meanflowx += (float) sumx;
 				meanflowy += (float) sumy;
 
@@ -495,6 +502,9 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				histy[hist_index_y]++;
 
 			}
+
+			/* Next block */
+			block_id++;
 		}
 	}
 
@@ -504,16 +514,17 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
 	{
 		for (j = pixLo; j < pixHi; j += pixStep)
+		block_id = 0;
 		{
 			for (i = pixLo; i < pixHi; i += pixStep)
 			{
-
-				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
-				if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
+				if (used[block_id])
 				{
+					// Draw white dot if block was used
 					image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
 				}
 
+				block_id++;
 			}
 		}
 	}
