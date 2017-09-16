@@ -404,16 +404,16 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	const uint16_t hist_size = 2*(winmax-winmin+1)+1;
 
 	/* variables */
-        uint16_t pixLo = SEARCH_SIZE + 1;
-        uint16_t pixHi = FRAME_SIZE - (SEARCH_SIZE + 1) - TILE_SIZE;
-        uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
+	uint16_t pixLo = SEARCH_SIZE + 1;
+	uint16_t pixHi = FRAME_SIZE - (SEARCH_SIZE + 1) - TILE_SIZE;
+	uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
 	uint16_t i, j;
 	uint32_t acc[8]; // subpixels
 	uint16_t histx[hist_size]; // counter for x shift
 	uint16_t histy[hist_size]; // counter for y shift
-	int8_t  dirsx[64]; // shift directions in x
-	int8_t  dirsy[64]; // shift directions in y
-	uint8_t  subdirs[64]; // shift directions of best subpixels
+	int8_t dirsx[NUM_BLOCKS*NUM_BLOCKS]; // shift directions in x
+	int8_t dirsy[NUM_BLOCKS*NUM_BLOCKS]; // shift directions in y
+	uint8_t subdirs[NUM_BLOCKS*NUM_BLOCKS]; // shift directions of best subpixels
 	float meanflowx = 0.0f;
 	float meanflowy = 0.0f;
 	uint16_t meancount = 0;
