@@ -420,6 +420,8 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	uint16_t meancount = 0;
 	float histflowx = 0.0f;
 	float histflowy = 0.0f;
+	float stddev_flowx = 0.0f;
+	float stddev_flowy = 0.0f;
 
 	/* initialize with 0 */
 	for (j = 0; j < hist_size; j++) { histx[j] = 0; histy[j] = 0; }
@@ -668,24 +670,37 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				/* use average of accepted flow values */
 				uint32_t meancount_x = 0;
 				uint32_t meancount_y = 0;
+				float histflowx_sum = 0.0f;
+				float histflowy_sum = 0.0f;
+				float histflowx_sum2 = 0.0f;
+				float histflowy_sum2 = 0.0f;
 
 				for (uint8_t h = 0; h < meancount; h++)
 				{
 					float subdirx = 0.0f;
 					if (subdirs[h] == 0 || subdirs[h] == 1 || subdirs[h] == 7) subdirx = 0.5f;
 					if (subdirs[h] == 3 || subdirs[h] == 4 || subdirs[h] == 5) subdirx = -0.5f;
-					histflowx += (float)dirsx[h] + subdirx;
+					float flow_x = (float)dirsx[h] + subdirx; 
+					histflowx_sum += flow_x;
+					histflowx_sum2 += flow_x * flow_x; 
 					meancount_x++;
 
 					float subdiry = 0.0f;
 					if (subdirs[h] == 5 || subdirs[h] == 6 || subdirs[h] == 7) subdiry = -0.5f;
 					if (subdirs[h] == 1 || subdirs[h] == 2 || subdirs[h] == 3) subdiry = 0.5f;
-					histflowy += (float)dirsy[h] + subdiry;
+					float flow_y = (float)dirsy[h] + subdiry;
+					histflowy_sum += flow_y;
+					histflowy_sum2 += flow_y * flow_y;
 					meancount_y++;
 				}
 
-				histflowx /= meancount_x;
-				histflowy /= meancount_y;
+				// Compute standart deviation of accepted optic flow values
+				stddev_flowx = sqrtf((histflowx_sum2 - (histflowx_sum * histflowx_sum) / meancount_x) / meancount_x);
+				stddev_flowy = sqrtf((histflowy_sum2 - (histflowy_sum * histflowy_sum) / meancount_y) / meancount_y);
+
+				// Compute average of accepted optic flow values
+				histflowx = histflowx_sum / meancount_x;
+				histflowy = histflowy_sum / meancount_y;
 
 			}
 
@@ -771,8 +786,13 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		return 0;
 	}
 
-	/* calc quality */
+	/* calc quality from ratio of used & unused blocks*/
 	uint8_t qual = (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
+	
+	/* Adapt quality based on standard deviation of flow in used blocks */ 
+	float stddev = sqrtf(stddev_flowx * stddev_flowx + stddev_flowy * stddev_flowy);
+	float qual_scaling = fmaxf(0.0f, (SEARCH_SIZE - stddev) / SEARCH_SIZE);
+	qual *= qual_scaling;
 
 	return qual;
 }
