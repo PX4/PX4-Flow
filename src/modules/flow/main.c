@@ -329,6 +329,7 @@ int main(void)
 	/* variables */
 	uint32_t counter = 0;
 	uint8_t qual = 0;
+	bool used_whitened_image = false;
 
 	/* bottom flow variables */
 	float pixel_flow_x = 0.0f;
@@ -449,6 +450,7 @@ int main(void)
 			if (FLOAT_EQ_INT(global_data.param[PARAM_IMAGE_WHITENING], IMAGE_WHITENING_DISABLED)) {
 				/* compute optical flow */
 				qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+				used_whitened_image = false;
 			} else {
 				/* swap whitened image buffers */
 				uint8_t * tmp_image = current_image_whitened;
@@ -457,6 +459,7 @@ int main(void)
 
 				/* whiten image */
 				whitened_image(current_image, current_image_whitened, image_size);
+				used_whitened_image = true;
 
 				/* compute optical flow on whitened images*/
 				qual = compute_flow(previous_image_whitened, current_image_whitened, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
@@ -473,6 +476,7 @@ int main(void)
 						qual = qual_no_whiten;
 						pixel_flow_x = pixel_flow_x_no_whiten;
 						pixel_flow_y = pixel_flow_y_no_whiten;
+						used_whitened_image = false;
 					}
 				}
 			}
@@ -748,8 +752,7 @@ int main(void)
 			for (frame = 0; frame < image_size_send / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1; frame++)
 			{
 				// send whitened image if it was used
-				if (FLOAT_EQ_INT(global_data.param[PARAM_IMAGE_WHITENING], IMAGE_WHITENING_ALWAYS) ||
-				    (FLOAT_EQ_INT(global_data.param[PARAM_IMAGE_WHITENING], IMAGE_WHITENING_AUTO) && (qual > global_data.param[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD]))) {
+				if (used_whitened_image) {
 					mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image_whitened)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
 				} else {
 					mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
