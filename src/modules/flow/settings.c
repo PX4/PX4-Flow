@@ -115,7 +115,7 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_IMAGE_WHITENING], "IMAGE_WHITEN");
 	global_data.param_access[PARAM_IMAGE_WHITENING] = READ_WRITE;
 
-	global_data.param[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD] = 100;
+	global_data.param[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD] = 50;
 	strcpy(global_data.param_name[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD], "IMAGE_WHIT_QTH");
 	global_data.param_access[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD] = READ_WRITE;
 
