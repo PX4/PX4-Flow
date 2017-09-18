@@ -525,7 +525,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				if (used[block_id])
 				{
 					if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_DRAW_FLOW]))
-					{				
+					{
 						// Draw optic flow vector
 						uint8_t steps = fmax(abs(dirsx[used_block_id]), abs(dirsy[used_block_id]));
 						for (int8_t k = 0; k < steps; k++)
@@ -533,7 +533,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 							// Draw black segment to represent optic flow vector
 							int8_t dx = (k * dirsx[used_block_id]) / steps;
 							int8_t dy = (k * dirsy[used_block_id]) / steps;
-							image1[(j + dy) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i + dx] = 0;					
+							image1[(j + dy) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i + dx] = 0;
 						}
 					}
 
@@ -680,9 +680,9 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 					float subdirx = 0.0f;
 					if (subdirs[h] == 0 || subdirs[h] == 1 || subdirs[h] == 7) subdirx = 0.5f;
 					if (subdirs[h] == 3 || subdirs[h] == 4 || subdirs[h] == 5) subdirx = -0.5f;
-					float flow_x = (float)dirsx[h] + subdirx; 
+					float flow_x = (float)dirsx[h] + subdirx;
 					histflowx_sum += flow_x;
-					histflowx_sum2 += flow_x * flow_x; 
+					histflowx_sum2 += flow_x * flow_x;
 					meancount_x++;
 
 					float subdiry = 0.0f;
@@ -788,10 +788,10 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 
 	/* calc quality from ratio of used & unused blocks*/
 	uint8_t qual = (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
-	
-	/* Adapt quality based on standard deviation of flow in used blocks */ 
+
+	/* Adapt quality based on standard deviation of flow in used blocks */
 	float stddev = sqrtf(stddev_flowx * stddev_flowx + stddev_flowy * stddev_flowy);
-	float qual_scaling = fmaxf(0.0f, (SEARCH_SIZE - stddev) / SEARCH_SIZE);
+	float qual_scaling = fmaxf(0.0f, (SEARCH_SIZE - 2.0f*stddev) / SEARCH_SIZE);
 	qual *= qual_scaling;
 
 	return qual;
