@@ -50,6 +50,11 @@ void dma_copy_image_buffers(uint8_t ** current_image, uint8_t ** previous_image,
 void send_calibration_image(uint8_t ** image_buffer_fast_1, uint8_t ** image_buffer_fast_2);
 
 /**
+ * @brief Whiten image assuming pixels are iid Gaussian
+ */
+void whitened_image(uint8_t *source, uint8_t *dest, uint16_t image_size);
+
+/**
  * @brief Initialize DCMI DMA and enable image capturing
  */
 void enable_image_capture(void);

@@ -88,6 +88,8 @@ __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 /* fast image buffers for calculations */
 uint8_t image_buffer_8bit_1[FULL_IMAGE_SIZE] __attribute__((section(".ccm")));
 uint8_t image_buffer_8bit_2[FULL_IMAGE_SIZE] __attribute__((section(".ccm")));
+uint8_t image_bottom_buffer_8bit_1[BOTTOM_FLOW_IMAGE_WIDTH * BOTTOM_FLOW_IMAGE_HEIGHT] __attribute__((section(".ccm")));
+uint8_t image_bottom_buffer_8bit_2[BOTTOM_FLOW_IMAGE_WIDTH * BOTTOM_FLOW_IMAGE_HEIGHT] __attribute__((section(".ccm")));
 uint8_t buffer_reset_needed;
 
 /* boot time in milliseconds ticks */
@@ -108,10 +110,10 @@ volatile uint32_t boot_time10_us = 0;
 #define TIMER_LPOS		8
 #define MS_TIMER_COUNT		100 /* steps in 10 microseconds ticks */
 #define LED_TIMER_COUNT		500 /* steps in milliseconds ticks */
-#define SONAR_TIMER_COUNT 	100	/* steps in milliseconds ticks */
+#define SONAR_TIMER_COUNT	100 /* steps in milliseconds ticks */
 #define SYSTEM_STATE_COUNT	1000/* steps in milliseconds ticks */
 #define PARAMS_COUNT		100	/* steps in milliseconds ticks */
-#define LPOS_TIMER_COUNT 	100	/* steps in milliseconds ticks */
+#define LPOS_TIMER_COUNT	100	/* steps in milliseconds ticks */
 
 static volatile unsigned timer[NTIMERS];
 static volatile unsigned timer_ms = MS_TIMER_COUNT;
@@ -251,14 +253,14 @@ int main(void)
 	LEDOff(LED_ACT);
 	LEDOff(LED_COM);
 	LEDOff(LED_ERR);
-        board_led_rgb(255,255,255, 1);
-        board_led_rgb(  0,  0,255, 0);
-        board_led_rgb(  0,  0, 0, 0);
-        board_led_rgb(255,  0,  0, 1);
-        board_led_rgb(255,  0,  0, 2);
-        board_led_rgb(255,  0,  0, 3);
-                board_led_rgb(  0,255,  0, 3);
-        board_led_rgb(  0,  0,255, 4);
+	board_led_rgb(255,255,255, 1);
+	board_led_rgb(  0,  0,255, 0);
+	board_led_rgb(  0,  0, 0, 0);
+	board_led_rgb(255,  0,  0, 1);
+	board_led_rgb(255,  0,  0, 2);
+	board_led_rgb(255,  0,  0, 3);
+	board_led_rgb(  0,255,  0, 3);
+	board_led_rgb(  0,  0,255, 4);
 
 	/* enable FPU on Cortex-M4F core */
 	SCB_CPACR |= ((3UL << 10 * 2) | (3UL << 11 * 2)); /* set CP10 Full Access and set CP11 Full Access */
@@ -294,14 +296,22 @@ int main(void)
 		image_buffer_8bit_2[i] = 0;
 	}
 
+	for (int i = 0; i < BOTTOM_FLOW_IMAGE_WIDTH * BOTTOM_FLOW_IMAGE_HEIGHT; i++)
+	{
+		image_bottom_buffer_8bit_1[i] = 0;
+		image_bottom_buffer_8bit_2[i] = 0;
+	}
+
 	uint8_t * current_image = image_buffer_8bit_1;
 	uint8_t * previous_image = image_buffer_8bit_2;
+	uint8_t * current_image_whitened = image_bottom_buffer_8bit_1;
+	uint8_t * previous_image_whitened = image_bottom_buffer_8bit_2;
 
 	/* usart config*/
 	usart_init();
 
-    /* i2c config*/
-    i2c_init();
+	/* i2c config*/
+	i2c_init();
 
 	/* sonar config*/
 	float sonar_distance_filtered = 0.0f; // distance in meter
@@ -319,6 +329,7 @@ int main(void)
 	/* variables */
 	uint32_t counter = 0;
 	uint8_t qual = 0;
+	bool used_whitened_image = false;
 
 	/* bottom flow variables */
 	float pixel_flow_x = 0.0f;
@@ -348,9 +359,10 @@ int main(void)
 	/* main loop */
 	while (1)
 	{
-                PROBE_1(false);
-                uavcan_run();
-                PROBE_1(true);
+		PROBE_1(false);
+		uavcan_run();
+		PROBE_1(true);
+
 		/* reset flow buffers if needed */
 		if(buffer_reset_needed)
 		{
@@ -360,6 +372,13 @@ int main(void)
 				image_buffer_8bit_1[i] = 0;
 				image_buffer_8bit_2[i] = 0;
 			}
+
+			for (int i = 0; i < BOTTOM_FLOW_IMAGE_WIDTH * BOTTOM_FLOW_IMAGE_HEIGHT; i++)
+			{
+				image_bottom_buffer_8bit_1[i] = 0;
+				image_bottom_buffer_8bit_2[i] = 0;
+			}
+
 			delay(500);
 			continue;
 		}
@@ -428,8 +447,39 @@ int main(void)
 			/* copy recent image to faster ram */
 			dma_copy_image_buffers(&current_image, &previous_image, image_size, 1);
 
-			/* compute optical flow */
-			qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+			if (FLOAT_EQ_INT(global_data.param[PARAM_IMAGE_WHITENING], IMAGE_WHITENING_DISABLED)) {
+				/* compute optical flow */
+				qual = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+				used_whitened_image = false;
+			} else {
+				/* swap whitened image buffers */
+				uint8_t * tmp_image = current_image_whitened;
+				current_image_whitened = previous_image_whitened;
+				previous_image_whitened = tmp_image;
+
+				/* whiten image */
+				whitened_image(current_image, current_image_whitened, image_size);
+				used_whitened_image = true;
+
+				/* compute optical flow on whitened images*/
+				qual = compute_flow(previous_image_whitened, current_image_whitened, x_rate, y_rate, z_rate, &pixel_flow_x, &pixel_flow_y);
+
+				if (FLOAT_EQ_INT(global_data.param[PARAM_IMAGE_WHITENING], IMAGE_WHITENING_AUTO) && (qual < global_data.param[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD])) {
+					float pixel_flow_x_no_whiten = 0.0f;
+					float pixel_flow_y_no_whiten = 0.0f;
+
+					/* compute optical flow on non-whitened images */
+					uint8_t qual_no_whiten = compute_flow(previous_image, current_image, x_rate, y_rate, z_rate, &pixel_flow_x_no_whiten, &pixel_flow_y_no_whiten);
+
+					/* keep best optical flow (from whitened or non-whitened images) */
+					if (qual_no_whiten > qual) {
+						qual = qual_no_whiten;
+						pixel_flow_x = pixel_flow_x_no_whiten;
+						pixel_flow_y = pixel_flow_y_no_whiten;
+						used_whitened_image = false;
+					}
+				}
+			}
 
 			/*
 			 * real point P (X,Y,Z), image plane projection p (x,y,z), focal-length f, distance-to-scene Z
@@ -505,20 +555,12 @@ int main(void)
 
 			float ground_distance = 0.0f;
 
+			ground_distance = FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]) ? sonar_distance_filtered : sonar_distance_raw;
 
-			if(FLOAT_AS_BOOL(global_data.param[PARAM_SONAR_FILTERED]))
-			{
-				ground_distance = sonar_distance_filtered;
-			}
-			else
-			{
-				ground_distance = sonar_distance_raw;
-			}
-
-                        uavcan_define_export(i2c_data, legacy_12c_data_t, ccm);
-                        uavcan_define_export(range_data, range_data_t, ccm);
+			uavcan_define_export(i2c_data, legacy_12c_data_t, ccm);
+			uavcan_define_export(range_data, range_data_t, ccm);
 			uavcan_timestamp_export(i2c_data);
-                        uavcan_assign(range_data.time_stamp_utc, i2c_data.time_stamp_utc);
+			uavcan_assign(range_data.time_stamp_utc, i2c_data.time_stamp_utc);
 			//update I2C transmitbuffer
 			if(valid_frame_count>0)
 			{
@@ -530,13 +572,13 @@ int main(void)
 				update_TX_buffer(pixel_flow_x, pixel_flow_y, 0.0f, 0.0f, qual,
 						ground_distance, x_rate, y_rate, z_rate, gyro_temp, uavcan_use_export(i2c_data));
 			}
-	                PROBE_2(false);
-                        uavcan_publish(range, 40, range_data);
-	                PROBE_2(true);
+			PROBE_2(false);
+			uavcan_publish(range, 40, range_data);
+			PROBE_2(true);
 
-                        PROBE_3(false);
-                        uavcan_publish(flow, 40, i2c_data);
-                        PROBE_3(true);
+			PROBE_3(false);
+			uavcan_publish(flow, 40, i2c_data);
+			PROBE_3(true);
 
             //serial mavlink  + usb mavlink output throttled
 			uint32_t now = get_boot_time_us();
@@ -612,6 +654,8 @@ int main(void)
 							accumulated_gyro_x, accumulated_gyro_y, accumulated_gyro_z,
 							gyro_temp, accumulated_quality/accumulated_framecount,
 							time_since_last_sonar_update,ground_distance);
+
+					mavlink_msg_named_value_float_send(MAVLINK_COMM_2, get_boot_time_us(), "DT", integration_timespan / accumulated_framecount);
 				}
 
 
@@ -707,7 +751,12 @@ int main(void)
 			uint16_t frame = 0;
 			for (frame = 0; frame < image_size_send / MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN + 1; frame++)
 			{
-				mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
+				// send whitened image if it was used
+				if (used_whitened_image) {
+					mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image_whitened)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
+				} else {
+					mavlink_msg_encapsulated_data_send(MAVLINK_COMM_2, frame, &((uint8_t *) previous_image)[frame * MAVLINK_MSG_ENCAPSULATED_DATA_FIELD_DATA_LEN]);
+				}
 			}
 
 			send_image_now = false;

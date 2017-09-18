@@ -42,6 +42,14 @@
 #define BOTTOM_FLOW_IMAGE_WIDTH			64
 #define BOTTOM_FLOW_SEARCH_WINDOW_SIZE 	8
 
+/* Translate normalized pixels to have their mean around 127. */
+#define WHITENING_MEAN					127.0f
+
+/* Rescale normalized pixels so 32 is one standard deviation,
+ * giving a range of four sigmas.
+ */
+#define WHITENING_STDDEV				32.0f
+
 /******************************************************************
   * ALL TYPE DEFINITIONS
   */
@@ -88,6 +96,18 @@ typedef enum
   DPS2000 = 2000	/*!< 2000 dps */
 } GyroSensitivity_TypeDef;
 
+/**
+  * @brief  gyro sensitivity enumeration
+  */
+typedef enum
+{
+  IMAGE_WHITENING_DISABLED = 0,   /*!< do not perform image whitening */
+  IMAGE_WHITENING_ALWAYS   = 1,   /*!< always perform image whitening */
+  IMAGE_WHITENING_AUTO     = 2,   /*!< perform image whitening, fall back to non-whitened images
+                                       if flow quality is lower than PARAM_IMAGE_WHITEN_QUALITY_THRESHOLD */
+} ImageWhitening_TypeDef;
+
+
 /******************************************************************
   * ALL SETTINGS VARIABLES
   */
@@ -117,6 +137,8 @@ enum global_param_id_t
 	PARAM_MAX_FLOW_PIXEL,
 	PARAM_IMAGE_LOW_LIGHT,
 	PARAM_IMAGE_ROW_NOISE_CORR,
+	PARAM_IMAGE_WHITENING,
+	PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD,
 	PARAM_IMAGE_TEST_PATTERN,
 	PARAM_GYRO_SENSITIVITY_DPS,
 	PARAM_GYRO_COMPENSATION_THRESHOLD,
@@ -124,6 +146,7 @@ enum global_param_id_t
 	PARAM_SONAR_KALMAN_L1,
 	PARAM_SONAR_KALMAN_L2,
 
+	PARAM_USB_DRAW_FLOW,
 	PARAM_USB_SEND_VIDEO,
 	PARAM_USB_SEND_FLOW,
 	PARAM_USB_SEND_GYRO,

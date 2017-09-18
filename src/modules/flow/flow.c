@@ -404,35 +404,43 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	const uint16_t hist_size = 2*(winmax-winmin+1)+1;
 
 	/* variables */
-        uint16_t pixLo = SEARCH_SIZE + 1;
-        uint16_t pixHi = FRAME_SIZE - (SEARCH_SIZE + 1) - TILE_SIZE;
-        uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
+	uint16_t pixLo = SEARCH_SIZE + 1;
+	uint16_t pixHi = FRAME_SIZE - (SEARCH_SIZE + 1) - TILE_SIZE;
+	uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
 	uint16_t i, j;
 	uint32_t acc[8]; // subpixels
 	uint16_t histx[hist_size]; // counter for x shift
 	uint16_t histy[hist_size]; // counter for y shift
-	int8_t  dirsx[64]; // shift directions in x
-	int8_t  dirsy[64]; // shift directions in y
-	uint8_t  subdirs[64]; // shift directions of best subpixels
+	int8_t dirsx[NUM_BLOCKS*NUM_BLOCKS]; // shift directions in x
+	int8_t dirsy[NUM_BLOCKS*NUM_BLOCKS]; // shift directions in y
+	uint8_t subdirs[NUM_BLOCKS*NUM_BLOCKS]; // shift directions of best subpixels
+	bool used[NUM_BLOCKS*NUM_BLOCKS]; // store which blocks where used
 	float meanflowx = 0.0f;
 	float meanflowy = 0.0f;
 	uint16_t meancount = 0;
 	float histflowx = 0.0f;
 	float histflowy = 0.0f;
+	float stddev_flowx = 0.0f;
+	float stddev_flowy = 0.0f;
 
 	/* initialize with 0 */
 	for (j = 0; j < hist_size; j++) { histx[j] = 0; histy[j] = 0; }
 
 	/* iterate over all patterns
 	 */
+	uint32_t block_id = 0; // id of this block
 	for (j = pixLo; j < pixHi; j += pixStep)
 	{
 		for (i = pixLo; i < pixHi; i += pixStep)
 		{
+			used[block_id] = false;
+
 			/* test pixel if it is suitable for flow tracking */
 			uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
 			if (diff < global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
 			{
+				/* Next block */
+				block_id++;
 				continue;
 			}
 
@@ -463,6 +471,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			/* acceptance SAD distance threshhold */
 			if (dist < global_data.param[PARAM_BOTTOM_FLOW_VALUE_THRESHOLD])
 			{
+				used[block_id] = true;
 				meanflowx += (float) sumx;
 				meanflowy += (float) sumy;
 
@@ -495,25 +504,48 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				histy[hist_index_y]++;
 
 			}
+
+			/* Next block */
+			block_id++;
 		}
 	}
 
 	/* create flow image if needed (image1 is not needed anymore)
 	 * -> can be used for debugging purpose
 	 */
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))
 	{
-		for (j = pixLo; j < pixHi; j += pixStep)
+		uint8_t offset = TILE_SIZE / 2 + 1;
+		block_id = 0;
+		uint32_t used_block_id = 0;
+		for (j = pixLo + offset; j < pixHi + offset; j += pixStep)
 		{
-			for (i = pixLo; i < pixHi; i += pixStep)
+			for (i = pixLo + offset; i < pixHi + offset; i += pixStep)
 			{
-
-				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
-				if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
+				if (used[block_id])
 				{
+					if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_DRAW_FLOW]))
+					{
+						// Draw optic flow vector
+						uint8_t steps = fmax(abs(dirsx[used_block_id]), abs(dirsy[used_block_id]));
+						for (int8_t k = 0; k < steps; k++)
+						{
+							// Draw black segment to represent optic flow vector
+							int8_t dx = (k * dirsx[used_block_id]) / steps;
+							int8_t dy = (k * dirsy[used_block_id]) / steps;
+							image1[(j + dy) * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i + dx] = 0;
+						}
+					}
+
+					// Draw white dot if block was used
 					image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
+
+					// Next used block
+					used_block_id++;
 				}
 
+				// Next block
+				block_id++;
 			}
 		}
 	}
@@ -638,24 +670,37 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				/* use average of accepted flow values */
 				uint32_t meancount_x = 0;
 				uint32_t meancount_y = 0;
+				float histflowx_sum = 0.0f;
+				float histflowy_sum = 0.0f;
+				float histflowx_sum2 = 0.0f;
+				float histflowy_sum2 = 0.0f;
 
 				for (uint8_t h = 0; h < meancount; h++)
 				{
 					float subdirx = 0.0f;
 					if (subdirs[h] == 0 || subdirs[h] == 1 || subdirs[h] == 7) subdirx = 0.5f;
 					if (subdirs[h] == 3 || subdirs[h] == 4 || subdirs[h] == 5) subdirx = -0.5f;
-					histflowx += (float)dirsx[h] + subdirx;
+					float flow_x = (float)dirsx[h] + subdirx;
+					histflowx_sum += flow_x;
+					histflowx_sum2 += flow_x * flow_x;
 					meancount_x++;
 
 					float subdiry = 0.0f;
 					if (subdirs[h] == 5 || subdirs[h] == 6 || subdirs[h] == 7) subdiry = -0.5f;
 					if (subdirs[h] == 1 || subdirs[h] == 2 || subdirs[h] == 3) subdiry = 0.5f;
-					histflowy += (float)dirsy[h] + subdiry;
+					float flow_y = (float)dirsy[h] + subdiry;
+					histflowy_sum += flow_y;
+					histflowy_sum2 += flow_y * flow_y;
 					meancount_y++;
 				}
 
-				histflowx /= meancount_x;
-				histflowy /= meancount_y;
+				// Compute standart deviation of accepted optic flow values
+				stddev_flowx = sqrtf((histflowx_sum2 - (histflowx_sum * histflowx_sum) / meancount_x) / meancount_x);
+				stddev_flowy = sqrtf((histflowy_sum2 - (histflowy_sum * histflowy_sum) / meancount_y) / meancount_y);
+
+				// Compute average of accepted optic flow values
+				histflowx = histflowx_sum / meancount_x;
+				histflowy = histflowy_sum / meancount_y;
 
 			}
 
@@ -741,8 +786,13 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		return 0;
 	}
 
-	/* calc quality */
+	/* calc quality from ratio of used & unused blocks*/
 	uint8_t qual = (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
+
+	/* Adapt quality based on standard deviation of flow in used blocks */
+	float stddev = sqrtf(stddev_flowx * stddev_flowx + stddev_flowy * stddev_flowy);
+	float qual_scaling = fmaxf(0.0f, (SEARCH_SIZE - 2.0f*stddev) / SEARCH_SIZE);
+	qual *= qual_scaling;
 
 	return qual;
 }

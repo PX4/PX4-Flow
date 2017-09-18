@@ -111,6 +111,14 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_IMAGE_ROW_NOISE_CORR], "IMAGE_NOISE_C");
 	global_data.param_access[PARAM_IMAGE_ROW_NOISE_CORR] = READ_WRITE;
 
+	global_data.param[PARAM_IMAGE_WHITENING] = IMAGE_WHITENING_AUTO;
+	strcpy(global_data.param_name[PARAM_IMAGE_WHITENING], "IMAGE_WHITEN");
+	global_data.param_access[PARAM_IMAGE_WHITENING] = READ_WRITE;
+
+	global_data.param[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD] = 50;
+	strcpy(global_data.param_name[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD], "IMAGE_WHIT_QTH");
+	global_data.param_access[PARAM_IMAGE_WHITENING_QUALITY_THRESHOLD] = READ_WRITE;
+
 	global_data.param[PARAM_IMAGE_TEST_PATTERN] = 0;
 	strcpy(global_data.param_name[PARAM_IMAGE_TEST_PATTERN], "IMAGE_TEST_PAT");
 	global_data.param_access[PARAM_IMAGE_TEST_PATTERN] = READ_WRITE;
@@ -134,6 +142,10 @@ void global_data_reset_param_defaults(void){
 	global_data.param[PARAM_SONAR_KALMAN_L2] = 6.2034f;
 	strcpy(global_data.param_name[PARAM_SONAR_KALMAN_L2], "SONAR_KAL_L2");
 	global_data.param_access[PARAM_SONAR_KALMAN_L2] = READ_WRITE;
+
+	global_data.param[PARAM_USB_DRAW_FLOW] = 1; // draw flow vectors on the video sent over USB
+	strcpy(global_data.param_name[PARAM_USB_DRAW_FLOW], "USB_DRAW_FLOW");
+	global_data.param_access[PARAM_USB_DRAW_FLOW] = READ_WRITE;
 
 	global_data.param[PARAM_USB_SEND_VIDEO] = 1; // send video over USB
 	strcpy(global_data.param_name[PARAM_USB_SEND_VIDEO], "USB_SEND_VIDEO");

@@ -127,6 +127,9 @@ void mt9v034_context_configuration(void)
 	if (hdr_enable_flag) {
 		hdr_enabled = 0x0100;
 	}
+	uint16_t analog_gain_control = 16;
+	uint16_t black_level_control = 0x01;
+	uint16_t black_level_calibration = 0x50;
 
 	bool aec_enable_flag = global_data.param[PARAM_AEC] > 0;
 	uint16_t aec_agc_enabled = 0x0000;
@@ -182,6 +185,7 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_COARSE_SW_2_REG_A, coarse_sw2);
 		mt9v034_WriteReg16(MTV_COARSE_SW_CTRL_REG_A, shutter_width_ctrl);
 		mt9v034_WriteReg16(MTV_COARSE_SW_TOTAL_REG_A, total_shutter_width);
+		mt9v034_WriteReg16(MTV_ANALOG_GAIN_CTRL_REG_A, analog_gain_control);
 
 
 		/* Context B */
@@ -196,6 +200,7 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_COARSE_SW_2_REG_B, coarse_sw2);
 		mt9v034_WriteReg16(MTV_COARSE_SW_CTRL_REG_B, shutter_width_ctrl);
 		mt9v034_WriteReg16(MTV_COARSE_SW_TOTAL_REG_B, total_shutter_width);
+		mt9v034_WriteReg16(MTV_ANALOG_GAIN_CTRL_REG_B, analog_gain_control);
 
 		/* General Settings */
 		mt9v034_WriteReg16(MTV_ROW_NOISE_CORR_CTRL_REG, row_noise_correction);
@@ -214,6 +219,9 @@ void mt9v034_context_configuration(void)
 		mt9v034_WriteReg16(MTV_AEC_LOWPASS_REG,aec_low_pass);
 		mt9v034_WriteReg16(MTV_AGC_UPDATE_REG,agc_update_freq);
 		mt9v034_WriteReg16(MTV_AGC_LOWPASS_REG,agc_low_pass);
+
+		mt9v034_WriteReg16(MTV_BLACK_LEVEL_CTRL_REG,black_level_control);
+		mt9v034_WriteReg16(MTV_BLACK_LEVEL_CALIBRATION_REG,black_level_calibration);
 
 		/* Reset */
 		mt9v034_WriteReg16(MTV_SOFT_RESET_REG, 0x01);
