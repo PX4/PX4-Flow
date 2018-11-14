@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 '''
 Use mavgen.py matrixpilot.xml definitions to generate
 C and Python MAVLink routines for sending and parsing the protocol

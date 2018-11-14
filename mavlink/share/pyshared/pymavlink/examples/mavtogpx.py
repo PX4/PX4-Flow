@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 '''
 example program to extract GPS data from a mavlink log, and create a GPX

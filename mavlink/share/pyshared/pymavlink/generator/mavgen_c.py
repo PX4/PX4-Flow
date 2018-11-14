@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 '''
 parse a MAVLink protocol XML file and generate a C implementation
 

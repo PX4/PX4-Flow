@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 '''
 play back a mavlink log as a FlightGear FG NET stream, and as a
