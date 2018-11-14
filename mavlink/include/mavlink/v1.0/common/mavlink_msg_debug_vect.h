@@ -157,13 +157,16 @@ static inline uint16_t mavlink_msg_debug_vect_encode_chan(uint8_t system_id, uin
 
 static inline void mavlink_msg_debug_vect_send(mavlink_channel_t chan, const char *name, uint64_t time_usec, float x, float y, float z)
 {
+	int name_len = strlen(name) + 1;
+	name_len = name_len <= 10 ? name_len : 10;
+
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
 	char buf[MAVLINK_MSG_ID_DEBUG_VECT_LEN];
 	_mav_put_uint64_t(buf, 0, time_usec);
 	_mav_put_float(buf, 8, x);
 	_mav_put_float(buf, 12, y);
 	_mav_put_float(buf, 16, z);
-	_mav_put_char_array(buf, 20, name, 10);
+	_mav_put_char_array(buf, 20, name, name_len);
 #if MAVLINK_CRC_EXTRA
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_DEBUG_VECT, buf, MAVLINK_MSG_ID_DEBUG_VECT_LEN, MAVLINK_MSG_ID_DEBUG_VECT_CRC);
 #else
@@ -175,7 +178,7 @@ static inline void mavlink_msg_debug_vect_send(mavlink_channel_t chan, const cha
 	packet.x = x;
 	packet.y = y;
 	packet.z = z;
-	mav_array_memcpy(packet.name, name, sizeof(char)*10);
+	mav_array_memcpy(packet.name, name, name_len);
 #if MAVLINK_CRC_EXTRA
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_DEBUG_VECT, (const char *)&packet, MAVLINK_MSG_ID_DEBUG_VECT_LEN, MAVLINK_MSG_ID_DEBUG_VECT_CRC);
 #else
@@ -194,13 +197,16 @@ static inline void mavlink_msg_debug_vect_send(mavlink_channel_t chan, const cha
  */
 static inline void mavlink_msg_debug_vect_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  const char *name, uint64_t time_usec, float x, float y, float z)
 {
+	int name_len = strlen(name) + 1;
+	name_len = name_len <= 10 ? name_len : 10;
+
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
 	char *buf = (char *)msgbuf;
 	_mav_put_uint64_t(buf, 0, time_usec);
 	_mav_put_float(buf, 8, x);
 	_mav_put_float(buf, 12, y);
 	_mav_put_float(buf, 16, z);
-	_mav_put_char_array(buf, 20, name, 10);
+	_mav_put_char_array(buf, 20, name, name_len);
 #if MAVLINK_CRC_EXTRA
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_DEBUG_VECT, buf, MAVLINK_MSG_ID_DEBUG_VECT_LEN, MAVLINK_MSG_ID_DEBUG_VECT_CRC);
 #else
@@ -212,7 +218,7 @@ static inline void mavlink_msg_debug_vect_send_buf(mavlink_message_t *msgbuf, ma
 	packet->x = x;
 	packet->y = y;
 	packet->z = z;
-	mav_array_memcpy(packet->name, name, sizeof(char)*10);
+	mav_array_memcpy(packet->name, name, name_len);
 #if MAVLINK_CRC_EXTRA
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_DEBUG_VECT, (const char *)packet, MAVLINK_MSG_ID_DEBUG_VECT_LEN, MAVLINK_MSG_ID_DEBUG_VECT_CRC);
 #else
