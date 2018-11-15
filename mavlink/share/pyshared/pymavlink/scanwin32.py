@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # this is taken from the pySerial documentation at
 # http://pyserial.sourceforge.net/examples.html

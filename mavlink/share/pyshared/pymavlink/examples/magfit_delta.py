@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 '''
 fit best estimate of magnetometer offsets using the algorithm from

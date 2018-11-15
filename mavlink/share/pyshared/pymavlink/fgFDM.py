@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # parse and construct FlightGear NET FDM packets
 # Andrew Tridgell, November 2011
 # released under GNU GPL version 2 or later
