@@ -147,88 +147,91 @@ message(STATUS "cflags: ${CMAKE_C_FLAGS}")
 add_definitions(-DMAVLINK_SEND_UART_BYTES=mavlink_send_uart_bytes)
 
 include_directories(
-    inc lib
-    lib/STM32F4xx_StdPeriph_Driver/inc
-    lib/STM32_USB_Device_Library/Class/cdc/inc
-    lib/STM32_USB_Device_Library/Core/inc
-    lib/STM32_USB_HOST_Library/Core/inc
-    lib/STM32_USB_OTG_Driver/inc
+    src/lib/stm32/st/v1.0.2
+    src/include
+    src/modules/flow
+    src/platforms
+    src/lib/stm32/st/v1.0.2/STM32_USB_Device_Library/Class/cdc/inc
+    src/lib/stm32/st/v1.0.2/STM32_USB_Device_Library/Core/inc
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/inc
+    src/lib/stm32/st/v1.0.2/STM32_USB_Device_Library/Core/inc
+    src/lib/stm32/st/v1.0.2/STM32_USB_OTG_Driver/inc
     mavlink/include/mavlink/v1.0
     mavlink/include/mavlink/v1.0/common
     )
 
 # source
-#-----------------------------------------------------
+#-------------------------------------------------src----
 set(PERIPH_SRC
-    lib/startup_stm32f4xx.s
-    lib/STM32F4xx_StdPeriph_Driver/src/misc.c
-    lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c
-    lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma.c
-    lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dcmi.c
-    lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_i2c.c
-    lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.c
-    lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.c
-    lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_usart.c
-    lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_adc.c
-    lib/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_gpio.c
-    lib/STM32_USB_OTG_Driver/src/usb_core.c
-    lib/STM32_USB_OTG_Driver/src/usb_dcd_int.c
-    lib/STM32_USB_OTG_Driver/src/usb_dcd.c
-    lib/STM32_USB_Device_Library/Core/src/usbd_core.c
-    lib/STM32_USB_Device_Library/Core/src/usbd_req.c
-    lib/STM32_USB_Device_Library/Core/src/usbd_ioreq.c
-    lib/STM32_USB_Device_Library/Class/cdc/src/usbd_cdc_core.c
+    src/lib/stm32/st/v1.0.2/startup_stm32f4xx.s
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/src/misc.c
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dma.c
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_dcmi.c
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_i2c.c
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_tim.c
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_spi.c
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_usart.c
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_adc.c
+    src/lib/stm32/st/v1.0.2/STM32F4xx_StdPeriph_Driver/src/stm32f4xx_gpio.c
+    src/lib/stm32/st/v1.0.2/STM32_USB_OTG_Driver/src/usb_core.c
+    src/lib/stm32/st/v1.0.2/STM32_USB_OTG_Driver/src/usb_dcd_int.c
+    src/lib/stm32/st/v1.0.2/STM32_USB_OTG_Driver/src/usb_dcd.c
+    src/lib/stm32/st/v1.0.2/STM32_USB_Device_Library/Core/src/usbd_core.c
+    src/lib/stm32/st/v1.0.2/STM32_USB_Device_Library/Core/src/usbd_req.c
+    src/lib/stm32/st/v1.0.2/STM32_USB_Device_Library/Core/src/usbd_ioreq.c
+    src/lib/stm32/st/v1.0.2/STM32_USB_Device_Library/Class/cdc/src/usbd_cdc_core.c
     )
 
 set(PX4FLOW_HDRS
-    inc/communication.h
-    inc/dcmi.h
-    inc/debug.h
-    inc/flow.h
-    inc/gyro.h
-    inc/i2c_frame.h
-    inc/i2c.h
-    inc/led.h
-    inc/main.h
-    inc/mavlink_bridge_header.h
-    inc/mt9v034.h
-    inc/settings.h
-    inc/sonar.h
-    inc/sonar_mode_filter.h
-    inc/stm32f4xx_conf.h
-    inc/stm32f4xx_it.h
-    inc/usart.h
-    inc/usb_conf.h
-    inc/usbd_cdc_vcp.h
-    inc/usbd_conf.h
-    inc/usbd_desc.h
-    inc/utils.h
+    src/include/communication.h
+    src/include/dcmi.h
+    src/include/debug.h
+    src/include/flow.h
+    src/include/gyro.h
+    src/include/i2c_frame.h
+    src/include/i2c.h
+    src/include/led.h
+    src/include/main.h
+    src/include/mavlink_bridge_header.h
+    src/include/mt9v034.h
+    src/include/settings.h
+    src/include/sonar.h
+    src/include/sonar_mode_filter.h
+    src/include/stm32f4xx_conf.h
+    src/include/stm32f4xx_it.h
+    src/include/usart.h
+    src/include/usb_conf.h
+    src/include/usbd_cdc_vcp.h
+    src/include/usbd_conf.h
+    src/include/usbd_desc.h
+    src/include/utils.h
     )
 
 set(PX4FLOW_SRC
-    src/communication.c
-    src/dcmi.c
-    src/debug.c
-    src/flow.c
-    src/gyro.c
-    src/i2c.c
-    src/led.c
-    src/main.c
-    src/mt9v034.c
-    src/reset.c
-    src/settings.c
-    src/sonar.c
-    src/sonar_mode_filter.c
-    src/stm32f4xx_it.c
-    src/system_stm32f4xx.c
-    src/usart.c
-    src/usb_bsp.c
-    src/usbd_cdc_vcp.c
-    src/usbd_desc.c
-    src/usbd_usr.c
-    src/utils.c
-    src/system_stm32f4xx.c
-    src/stm32f4xx_it.c
+    src/modules/flow/communication.c
+    src/modules/flow/dcmi.c
+    src/modules/flow/debug.c
+    src/modules/flow/flow.c
+    src/modules/flow/gyro.c
+    src/modules/flow/i2c.c
+    src/modules/flow/led.c
+    src/modules/flow/main.c
+    src/modules/flow/mt9v034.c
+    src/modules/flow/reset.c
+    src/modules/flow/settings.c
+    src/modules/flow/sonar.c
+    src/modules/flow/sonar_mode_filter.c
+    src/modules/flow/stm32f4xx_it.c
+    src/modules/flow/system_stm32f4xx.c
+    src/modules/flow/usart.c
+    src/modules/flow/usb_bsp.c
+    src/modules/flow/usbd_cdc_vcp.c
+    src/modules/flow/usbd_desc.c
+    src/modules/flow/usbd_usr.c
+    src/modules/flow/utils.c
+    src/modules/flow/system_stm32f4xx.c
+    src/modules/flow/stm32f4xx_it.c
     )
 
 # building
@@ -244,9 +247,10 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Arm")
 
     # board executable
     add_executable(px4flow ${PX4FLOW_SRC} ${PX4FLOW_HDRS})
+    target_compile_definitions(px4flow PUBLIC CONFIG_ARCH_BOARD_PX4FLOW_V1)
     target_link_libraries(px4flow periph nosys m)
     set_target_properties(px4flow PROPERTIES
-        LINK_FLAGS "-T${CMAKE_SOURCE_DIR}/stm32f4.ld"
+        LINK_FLAGS "-T${CMAKE_SOURCE_DIR}/baremetal-configs/px4flow-v1/scripts/ld.script"
         #COMPILE_FLAGS "-Werror"
     )
     generate_firmware(px4flow)
@@ -254,8 +258,8 @@ else()
     # host based testing
     include_directories(unittests)
     add_executable(sonar_mode_filter
-        src/sonar_mode_filter.c
-        inc/sonar_mode_filter.h
+        src/modules/flow/sonar_mode_filter.c
+        include/sonar_mode_filter.h
         unittests/tests.c
         )
     #set_target_properties(sonar_mode_filter PROPERTIES
