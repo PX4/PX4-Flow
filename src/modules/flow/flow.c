@@ -678,7 +678,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				{
 					/* calc pixel of gyro */
 					float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
-					float comp_x = histflowx + y_rate_pixel;
+					float comp_x = histflowx - y_rate_pixel;
 
                     /* clamp value to maximum search window size plus half pixel from subpixel search */
                     if (comp_x < (-SEARCH_SIZE - 0.5f))
@@ -697,7 +697,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				{
 					/* calc pixel of gyro */
 					float x_rate_pixel = x_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
-					float comp_y = histflowy - x_rate_pixel;
+					float comp_y = histflowy + x_rate_pixel;
 
 					/* clamp value to maximum search window size plus/minus half pixel from subpixel search */
 					if (comp_y < (-SEARCH_SIZE - 0.5f))
