@@ -11,6 +11,12 @@ import xml.parsers.expat, os, errno, time, sys, operator, mavutil
 PROTOCOL_0_9 = "0.9"
 PROTOCOL_1_0 = "1.0"
 
+class MAVError(Exception):
+        '''MAVLink error class'''
+        def __init__(self, msg):
+            Exception.__init__(self, msg)
+            self.message = msg
+
 class MAVParseError(Exception):
     def __init__(self, message, inner_exception=None):
         self.message = message
@@ -277,7 +283,7 @@ class MAVXML(object):
     def __str__(self):
         return "MAVXML for %s from %s (%u message, %u enums)" % (
             self.basename, self.filename, len(self.message), len(self.enum))
-    
+
 
 def message_checksum(msg):
     '''calculate a 8-bit checksum of the key fields of a message, so we
@@ -346,7 +352,7 @@ def check_duplicates(xml):
                     return True
                 enummap[s1] = "%s:%u" % (x.filename, enum.linenumber)
                 enummap[s2] = "%s:%u" % (x.filename, enum.linenumber)
-                    
+
     return False
 
 

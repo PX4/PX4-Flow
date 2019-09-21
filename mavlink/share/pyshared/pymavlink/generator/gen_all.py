@@ -7,6 +7,7 @@ C and Python MAVLink routines for sending and parsing the protocol
 Copyright Pete Hollands 2011
 Released under GNU GPL version 3 or later
 '''
+from __future__ import print_function
 
 import os, sys, glob, re
 from mavgen import mavgen
@@ -25,11 +26,11 @@ protocols = [ '0.9', '1.0' ]
 
 for protocol in protocols :
     xml_directory = './message_definitions/v'+protocol
-    print "xml_directory is", xml_directory
+    print("xml_directory is", xml_directory)
     xml_file_names = glob.glob(xml_directory+'/*.xml')
 
     for xml_file in xml_file_names:
-        print "xml file is ", xml_file
+        print("xml file is ", xml_file)
         opts = options(lang = "C", output = "C/include_v"+protocol, \
                        wire_protocol=protocol)
         args = []
@@ -37,7 +38,7 @@ for protocol in protocols :
         mavgen(opts, args)
         xml_file_base = os.path.basename(xml_file)
         xml_file_base = re.sub("\.xml","", xml_file_base)
-        print "xml_file_base is", xml_file_base
+        print("xml_file_base is", xml_file_base)
         opts = options(lang = "python", \
                        output="python/mavlink_"+xml_file_base+"_v"+protocol+".py", \
                        wire_protocol=protocol)

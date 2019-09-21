@@ -1,8 +1,5 @@
 language: cpp
 
-# use travis-ci docker based infrastructure
-sudo: false
-
 cache:
   directories:
     - $HOME/.ccache
@@ -27,6 +24,10 @@ addons:
 
 before_script:
 # General toolchain dependencies
+  # lint Python code for syntax errors
+  - python3 -m pip || wget -qO- https://bootstrap.pypa.io/get-pip.py | sudo -H python3
+  - python3 -m pip install --user flake8
+  - flake8 . --count --exclude=./.*,./src/lib/uavcan/* --select=E9,F63,F7,F82 --show-source --statistics
   - pushd .
   - cd ~
   - wget https://launchpadlibrarian.net/186124160/gcc-arm-none-eabi-4_8-2014q3-20140805-linux.tar.bz2

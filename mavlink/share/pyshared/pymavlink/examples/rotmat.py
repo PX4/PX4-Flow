@@ -106,13 +106,13 @@ class Vector3:
 
     def normalized(self):
         return self / self.length()
-    
+
     def normalize(self):
         v = self.normalized()
         self.x = v.x
         self.y = v.y
         self.z = v.z
-        
+
 class Matrix3:
     '''a 3x3 matrix, intended as a rotation matrix'''
     def __init__(self, a=None, b=None, c=None):
@@ -139,25 +139,25 @@ class Matrix3:
                        Vector3(self.a.y, self.b.y, self.c.y),
                        Vector3(self.a.z, self.b.z, self.c.z))
 
-        
+
     def from_euler(self, roll, pitch, yaw):
         '''fill the matrix from Euler angles in radians'''
         cp = cos(pitch)
-	sp = sin(pitch)
-	sr = sin(roll)
-	cr = cos(roll)
-	sy = sin(yaw)
-	cy = cos(yaw)
+        sp = sin(pitch)
+        sr = sin(roll)
+        cr = cos(roll)
+        sy = sin(yaw)
+        cy = cos(yaw)
 
-	self.a.x = cp * cy
-	self.a.y = (sr * sp * cy) - (cr * sy)
-	self.a.z = (cr * sp * cy) + (sr * sy)
-	self.b.x = cp * sy
-	self.b.y = (sr * sp * sy) + (cr * cy)
-	self.b.z = (cr * sp * sy) - (sr * cy)
-	self.c.x = -sp
-	self.c.y = sr * cp
-	self.c.z = cr * cp
+        self.a.x = cp * cy
+        self.a.y = (sr * sp * cy) - (cr * sy)
+        self.a.z = (cr * sp * cy) + (sr * sy)
+        self.b.x = cp * sy
+        self.b.y = (sr * sp * sy) + (cr * cy)
+        self.b.z = (cr * sp * sy) - (sr * cy)
+        self.c.x = -sp
+        self.c.y = sr * cp
+        self.c.z = cr * cp
 
 
     def to_euler(self):
@@ -182,7 +182,7 @@ class Matrix3:
 
     def __rsub__(self, m):
         return Matrix3(m.a - self.a, m.b - self.b, m.c - self.c)
-    
+
     def __mul__(self, other):
         if isinstance(other, Vector3):
             v = other
@@ -216,29 +216,29 @@ class Matrix3:
 
     def rotate(self, g):
         '''rotate the matrix by a given amount on 3 axes'''
-	temp_matrix = Matrix3()
+        temp_matrix = Matrix3()
         a = self.a
         b = self.b
         c = self.c
-	temp_matrix.a.x = a.y * g.z - a.z * g.y
-	temp_matrix.a.y = a.z * g.x - a.x * g.z
-	temp_matrix.a.z = a.x * g.y - a.y * g.x
-	temp_matrix.b.x = b.y * g.z - b.z * g.y
-	temp_matrix.b.y = b.z * g.x - b.x * g.z
-	temp_matrix.b.z = b.x * g.y - b.y * g.x
-	temp_matrix.c.x = c.y * g.z - c.z * g.y
-	temp_matrix.c.y = c.z * g.x - c.x * g.z
-	temp_matrix.c.z = c.x * g.y - c.y * g.x
+        temp_matrix.a.x = a.y * g.z - a.z * g.y
+        temp_matrix.a.y = a.z * g.x - a.x * g.z
+        temp_matrix.a.z = a.x * g.y - a.y * g.x
+        temp_matrix.b.x = b.y * g.z - b.z * g.y
+        temp_matrix.b.y = b.z * g.x - b.x * g.z
+        temp_matrix.b.z = b.x * g.y - b.y * g.x
+        temp_matrix.c.x = c.y * g.z - c.z * g.y
+        temp_matrix.c.y = c.z * g.x - c.x * g.z
+        temp_matrix.c.z = c.x * g.y - c.y * g.x
         self.a += temp_matrix.a
         self.b += temp_matrix.b
         self.c += temp_matrix.c
 
     def normalize(self):
         '''re-normalise a rotation matrix'''
-	error = self.a * self.b
-	t0 = self.a - (self.b * (0.5 * error))
-	t1 = self.b - (self.a * (0.5 * error))
-	t2 = t0 % t1
+        error = self.a * self.b
+        t0 = self.a - (self.b * (0.5 * error))
+        t1 = self.b - (self.a * (0.5 * error))
+        t2 = t0 % t1
         self.a = t0 * (1.0 / t0.length())
         self.b = t1 * (1.0 / t1.length())
         self.c = t2 * (1.0 / t2.length())
@@ -261,9 +261,8 @@ def test_euler():
                 diff = v1 - v2
                 if diff.length() > 1.0e-12:
                     print('EULER ERROR:', v1, v2, diff.length())
-                    
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
     test_euler()
-    

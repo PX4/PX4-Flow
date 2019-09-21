@@ -4,6 +4,7 @@
 rotate APMs on bench to test magnetometers
 
 '''
+from __future__ import print_function
 
 import sys, os, time
 from math import radians
@@ -103,7 +104,7 @@ while True:
         if rc4 > rc4_max or rc4 < rc4_min:
             delta4 = -delta4
     if pevent.trigger():
-        print "hdg1: %3u hdg2: %3u  ofs1: %4u, %4u, %4u  ofs2: %4u, %4u, %4u" % (
+        print("hdg1: %3u hdg2: %3u  ofs1: %4u, %4u, %4u  ofs2: %4u, %4u, %4u" % (
             mav1.messages['VFR_HUD'].heading,
             mav2.messages['VFR_HUD'].heading,
             mav1.messages['SENSOR_OFFSETS'].mag_ofs_x,
@@ -112,7 +113,7 @@ while True:
             mav2.messages['SENSOR_OFFSETS'].mag_ofs_x,
             mav2.messages['SENSOR_OFFSETS'].mag_ofs_y,
             mav2.messages['SENSOR_OFFSETS'].mag_ofs_z,
-            )
+            ))
     time.sleep(0.01)
 
 # 314M 326G

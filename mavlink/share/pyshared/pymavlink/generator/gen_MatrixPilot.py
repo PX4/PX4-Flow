@@ -7,6 +7,7 @@ This python script is soley for MatrixPilot MAVLink impoementation
 Copyright Pete Hollands 2011
 Released under GNU GPL version 3 or later
 '''
+from __future__ import print_function
 
 import os, sys, glob, re
 from shutil import copy
@@ -25,32 +26,32 @@ class options:
 
 def remove_include_files(target_directory):
     search_pattern = target_directory+'/*.h'
-    print "search pattern is", search_pattern
+    print("search pattern is", search_pattern)
     files_to_remove = glob.glob(search_pattern)
     for afile in files_to_remove :
         try:
-            print "removing", afile
+            print("removing", afile)
             os.remove(afile)
         except:
-            print "error while trying to remove", afile
+            print("error while trying to remove", afile)
 
 def copy_include_files(source_directory,target_directory):
     search_pattern = source_directory+'/*.h'
     files_to_copy = glob.glob(search_pattern)
     for afile in files_to_copy:
         basename = os.path.basename(afile)
-        print "Copying ...", basename
+        print("Copying ...", basename)
         copy(afile, target_directory)
 
 protocol = "1.0"
 
 xml_directory = './message_definitions/v'+protocol
-print "xml_directory is", xml_directory
+print("xml_directory is", xml_directory)
 xml_file_names = []
 xml_file_names.append(xml_directory+"/"+"matrixpilot.xml")
 
 for xml_file in xml_file_names:
-    print "xml file is ", xml_file
+    print("xml file is ", xml_file)
     opts = options(lang = "C", output = "C/include_v"+protocol, \
                    wire_protocol=protocol)
     args = []
@@ -58,7 +59,7 @@ for xml_file in xml_file_names:
     mavgen(opts, args)
     xml_file_base = os.path.basename(xml_file)
     xml_file_base = re.sub("\.xml","", xml_file_base)
-    print "xml_file_base is", xml_file_base
+    print("xml_file_base is", xml_file_base)
     opts = options(lang = "python", \
                    output="python/mavlink_"+xml_file_base+"_v"+protocol+".py", \
                    wire_protocol=protocol)
@@ -71,23 +72,23 @@ for mavlink_directory in mavlink_directory_list :
     source_directory = "C/include_v"+protocol+"/"+mavlink_directory
     if os.access(source_directory, os.R_OK):
         if os.access(target_directory, os.W_OK):
-            print "Preparing to copy over files..."
-            print "About to remove all files in",target_directory
-            print "OK to continue ?[Yes / No]: ",
+            print("Preparing to copy over files...")
+            print("About to remove all files in",target_directory)
+            print("OK to continue ?[Yes / No]: ", end=' ')
             line = sys.stdin.readline()
             if line == "Yes\n" or line == "yes\n" \
                or line == "Y\n" or line == "y\n":
-                print "passed"
+                print("passed")
                 remove_include_files(target_directory)
                 copy_include_files(source_directory,target_directory)
-                print "Finished copying over include files"
+                print("Finished copying over include files")
             else :
-                print "Your answer is No. Exiting Program"
+                print("Your answer is No. Exiting Program")
                 sys.exit()
         else :
-           print "Cannot find " + target_directory + "in MatrixPilot"
+           print("Cannot find " + target_directory + "in MatrixPilot")
            sys.exit()
     else:
-        print "Could not find files to copy at", source_directory
-        print "Exiting Program."
+        print("Could not find files to copy at", source_directory)
+        print("Exiting Program.")
         sys.exit()
