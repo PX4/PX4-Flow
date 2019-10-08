@@ -1,5 +1,6 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
+from __future__ import print_function
 import os
 import sys
 import subprocess
@@ -260,7 +261,7 @@ if __name__ == "__main__":
         try:
             options.vcs_commit = int(GitWrapper.command("rev-list HEAD --max-count=1 --abbrev=8 --abbrev-commit"),16)
         except Exception  as e:
-            print "Git Command failed "+ str(e) +"- Exiting!"
+            print("Git Command failed "+ str(e) +"- Exiting!")
             quit()
 
     if args:
