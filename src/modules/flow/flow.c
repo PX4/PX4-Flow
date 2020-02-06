@@ -133,49 +133,6 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 })
 
 /**
- * @brief Computes the Hessian at a pixel location
- *
- * The hessian (second order partial derivatives of the image) is
- * a measure of the salience of the image at the appropriate
- * box filter scale. It allows to judge wether a pixel
- * location is suitable for optical flow calculation.
- *
- * @param image  the array holding pixel data
- * @param x      location of the pixel in x
- * @param y      location of the pixel in y
- *
- * @return       gradient magnitude
- */
-static inline uint32_t compute_hessian_4x6(uint8_t *image, uint16_t x, uint16_t y, uint16_t row_size)
-{
-	// candidate for hessian calculation:
-	uint16_t off1 = y*row_size + x;   	// First row of ones
-	uint16_t off2 = (y+1)*row_size + x;   // Second row of ones
-	uint16_t off3 = (y+2)*row_size + x;   // Third row of minus twos
-	uint16_t off4 = (y+3)*row_size + x;   // Forth row of minus twos
-	uint16_t off5 = (y+4)*row_size + x;   // Fifth row of ones
-	uint16_t off6 = (y+5)*row_size + x;   // Sixth row of ones
-	uint32_t magnitude;
-
-	// Uncentered for maximal performance:
-	// center pixel is in brackets ()
-
-	//  1   1   1   1
-	//  1   1   1   1
-	// -2 (-2) -2  -2
-	// -2  -2  -2  -2
-	//  1   1   1   1
-	//  1   1   1   1
-
-	magnitude = __UADD8(*((uint32_t*) &image[off1 - 1]), *((uint32_t*) &image[off2 - 1]));
-	magnitude -= 2*__UADD8(*((uint32_t*) &image[off3 - 1]), *((uint32_t*) &image[off4 - 1]));
-	magnitude += __UADD8(*((uint32_t*) &image[off5 - 1]), *((uint32_t*) &image[off6 - 1]));
-
-	return magnitude;
-}
-
-
-/**
  * @brief Compute the average pixel gradient of all horizontal and vertical steps
  *
  * TODO compute_diff is not appropriate for low-light mode images
