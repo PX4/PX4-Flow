@@ -52,7 +52,10 @@
 #define FRAME_SIZE	global_data.param[PARAM_IMAGE_WIDTH]
 #define SEARCH_SIZE	global_data.param[PARAM_MAX_FLOW_PIXEL] // maximum offset to search
 #define TILE_SIZE	8               						// x & y tile size
+// TILE_SIZE must be 8 since we use intrinsics on image patches
 #define NUM_BLOCKS	5                                       // x & y number of tiles to check
+
+/* computational complexity - O(SEARCH_SIZE**2 * NUM_BLOCKS**2) */
 
 #define sign(x) (( x > 0 ) - ( x < 0 ))
 
@@ -433,7 +436,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		for (i = pixLo; i < pixHi; i += pixStep)
 		{
 			/* test pixel if it is suitable for flow tracking */
-			uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+			uint32_t diff = compute_diff(image1, i, j, (uint16_t) FRAME_SIZE);
 			if (diff < global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
 			{
 				continue;
@@ -444,15 +447,15 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			int8_t sumy = 0;
 			int8_t ii, jj;
 
-			uint8_t *base1 = image1 + j * (uint16_t) global_data.param[PARAM_IMAGE_WIDTH] + i;
+			uint8_t *base1 = image1 + j * (uint16_t) FRAME_SIZE + i;
 
 			for (jj = winmin; jj <= winmax; jj++)
 			{
-				uint8_t *base2 = image2 + (j+jj) * (uint16_t) global_data.param[PARAM_IMAGE_WIDTH] + i;
+				uint8_t *base2 = image2 + (j+jj) * (uint16_t) FRAME_SIZE + i;
 
 				for (ii = winmin; ii <= winmax; ii++)
 				{
-//					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+//					uint32_t temp_dist = compute_sad_8x8(image1, image2, i, j, i + ii, j + jj, (uint16_t) FRAME_SIZE);
 					uint32_t temp_dist = ABSDIFF(base1, base2 + ii);
 					if (temp_dist < dist)
 					{
@@ -469,7 +472,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 				meanflowx += (float) sumx;
 				meanflowy += (float) sumy;
 
-				compute_subpixel(image1, image2, i, j, i + sumx, j + sumy, acc, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+				compute_subpixel(image1, image2, i, j, i + sumx, j + sumy, acc, (uint16_t) FRAME_SIZE);
 				uint32_t mindist = dist; // best SAD until now
 				uint8_t mindir = 8; // direction 8 for no direction
 				for(uint8_t k = 0; k < 8; k++)
@@ -504,17 +507,17 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	/* create flow image if needed (image1 is not needed anymore)
 	 * -> can be used for debugging purpose
 	 */
-	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))//&& global_data.param[PARAM_VIDEO_USB_MODE] == FLOW_VIDEO)
+	if (FLOAT_AS_BOOL(global_data.param[PARAM_USB_SEND_VIDEO]))
 	{
 		for (j = pixLo; j < pixHi; j += pixStep)
 		{
 			for (i = pixLo; i < pixHi; i += pixStep)
 			{
 
-				uint32_t diff = compute_diff(image1, i, j, (uint16_t) global_data.param[PARAM_IMAGE_WIDTH]);
+				uint32_t diff = compute_diff(image1, i, j, (uint16_t) FRAME_SIZE);
 				if (diff > global_data.param[PARAM_BOTTOM_FLOW_FEATURE_THRESHOLD])
 				{
-					image1[j * ((uint16_t) global_data.param[PARAM_IMAGE_WIDTH]) + i] = 255;
+					image1[j * ((uint16_t) FRAME_SIZE) + i] = 255;
 				}
 
 			}
@@ -639,8 +642,6 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			{
 
 				/* use average of accepted flow values */
-				uint32_t meancount_x = 0;
-				uint32_t meancount_y = 0;
 
 				for (uint8_t h = 0; h < meancount; h++)
 				{
@@ -648,17 +649,15 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 					if (subdirs[h] == 0 || subdirs[h] == 1 || subdirs[h] == 7) subdirx = 0.5f;
 					if (subdirs[h] == 3 || subdirs[h] == 4 || subdirs[h] == 5) subdirx = -0.5f;
 					histflowx += (float)dirsx[h] + subdirx;
-					meancount_x++;
 
 					float subdiry = 0.0f;
 					if (subdirs[h] == 5 || subdirs[h] == 6 || subdirs[h] == 7) subdiry = -0.5f;
 					if (subdirs[h] == 1 || subdirs[h] == 2 || subdirs[h] == 3) subdiry = 0.5f;
 					histflowy += (float)dirsy[h] + subdiry;
-					meancount_y++;
 				}
 
-				histflowx /= meancount_x;
-				histflowy /= meancount_y;
+				histflowx /= meancount;
+				histflowy /= meancount;
 
 			}
 
@@ -669,7 +668,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			/*
 			 * gyro compensation
 			 * the compensated value is clamped to
-			 * the maximum measurable flow value (PARAM_MAX_FLOW_PIXEL) +0.5
+			 * the maximum measurable flow value of SEARCH_SIZE + 0.5
 			 * (sub pixel flow can add half pixel to the value)
 			 *
 			 * -y_rate gives x flow
