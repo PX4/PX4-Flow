@@ -488,11 +488,11 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 
 				/* feed histogram filter*/
 				uint8_t hist_index_x = 2*sumx + (winmax-winmin+1);
-				if (subdirs[i] == 0 || subdirs[i] == 1 || subdirs[i] == 7) hist_index_x += 1;
-				if (subdirs[i] == 3 || subdirs[i] == 4 || subdirs[i] == 5) hist_index_x += -1;
+				if (mindir == 0 || mindir == 1 || mindir == 7) hist_index_x += 1;
+				if (mindir == 3 || mindir == 4 || mindir == 5) hist_index_x += -1;
 				uint8_t hist_index_y = 2*sumy + (winmax-winmin+1);
-				if (subdirs[i] == 5 || subdirs[i] == 6 || subdirs[i] == 7) hist_index_y += -1;
-				if (subdirs[i] == 1 || subdirs[i] == 2 || subdirs[i] == 3) hist_index_y += 1;
+				if (mindir == 5 || mindir == 6 || mindir == 7) hist_index_y += -1;
+				if (mindir == 1 || mindir == 2 || mindir == 3) hist_index_y += 1;
 
 				histx[hist_index_x]++;
 				histy[hist_index_y]++;
