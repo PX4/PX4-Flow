@@ -187,7 +187,7 @@ static inline uint32_t compute_diff(uint8_t *image, uint16_t offX, uint16_t offY
 {
 	/* calculate position in image buffer */
 	uint16_t off = (offY + 2) * row_size + (offX + 2);
-    /* we calculate only the center 4x4 pattern */
+	/* we calculate only the center 4x4 pattern */
 	uint32_t acc;
 
 	/* calculate vertical gradient */
@@ -407,9 +407,9 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	const uint16_t hist_size = 2*(winmax-winmin+1)+1;
 
 	/* variables */
-    uint16_t pixLo = SEARCH_SIZE + 1;
-    uint16_t pixHi = FRAME_SIZE - (SEARCH_SIZE + 1) - TILE_SIZE;
-    uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
+	uint16_t pixLo = SEARCH_SIZE + 1;
+	uint16_t pixHi = FRAME_SIZE - (SEARCH_SIZE + 1) - TILE_SIZE;
+	uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
 	uint16_t i, j;
 	uint32_t acc[8];           // subpixels
 	uint16_t histx[hist_size]; // counter for x shift
@@ -683,13 +683,13 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 					float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
 					float comp_x = histflowx + y_rate_pixel;
 
-                    /* clamp value to maximum search window size plus half pixel from subpixel search */
-                    if (comp_x < (-SEARCH_SIZE - 0.5f))
-                    	*pixel_flow_x = (-SEARCH_SIZE - 0.5f);
-                    else if (comp_x > (SEARCH_SIZE + 0.5f))
-                    	*pixel_flow_x = (SEARCH_SIZE + 0.5f);
-                    else
-                    	*pixel_flow_x = comp_x;
+					/* clamp value to maximum search window size plus half pixel from subpixel search */
+					if (comp_x < (-SEARCH_SIZE - 0.5f))
+						*pixel_flow_x = (-SEARCH_SIZE - 0.5f);
+					else if (comp_x > (SEARCH_SIZE + 0.5f))
+						*pixel_flow_x = (SEARCH_SIZE + 0.5f);
+					else
+						*pixel_flow_x = comp_x;
 				}
 				else
 				{
