@@ -50,9 +50,9 @@
 #include "core_cm4_simd.h"
 
 #define FRAME_SIZE	global_data.param[PARAM_IMAGE_WIDTH]
-#define SEARCH_SIZE	global_data.param[PARAM_MAX_FLOW_PIXEL] // maximum offset to search: 4 + 1/2 pixels
+#define SEARCH_SIZE	global_data.param[PARAM_MAX_FLOW_PIXEL] // maximum offset to search
 #define TILE_SIZE	8               						// x & y tile size
-#define NUM_BLOCKS	5 // x & y number of tiles to check
+#define NUM_BLOCKS	5                                       // x & y number of tiles to check
 
 #define sign(x) (( x > 0 ) - ( x < 0 ))
 
@@ -137,11 +137,11 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
  * box filter scale. It allows to judge wether a pixel
  * location is suitable for optical flow calculation.
  *
- * @param image the array holding pixel data
- * @param x location of the pixel in x
- * @param y location of the pixel in y
+ * @param image  the array holding pixel data
+ * @param x      location of the pixel in x
+ * @param y      location of the pixel in y
  *
- * @return gradient magnitude
+ * @return       gradient magnitude
  */
 static inline uint32_t compute_hessian_4x6(uint8_t *image, uint16_t x, uint16_t y, uint16_t row_size)
 {
@@ -149,12 +149,12 @@ static inline uint32_t compute_hessian_4x6(uint8_t *image, uint16_t x, uint16_t 
 	uint16_t off1 = y*row_size + x;   	// First row of ones
 	uint16_t off2 = (y+1)*row_size + x;   // Second row of ones
 	uint16_t off3 = (y+2)*row_size + x;   // Third row of minus twos
-	uint16_t off4 = (y+3)*row_size + x;   // Third row of minus twos
-	uint16_t off5 = (y+4)*row_size + x;   // Third row of minus twos
-	uint16_t off6 = (y+5)*row_size + x;   // Third row of minus twos
+	uint16_t off4 = (y+3)*row_size + x;   // Forth row of minus twos
+	uint16_t off5 = (y+4)*row_size + x;   // Fifth row of ones
+	uint16_t off6 = (y+5)*row_size + x;   // Sixth row of ones
 	uint32_t magnitude;
 
-	// Uncentered for max. performance:
+	// Uncentered for maximal performance:
 	// center pixel is in brackets ()
 
 	//  1   1   1   1
@@ -177,17 +177,20 @@ static inline uint32_t compute_hessian_4x6(uint8_t *image, uint16_t x, uint16_t 
  *
  * TODO compute_diff is not appropriate for low-light mode images
  *
- * @param image ...
- * @param offX x coordinate of upper left corner of 8x8 pattern in image
- * @param offY y coordinate of upper left corner of 8x8 pattern in image
+ * @param image  the array holding pixel data
+ * @param offX   x coordinate of upper left corner of 8x8 pattern in image
+ * @param offY   y coordinate of upper left corner of 8x8 pattern in image
+ *
+ * @return       value indicating how suitable a pattern is for optical flow calculation
  */
 static inline uint32_t compute_diff(uint8_t *image, uint16_t offX, uint16_t offY, uint16_t row_size)
 {
 	/* calculate position in image buffer */
-	uint16_t off = (offY + 2) * row_size + (offX + 2); // we calc only the 4x4 pattern
+	uint16_t off = (offY + 2) * row_size + (offX + 2);
+	/* we calculate only the center 4x4 pattern */
 	uint32_t acc;
 
-	/* calc row diff */
+	/* calculate vertical gradient */
 	acc = __USAD8 (*((uint32_t*) &image[off + 0 + 0 * row_size]), *((uint32_t*) &image[off + 0 + 1 * row_size]));
 	acc = __USADA8(*((uint32_t*) &image[off + 0 + 1 * row_size]), *((uint32_t*) &image[off + 0 + 2 * row_size]), acc);
 	acc = __USADA8(*((uint32_t*) &image[off + 0 + 2 * row_size]), *((uint32_t*) &image[off + 0 + 3 * row_size]), acc);
@@ -198,7 +201,7 @@ static inline uint32_t compute_diff(uint8_t *image, uint16_t offX, uint16_t offY
 	uint32_t col3 = (image[off + 2 + 0 * row_size] << 24) | image[off + 2 + 1 * row_size] << 16 | image[off + 2 + 2 * row_size] << 8 | image[off + 2 + 3 * row_size];
 	uint32_t col4 = (image[off + 3 + 0 * row_size] << 24) | image[off + 3 + 1 * row_size] << 16 | image[off + 3 + 2 * row_size] << 8 | image[off + 3 + 3 * row_size];
 
-	/* calc column diff */
+	/* calculate horizontal gradient */
 	acc = __USADA8(col1, col2, acc);
 	acc = __USADA8(col2, col3, acc);
 	acc = __USADA8(col3, col4, acc);
@@ -210,13 +213,15 @@ static inline uint32_t compute_diff(uint8_t *image, uint16_t offX, uint16_t offY
 /**
  * @brief Compute SAD distances of subpixel shift of two 8x8 pixel patterns.
  *
- * @param image1 ...
- * @param image2 ...
- * @param off1X x coordinate of upper left corner of pattern in image1
- * @param off1Y y coordinate of upper left corner of pattern in image1
- * @param off2X x coordinate of upper left corner of pattern in image2
- * @param off2Y y coordinate of upper left corner of pattern in image2
- * @param acc array to store SAD distances for shift in every direction
+ * @param image1  an array holding pixel data
+ * @param image2  an array holding pixel data
+ * @param off1X   x coordinate of upper left corner of pattern in image1
+ * @param off1Y   y coordinate of upper left corner of pattern in image1
+ * @param off2X   x coordinate of upper left corner of pattern in image2
+ * @param off2Y   y coordinate of upper left corner of pattern in image2
+ * @param acc     array to store SAD distances for shift in every direction
+ *
+ * @return        zero
  */
 static inline uint32_t compute_subpixel(uint8_t *image1, uint8_t *image2, uint16_t off1X, uint16_t off1Y, uint16_t off2X, uint16_t off2Y, uint32_t *acc, uint16_t row_size)
 {
@@ -239,8 +244,6 @@ static inline uint32_t compute_subpixel(uint8_t *image1, uint8_t *image2, uint16
 	 *  + - + - + - + - + - + - + - + - +
 	 *  |   |   |   |   |   |   |   |   |
 	 *  + - + - + - + - + - + - + - + - +
-	 *
-	 *
 	 */
 
 	for (uint16_t i = 0; i < 8; i++)
@@ -262,7 +265,6 @@ static inline uint32_t compute_subpixel(uint8_t *image1, uint8_t *image2, uint16
 		 *  + - + - + - +
 		 *
 		 *  variables (s1, ...) contains all 4 results (32bit -> 4 * 8bit values)
-		 *
 		 */
 
 		/* compute average of two pixel values */
@@ -308,7 +310,6 @@ static inline uint32_t compute_subpixel(uint8_t *image1, uint8_t *image2, uint16
 		 *  + - + - + - + - + - + - + - + - +
 		 *  |   |   |   |   | x | x | x | x |
 		 *  + - + - + - + - + - + - + - + - +
-		 *
 		 */
 
 		s0 = (__UHADD8(*((uint32_t*) &image2[off2 + 4 + (i+0) * row_size]), *((uint32_t*) &image2[off2 + 5 + (i+0) * row_size])));
@@ -341,12 +342,14 @@ static inline uint32_t compute_subpixel(uint8_t *image1, uint8_t *image2, uint16
 /**
  * @brief Compute SAD of two 8x8 pixel windows.
  *
- * @param image1 ...
- * @param image2 ...
- * @param off1X x coordinate of upper left corner of pattern in image1
- * @param off1Y y coordinate of upper left corner of pattern in image1
- * @param off2X x coordinate of upper left corner of pattern in image2
- * @param off2Y y coordinate of upper left corner of pattern in image2
+ * @param image1  an array holding pixel data
+ * @param image2  an array holding pixel data
+ * @param off1X   x coordinate of upper left corner of pattern in image1
+ * @param off1Y   y coordinate of upper left corner of pattern in image1
+ * @param off2X   x coordinate of upper left corner of pattern in image2
+ * @param off2Y   y coordinate of upper left corner of pattern in image2
+ *
+ * @return        SAD of two 8x8 pixel windows
  */
 static inline uint32_t compute_sad_8x8(uint8_t *image1, uint8_t *image2, uint16_t off1X, uint16_t off1Y, uint16_t off2X, uint16_t off2Y, uint16_t row_size)
 {
@@ -388,13 +391,13 @@ static inline uint32_t compute_sad_8x8(uint8_t *image1, uint8_t *image2, uint16_
  * Searches the corresponding position in the new image (image2) of max. 64 pixels from the old image (image1)
  * and calculates the average offset of all.
  *
- * @param image1 previous image buffer
- * @param image2 current image buffer (new)
- * @param x_rate gyro x rate
- * @param y_rate gyro y rate
- * @param z_rate gyro z rate
+ * @param image1  previous image buffer
+ * @param image2  current (new) image buffer
+ * @param x_rate  gyro x rate
+ * @param y_rate  gyro y rate
+ * @param z_rate  gyro z rate
  *
- * @return quality of flow calculation
+ * @return        quality of flow calculation
  */
 uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rate, float z_rate, float *pixel_flow_x, float *pixel_flow_y) {
 
@@ -404,16 +407,16 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 	const uint16_t hist_size = 2*(winmax-winmin+1)+1;
 
 	/* variables */
-        uint16_t pixLo = SEARCH_SIZE + 1;
-        uint16_t pixHi = FRAME_SIZE - (SEARCH_SIZE + 1) - TILE_SIZE;
-        uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
+	uint16_t pixLo = SEARCH_SIZE + 1;
+	uint16_t pixHi = FRAME_SIZE - (SEARCH_SIZE + 1) - TILE_SIZE;
+	uint16_t pixStep = (pixHi - pixLo) / NUM_BLOCKS + 1;
 	uint16_t i, j;
-	uint32_t acc[8]; // subpixels
+	uint32_t acc[8];           // subpixels
 	uint16_t histx[hist_size]; // counter for x shift
 	uint16_t histy[hist_size]; // counter for y shift
-	int8_t  dirsx[64]; // shift directions in x
-	int8_t  dirsy[64]; // shift directions in y
-	uint8_t  subdirs[64]; // shift directions of best subpixels
+	int8_t  dirsx[64];         // shift directions in x
+	int8_t  dirsy[64];         // shift directions in y
+	uint8_t  subdirs[64];      // shift directions of best subpixels
 	float meanflowx = 0.0f;
 	float meanflowy = 0.0f;
 	uint16_t meancount = 0;
@@ -485,11 +488,11 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 
 				/* feed histogram filter*/
 				uint8_t hist_index_x = 2*sumx + (winmax-winmin+1);
-				if (subdirs[i] == 0 || subdirs[i] == 1 || subdirs[i] == 7) hist_index_x += 1;
-				if (subdirs[i] == 3 || subdirs[i] == 4 || subdirs[i] == 5) hist_index_x += -1;
+				if (mindir == 0 || mindir == 1 || mindir == 7) hist_index_x += 1;
+				if (mindir == 3 || mindir == 4 || mindir == 5) hist_index_x += -1;
 				uint8_t hist_index_y = 2*sumy + (winmax-winmin+1);
-				if (subdirs[i] == 5 || subdirs[i] == 6 || subdirs[i] == 7) hist_index_y += -1;
-				if (subdirs[i] == 1 || subdirs[i] == 2 || subdirs[i] == 3) hist_index_y += 1;
+				if (mindir == 5 || mindir == 6 || mindir == 7) hist_index_y += -1;
+				if (mindir == 1 || mindir == 2 || mindir == 3) hist_index_y += 1;
 
 				histx[hist_index_x]++;
 				histy[hist_index_y]++;
@@ -660,13 +663,13 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 			}
 
 			/* compensate rotation */
-			/* calculate focal_length in pixel */
+			/* calculate focal length in pixels */
 			const float focal_length_px = (global_data.param[PARAM_FOCAL_LENGTH_MM]) / (4.0f * 6.0f) * 1000.0f; //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
 
 			/*
 			 * gyro compensation
 			 * the compensated value is clamped to
-			 * the maximum measurable flow value (param BFLOW_MAX_PIX) +0.5
+			 * the maximum measurable flow value (PARAM_MAX_FLOW_PIXEL) +0.5
 			 * (sub pixel flow can add half pixel to the value)
 			 *
 			 * -y_rate gives x flow
@@ -680,13 +683,13 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 					float y_rate_pixel = y_rate * (get_time_between_images() / 1000000.0f) * focal_length_px;
 					float comp_x = histflowx + y_rate_pixel;
 
-                    /* clamp value to maximum search window size plus half pixel from subpixel search */
-                    if (comp_x < (-SEARCH_SIZE - 0.5f))
-                    	*pixel_flow_x = (-SEARCH_SIZE - 0.5f);
-                    else if (comp_x > (SEARCH_SIZE + 0.5f))
-                    	*pixel_flow_x = (SEARCH_SIZE + 0.5f);
-                    else
-                    	*pixel_flow_x = comp_x;
+					/* clamp value to maximum search window size plus half pixel from subpixel search */
+					if (comp_x < (-SEARCH_SIZE - 0.5f))
+						*pixel_flow_x = (-SEARCH_SIZE - 0.5f);
+					else if (comp_x > (SEARCH_SIZE + 0.5f))
+						*pixel_flow_x = (SEARCH_SIZE + 0.5f);
+					else
+						*pixel_flow_x = comp_x;
 				}
 				else
 				{
@@ -712,14 +715,15 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 					*pixel_flow_y = histflowy;
 				}
 
-				/* alternative compensation */
+//				/* alternative compensation */
 //				/* compensate y rotation */
 //				*pixel_flow_x = histflowx + y_rate_pixel;
 //
 //				/* compensate x rotation */
 //				*pixel_flow_y = histflowy - x_rate_pixel;
 
-			} else
+			}
+			else
 			{
 				/* without gyro compensation */
 				*pixel_flow_x = histflowx;
@@ -741,7 +745,7 @@ uint8_t compute_flow(uint8_t *image1, uint8_t *image2, float x_rate, float y_rat
 		return 0;
 	}
 
-	/* calc quality */
+	/* calculate quality */
 	uint8_t qual = (uint8_t)(meancount * 255 / (NUM_BLOCKS*NUM_BLOCKS));
 
 	return qual;
