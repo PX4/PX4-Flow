@@ -6,37 +6,29 @@
 
 PX4 FLOW is a smart camera processing optical flow directly on the camera module. It is optimized for processing and outputs images only for development purposes. Its main output is a UART or I2C stream of flow measurements at ~400 Hz.
 
-Project:
-http://px4.io/modules/px4flow
-
 Dev guide / toolchain installation:
-http://px4.io/dev/px4flow
+https://docs.px4.io/master/en/sensor/px4flow.html
 
 For help, run:
 
-```
+```bash
 make help
-
 ```
-
 
 To build, run:
-```
-  make archives - this needs to be done only once
+```bash
+  make archives # this needs to be done only once
   make
-
 ```
 
 To flash via the PX4 bootloader (first run this command, then connect the board):
-```
+```bash
   make upload-usb
 ```
 
-By default the px4flow-v1_default is uploaded to upload a different version
+By default the px4flow-v1_default is uploaded; to upload a different version, run:
 
-```
+```bash
   make <target> upload-usb
 ```
-Where <target> is one of the px4flow tatgets listed by ```make help```
-
-
+Where `<target>` is one of the px4flow targets listed by `make help`.
