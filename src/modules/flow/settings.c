@@ -90,7 +90,7 @@ void global_data_reset_param_defaults(void){
 	strcpy(global_data.param_name[PARAM_USART3_BAUD], "USART_3_BAUD");
 	global_data.param_access[PARAM_USART3_BAUD] = READ_ONLY;
 
-	global_data.param[PARAM_FOCAL_LENGTH_MM] = 8.0f;
+	global_data.param[PARAM_FOCAL_LENGTH_MM] = 16.0f;
 	strcpy(global_data.param_name[PARAM_FOCAL_LENGTH_MM], "LENS_FOCAL_LEN");
 	global_data.param_access[PARAM_FOCAL_LENGTH_MM] = READ_WRITE;
 
