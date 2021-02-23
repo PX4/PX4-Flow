@@ -298,7 +298,7 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 
 	/* calculate focal_length in pixel */
 	const float focal_length_px = ((global_data.param[PARAM_FOCAL_LENGTH_MM])
-			/ (4.0f * 6.0f) * 1000.0f); //original focal lenght: 12mm pixelsize: 6um, binning 4 enabled
+			/ (4.0f * 6.0f) * 1000.0f); //original focal lenght: 16mm pixelsize: 6um, binning 4 enabled
 
 	// reset if readout has been performed
 	if (stop_accumulation == 1) {
@@ -358,7 +358,7 @@ void update_TX_buffer(float pixel_flow_x, float pixel_flow_y,
 	// are used to passs the data to uavcan.
 
         uavcan_export(&pd->frame, &f, I2C_FRAME_SIZE);
-        uavcan_export(&pd->integral_frame, &f_integral, I2C_INTEGRAL_FRAME_SIZE);
+        uavcan_export(&pd->integral_frame, &f_integral, I2C_INTEGRAL_FRAME_SIZE);  // by default: px4 will recieve integral_frame
 
         // fill I2C transmitbuffer1 with frame1 values
 	memcpy(&(txDataFrame1[notpublishedIndexFrame1]),

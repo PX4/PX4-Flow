@@ -52,14 +52,14 @@
 #include "sonar.h"
 #include "sonar_mode_filter.h"
 
-#define SONAR_SCALE	1000.0f
-#define SONAR_MIN	0.12f		/** 0.12m sonar minimum distance */
-#define SONAR_MAX	3.5f		/** 3.50m sonar maximum distance */
+#define SONAR_SCALE	1000.0f /** m -> mm */
+#define SONAR_MIN	0.3f		/** 0.3m laser ; 0.12m sonar minimum distance */
+#define SONAR_MAX	12.0f		/** 12m laser ; 3.50m sonar maximum distance */
 
 #define atoi(nptr)  strtol((nptr), NULL, 10)
 extern uint32_t get_boot_time_us(void);
 
-static char data_buffer[5]; // array for collecting decoded data
+static char data_buffer[9]; // array for collecting decoded data
 
 static volatile uint32_t last_measure_time = 0;
 static volatile uint32_t measure_time = 0;
@@ -102,56 +102,60 @@ void UART4_IRQHandler(void)
 		/* Read one byte from the receive data register */
 		uint8_t data = (USART_ReceiveData(UART4));
 
-		if (data == 'R')
+		if (data == 0x59)
 		{
-			/* this is the first char (start of transmission) */
-			data_counter = 0;
-			data_valid = 1;
-
+			/* this is the first two chars (start of transmission) */
+			if (data_valid==0 && data_counter < 2)
+			{
+				data_buffer[data_counter]=0x59;
+				data_counter++;
+				if (data_counter==2) 
+				{
+					data_valid = 1;
+				} else {
+					data_valid = 0;
+				}
+			} 
 			/* set sonar pin 4 to low -> we want triggered mode */
-			GPIO_ResetBits(GPIOE, GPIO_Pin_8);
-		}
-		else if (0x30 <= data && data <= 0x39)
-		{
+			// GPIO_ResetBits(GPIOE, GPIO_Pin_8);
+		} else {
+
 			if (data_valid)
 			{
 				data_buffer[data_counter] = data;
 				data_counter++;
+			} else {
+				data_counter = 0;
 			}
-		}
-		else if (data == 0x0D)
-		{
-			if (data_valid && data_counter == 4)
+
+			if (data_valid && data_counter == 9)
 			{
-				data_buffer[4] = 0;
-				int temp = atoi(data_buffer);
-
-				/* use real-world maximum ranges to cut off pure noise */
-				if ((temp > SONAR_MIN*SONAR_SCALE) && (temp < SONAR_MAX*SONAR_SCALE))
+				if (data_buffer[8] == ((data_buffer[0] + data_buffer[1] + data_buffer[2] + data_buffer[3] + data_buffer[4] + data_buffer[5] + data_buffer[6] + data_buffer[7]) & 0xff))
 				{
-					/* it is in normal sensor range, take it */
-					last_measure_time = measure_time;
-					measure_time = get_boot_time_us();
-					sonar_measure_time_interrupt = measure_time;
-					dt = ((float)(measure_time - last_measure_time)) / 1000000.0f;
+					int temp = data_buffer[2] | (data_buffer[3] << 8);
+					/* use real-world maximum ranges to cut off pure noise */
+					if ((temp > SONAR_MIN*SONAR_SCALE) && (temp < SONAR_MAX*SONAR_SCALE))
+					{
+						/* it is in normal sensor range, take it */
+						last_measure_time = measure_time;
+						measure_time = get_boot_time_us();
+						sonar_measure_time_interrupt = measure_time;
+						dt = ((float)(measure_time - last_measure_time)) / 1000000.0f;
 
-					valid_data = temp;
-					// the mode filter turned out to be more problematic
-					// than using the raw value of the sonar
-					//insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
-					sonar_mode = valid_data / SONAR_SCALE;
-					new_value = 1;
-					sonar_valid = true;
-				} else {
-					sonar_valid = false;
+						valid_data = temp;
+						// the mode filter turned out to be more problematic
+						// than using the raw value of the sonar
+						//insert_sonar_value_and_get_mode_value(valid_data / SONAR_SCALE);
+						sonar_mode = valid_data / SONAR_SCALE;
+						new_value = 1;
+						sonar_valid = true;
+					} else {
+						sonar_valid = false;
+					}
 				}
+				data_valid = 0;
+				data_counter = 0;
 			}
-
-			data_valid = 0;
-		}
-		else
-		{
-			data_valid = 0;
 		}
 	}
 }
@@ -254,7 +258,7 @@ void sonar_config(void)
 
 	USART_InitTypeDef USART_InitStructure;
 
-	USART_InitStructure.USART_BaudRate = 9600;
+	USART_InitStructure.USART_BaudRate = 115200;  /** 9600 sonar  */
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
 	USART_InitStructure.USART_Parity = USART_Parity_No;
